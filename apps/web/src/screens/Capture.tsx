@@ -40,6 +40,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BoardOverlay, type OverlayHandle } from '../components/BoardOverlay.js';
 import { Fold } from '../components/Fold.js';
+import { PhoneBattery } from '../components/PhoneBattery.js';
 import { SetupCoach } from '../components/SetupCoach.js';
 import { caller, unlockCaller } from '../caller/caller.js';
 import { fill, useStrings } from '../i18n/index.js';
@@ -782,6 +783,7 @@ export function Capture() {
               {camera.photo && ` · ${fill(t.capture.photoTime, { ms: camera.photo.ms, dropped: camera.photo.dropped })}`}
             </p>
           )}
+          <PhoneBattery />
 
           {mode === 'try' && (
             <div className="capture-actions">

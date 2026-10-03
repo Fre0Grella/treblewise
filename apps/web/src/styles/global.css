@@ -697,6 +697,12 @@ input {
   margin-top: 4px;
 }
 
+.phone-battery {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .capture-status {
   margin: 0;
   font-size: 0.75rem;

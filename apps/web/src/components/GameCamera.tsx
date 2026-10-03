@@ -40,6 +40,7 @@ import { boardLooksEmpty } from '../vision/imageStats.js';
 import { cropFrameStyle, squareAround } from '../vision/crop.js';
 import { useCamera } from '../vision/useCamera.js';
 import { BoardOverlay } from './BoardOverlay.js';
+import { PhoneBattery } from './PhoneBattery.js';
 import { SetupCoach } from './SetupCoach.js';
 
 export interface ReportableDart {
@@ -475,6 +476,8 @@ export function GameCamera({
       )}
 
       {saved && <p className="hint">{saved}</p>}
+
+      {keepFrames && <PhoneBattery />}
 
       {keepFrames && camera.ready && (
         <SetupCoach calibrated={calibration !== null} view={view} quality={camera.quality} />
