@@ -122,6 +122,8 @@ export const en = {
     callerOn: 'Caller on',
     callerOff: 'Caller off',
     lastVisit: '{name}, just thrown:',
+    pullOut: '{name}: pull the darts out',
+    dartsOut: 'Darts out: {name} to throw',
     correctingHint: 'Tap a dart, then enter the right score, or press "Mark where they landed" to fix it on the photo.',
     soundsOn: 'Sounds on',
     soundsOff: 'Sounds off',

@@ -373,6 +373,25 @@ input {
   font-size: 0.85rem;
 }
 
+/* A finished visit whose darts are still in the board: it wraps, so the big
+   "Darts out" button gets a line of its own, the width of the strip. */
+.throw-strip-held {
+  flex-wrap: wrap;
+  border-color: var(--warn);
+  background: var(--tint-warn);
+}
+
+.throw-strip-held .throw-who {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.darts-out {
+  flex-basis: 100%;
+  min-height: 56px;
+  font-size: 1.1rem;
+}
+
 .throw-darts {
   display: flex;
   gap: 6px;

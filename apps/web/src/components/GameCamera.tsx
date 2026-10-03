@@ -56,6 +56,8 @@ export interface GameCameraProps {
   visitComplete: boolean;
   /** The darts above belong to the visit being thrown now, not the last one. */
   visitInProgress: boolean;
+  /** The game says the finished visit's darts are out ("Darts out" was pressed): stop waiting for them. */
+  visitClosed: boolean;
   /** Someone is to throw: the match is on and not won. */
   canThrow: boolean;
   onCorrect: (dartId: string, hit: Hit, pos: Point) => void;
@@ -78,6 +80,7 @@ export function GameCamera({
   darts,
   visitComplete,
   visitInProgress,
+  visitClosed,
   canThrow,
   onCorrect,
   onAutoDart,
@@ -157,6 +160,9 @@ export function GameCamera({
   useEffect(() => {
     if (nextVisitStarted) setAwaitingEmpty(false);
   }, [nextVisitStarted]);
+  useEffect(() => {
+    if (visitClosed && awaitingEmptyRef.current) setAwaitingEmpty(false);
+  }, [visitClosed]);
 
   useEffect(() => {
     if (!keepFrames) return;
@@ -457,18 +463,6 @@ export function GameCamera({
           >
             {autoscore ? (detector ? t.report.autoscoreOn : t.report.autoscoreLoading) : t.report.autoscoreOff}
           </button>
-          {autoscore && pullingOut && (
-            <button
-              type="button"
-              className="chip"
-              onClick={() => {
-                setAwaitingEmpty(false);
-                onTurnPassed();
-              }}
-            >
-              {t.capture.boardCleared}
-            </button>
-          )}
         </div>
       )}
       {keepFrames && calibration && modelInfo && autoscore && (

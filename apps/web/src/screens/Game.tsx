@@ -59,6 +59,16 @@ export function Game() {
   const lastVisit = !visitIsCurrent && visit?.complete ? visit : null;
   const lastVisitKey = lastVisit?.darts[0]?.id ?? null;
   const lastVisitOpen = lastVisit !== null && lastVisitKey !== null && lastVisitKey !== closedVisit && !finished;
+  // With the autoscorer scoring, the screen stays on the player who just threw
+  // until the darts come out: the next player is not at the oche yet, and the
+  // finished visit is the one anyone looks at to check it. The score itself
+  // has moved on; only what is shown waits.
+  const held = autoscoring && lastVisitOpen && lastVisit !== null;
+  const nameOf = (id: string) => snapshot.config.players.find((p) => p.id === id)?.name ?? '';
+  const dartsOut = () => {
+    setClosedVisit(lastVisitKey);
+    if (settings.soundsEnabled) playTurn();
+  };
 
   const dartChip = (dart: { id: string; hit: Hit; source: string }) => (
     <button
@@ -98,9 +108,19 @@ export function Game() {
 
   return (
     <div className="screen screen-game">
-      <Scoreboard snapshot={snapshot} />
+      <Scoreboard snapshot={snapshot} holding={held ? lastVisit!.playerId : null} />
 
-      {current && (
+      {held && lastVisit && current && (
+        <div className="throw-strip throw-strip-held">
+          <span className="throw-who">{fill(t.game.pullOut, { name: nameOf(lastVisit.playerId) })}</span>
+          <span className="throw-darts">{lastVisit.darts.map(dartChip)}</span>
+          <button type="button" className="primary darts-out" onClick={dartsOut}>
+            {fill(t.game.dartsOut, { name: nameOf(current.playerId) })}
+          </button>
+        </div>
+      )}
+
+      {current && !held && (
         <div className="throw-strip">
           <span className="throw-who">
             {snapshot.config.players.find((p) => p.id === current.playerId)?.name} {t.game.toThrow}
@@ -116,7 +136,7 @@ export function Game() {
         </div>
       )}
 
-      {lastVisitOpen && lastVisit && (
+      {lastVisitOpen && !held && lastVisit && (
         <div className="throw-strip throw-strip-last">
           <span className="throw-who">
             {fill(t.game.lastVisit, {
@@ -133,7 +153,7 @@ export function Game() {
           <Dartboard
             onHit={record}
             darts={visitDarts}
-            target={current?.checkout?.[visitIsCurrent ? visit?.darts.length ?? 0 : 0] ?? null}
+            target={held ? null : current?.checkout?.[visitIsCurrent ? visit?.darts.length ?? 0 : 0] ?? null}
             disabled={finished}
           />
         ) : (
@@ -141,7 +161,7 @@ export function Game() {
         )}
       </div>
 
-      {current?.checkout && (
+      {current?.checkout && !held && (
         <p className="checkout-line" title={t.game.chartNote}>
           {t.game.checkout}: <b>{formatRoute(current.checkout)}</b>
         </p>
@@ -200,6 +220,7 @@ export function Game() {
           }))}
           visitComplete={visit?.complete === true}
           visitInProgress={visitIsCurrent}
+          visitClosed={!lastVisitOpen}
           canThrow={current !== null && !finished}
           onCorrect={(dartId, hit, pos) => correctDart(dartId, hit, pos)}
           onAutoDart={(hit, pos, confidence) => {

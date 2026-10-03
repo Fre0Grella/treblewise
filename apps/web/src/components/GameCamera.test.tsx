@@ -90,6 +90,7 @@ describe('the autoscorer in a game', () => {
         darts={props.darts ?? []}
         visitComplete={props.visitComplete ?? false}
         visitInProgress={props.visitInProgress ?? false}
+        visitClosed={false}
         canThrow
         onCorrect={() => undefined}
         onAutoDart={onAutoDart}

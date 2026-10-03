@@ -10,9 +10,14 @@ import { useStrings } from '../i18n/index.js';
 
 export interface ScoreboardProps {
   snapshot: MatchSnapshot;
+  /**
+   * The player whose finished visit is still in the board: shown as the one
+   * at the oche until the darts come out, although the score has moved on.
+   */
+  holding?: string | null;
 }
 
-export function Scoreboard({ snapshot }: ScoreboardProps) {
+export function Scoreboard({ snapshot, holding = null }: ScoreboardProps) {
   const t = useStrings();
   const stats = matchStats(snapshot);
   const current = snapshot.current;
@@ -22,13 +27,14 @@ export function Scoreboard({ snapshot }: ScoreboardProps) {
   return (
     <div className="scoreboard">
       {snapshot.config.players.map((player) => {
-        const isCurrent = current?.playerId === player.id;
+        const isCurrent = holding ? holding === player.id : current?.playerId === player.id;
+        const isNext = !holding && current?.playerId === player.id;
         // Once a leg is won, every card shows the next leg's start score: the
         // won leg's zero (and the loser's remainder) belongs to the history,
         // not to the board everyone is about to throw at.
         const legOver = leg?.winnerId != null;
-        const remaining = isCurrent
-          ? current.remaining
+        const remaining = isNext
+          ? current!.remaining
           : legOver
             ? snapshot.config.startScore
             : leg?.remaining[player.id] ?? snapshot.config.startScore;
@@ -53,9 +59,9 @@ export function Scoreboard({ snapshot }: ScoreboardProps) {
 
             <div className="player-remaining">{remaining}</div>
 
-            {isCurrent && current.checkout && (
+            {isNext && current!.checkout && (
               <div className="player-checkout" title={t.game.chartNote}>
-                {formatRoute(current.checkout)}
+                {formatRoute(current!.checkout)}
               </div>
             )}
 
