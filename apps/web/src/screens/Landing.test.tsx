@@ -31,6 +31,29 @@ describe('the landing page', () => {
     expect(screen.getByRole('button', { name: /statistics/i }).className).not.toContain('board-btn');
   });
 
+  it('offers no way back into a match: the device setup comes first', () => {
+    useMatchStore.setState({
+      match: {
+        id: 'm',
+        config: {
+          startScore: 501,
+          inRule: 'straight',
+          outRule: 'double',
+          legsPerSet: 1,
+          setsToWin: 1,
+          players: [{ id: 'ann', name: 'Ann' }],
+        },
+        events: [{ type: 'dart.thrown', id: 'd', ts: 1, hit: { sector: 20, ring: 'treble', value: 60 }, source: 'manual' }],
+        createdAt: 1,
+        updatedAt: 1,
+        finished: false,
+      },
+    });
+    render(<Landing />);
+    expect(screen.queryByRole('button', { name: /carry on|resume/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /play darts/i }).className).toContain('board-btn');
+  });
+
   it('moves the board button to the lobby when there is a session', () => {
     useMatchStore.setState({ session: 'solo' });
     render(<Landing />);

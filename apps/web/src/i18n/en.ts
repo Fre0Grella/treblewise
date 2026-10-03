@@ -169,7 +169,6 @@ export const en = {
   landing: {
     lede: 'Darts, scored properly. Tap the board or let the camera read it, hear the score called out, and get the statistics that only come from knowing where every dart landed.',
     cta: 'Play darts',
-    resume: 'Carry on with your match',
     statusTitle: 'Where this is up to',
     status:
       'Scoring, the caller, checkouts and statistics all work today. The camera autoscorer does not score for you yet: the app photographs your throws and you mark where the darts landed, which is how its training set is being built. Nothing is uploaded.',
@@ -335,6 +334,7 @@ export const en = {
     codeWaiting: 'it connects by itself when the whole code is here',
   },
   camera: {
+    batteryLow: 'The phone is at {n}% and not charging: plug it in before it stops filming.',
     title: 'Camera mode',
     subtitle: 'Point this phone at your computer’s pairing code.',
     liveSubtitle: 'Leave the phone where it is. The computer is doing the rest.',

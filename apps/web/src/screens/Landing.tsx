@@ -5,9 +5,7 @@ import { useMatchStore } from '../store/match.js';
 export function Landing() {
   const t = useStrings();
   const setScreen = useMatchStore((s) => s.setScreen);
-  const match = useMatchStore((s) => s.match);
   const session = useMatchStore((s) => s.session);
-  const inProgress = match !== null && !match.finished && match.events.length > 0;
 
   return (
     <div className="landing-wrap">
@@ -30,14 +28,11 @@ export function Landing() {
               {t.lobby.back}
             </button>
           )}
-          {inProgress && (
-            <button type="button" className={session ? 'chip' : 'primary board-btn'} onClick={() => setScreen('game')}>
-              {t.landing.resume}
-            </button>
-          )}
+          {/* No "carry on with your match" here: a match is played on one device
+              or two, and that is chosen first. The lobby offers to resume it. */}
           <button
             type="button"
-            className={inProgress || session ? 'chip' : 'primary board-btn'}
+            className={session ? 'chip' : 'primary board-btn'}
             onClick={() => setScreen('mode')}
           >
             {t.landing.cta}
