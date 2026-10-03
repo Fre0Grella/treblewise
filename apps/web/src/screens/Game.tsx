@@ -27,6 +27,8 @@ export function Game() {
 
   /** id of the dart being corrected, if any. */
   const [correcting, setCorrecting] = useState<string | null>(null);
+  /** The finished visit whose darts were seen coming out (its first dart's id): no longer correctable here. */
+  const [closedVisit, setClosedVisit] = useState<string | null>(null);
 
   // The turn passing is a sound. With the autoscorer scoring, it sounds when
   // the darts come out (GameCamera says when); otherwise when a visit ends.
@@ -50,6 +52,27 @@ export function Game() {
   // back from the board should still see where their darts landed.
   const visit = leg?.visits.at(-1) ?? null;
   const visitIsCurrent = current !== null && visit?.playerId === current.playerId && !visit.complete;
+
+  // The visit just thrown stays correctable until its darts come out (seen by
+  // the camera, or "I pulled the darts out") or the next player throws: the
+  // third dart used to vanish the moment it went in, wrong or not.
+  const lastVisit = !visitIsCurrent && visit?.complete ? visit : null;
+  const lastVisitKey = lastVisit?.darts[0]?.id ?? null;
+  const lastVisitOpen = lastVisit !== null && lastVisitKey !== null && lastVisitKey !== closedVisit && !finished;
+
+  const dartChip = (dart: { id: string; hit: Hit; source: string }) => (
+    <button
+      key={dart.id}
+      type="button"
+      className={`dart-chip${correcting === dart.id ? ' dart-chip-correcting' : ''}${
+        dart.source === 'auto' ? ' dart-chip-auto' : ''
+      }`}
+      onClick={() => setCorrecting((id) => (id === dart.id ? null : dart.id))}
+      title={t.game.correctingHint}
+    >
+      {formatHit(dart.hit)}
+    </button>
+  );
 
   const visitDarts: BoardDart[] = (visit?.darts ?? []).map((dart) => ({
     id: dart.id,
@@ -83,19 +106,7 @@ export function Game() {
             {snapshot.config.players.find((p) => p.id === current.playerId)?.name} {t.game.toThrow}
           </span>
           <span className="throw-darts">
-            {(visitIsCurrent ? visit?.darts ?? [] : []).map((dart) => (
-              <button
-                key={dart.id}
-                type="button"
-                className={`dart-chip${correcting === dart.id ? ' dart-chip-correcting' : ''}${
-                  dart.source === 'auto' ? ' dart-chip-auto' : ''
-                }`}
-                onClick={() => setCorrecting((id) => (id === dart.id ? null : dart.id))}
-                title="Tap, then enter the right score to correct this dart"
-              >
-                {formatHit(dart.hit)}
-              </button>
-            ))}
+            {(visitIsCurrent ? visit?.darts ?? [] : []).map(dartChip)}
             {Array.from({ length: visitIsCurrent ? Math.max(0, 3 - (visit?.darts.length ?? 0)) : 3 }).map((_, index) => (
               <span key={`empty-${index}`} className="dart-chip dart-chip-empty">
                 ·
@@ -104,6 +115,18 @@ export function Game() {
           </span>
         </div>
       )}
+
+      {lastVisitOpen && lastVisit && (
+        <div className="throw-strip throw-strip-last">
+          <span className="throw-who">
+            {fill(t.game.lastVisit, {
+              name: snapshot.config.players.find((p) => p.id === lastVisit.playerId)?.name ?? '',
+            })}
+          </span>
+          <span className="throw-darts">{lastVisit.darts.map(dartChip)}</span>
+        </div>
+      )}
+      {correcting && <p className="hint">{t.game.correctingHint}</p>}
 
       <div className="entry">
         {settings.entryMode === 'board' ? (
@@ -185,10 +208,13 @@ export function Game() {
           }}
           onDartsPulled={(remaining) => {
             // Pulled out with darts still to throw: the rest missed the board.
+            // Its darts are out, so the visit is not left open for correcting.
+            setClosedVisit(visit?.darts[0]?.id ?? null);
             for (let n = 0; n < remaining; n += 1) throwDart(MISS, { source: 'auto' });
             if (settings.soundsEnabled) playTurn();
           }}
           onTurnPassed={() => {
+            setClosedVisit(lastVisitKey);
             if (settings.soundsEnabled) playTurn();
           }}
         />

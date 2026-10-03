@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { CALIBRATION_BOARD_POINTS, type Hit, type Point } from '@treblewise/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,11 +13,14 @@ const hooks = vi.hoisted(() => ({
   settle: undefined as ((frame: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) => void) | undefined,
   /** What the model finds on the next photograph, in board millimetres. */
   found: [] as { x: number; y: number }[],
+  /** Whether the camera was last asked to pause. */
+  paused: false,
 }));
 
 vi.mock('../vision/useCamera.js', () => ({
-  useCamera: (options: { onSettle?: typeof hooks.settle }) => {
+  useCamera: (options: { onSettle?: typeof hooks.settle; paused?: boolean }) => {
     hooks.settle = options.onSettle;
+    hooks.paused = options.paused === true;
     return {
       videoRef: { current: null },
       ready: true,
@@ -62,13 +65,15 @@ const EMPTY = new Uint8Array(64 * 64).fill(120);
 /** The same board with darts in it. */
 const DARTS = EMPTY.map((value, index) => (index % 64 > 30 && index % 64 < 36 && index < 40 * 64 ? 40 : value));
 
-const photo = (): GrabbedFrame => ({ jpeg: new Blob(['x'], { type: 'image/jpeg' }), width: WIDTH, height: HEIGHT });
+const photo = (content = 'x'): GrabbedFrame => ({ jpeg: new Blob([content], { type: 'image/jpeg' }), width: WIDTH, height: HEIGHT });
 
-async function settle(thumbnail: Uint8Array = DARTS) {
+async function settle(thumbnail: Uint8Array = DARTS, content = 'x'): Promise<GrabbedFrame> {
+  const frame = photo(content);
   await act(async () => {
-    hooks.settle!(photo(), thumbnail, null);
+    hooks.settle!(frame, thumbnail, null);
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+  return frame;
 }
 
 const T20: Hit = { sector: 20, ring: 'treble', value: 60 };
@@ -187,6 +192,30 @@ describe('the autoscorer in a game', () => {
     hooks.found = [{ x: 30, y: -50 }];
     await settle();
     expect(onAutoDart).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports on the photograph of the visit, not the hand that came after, and pauses the camera meanwhile', async () => {
+    useMatchStore.setState((state) => ({ settings: { ...state.settings, autoscoreGames: false } }));
+    const shownBlobs: Blob[] = [];
+    URL.createObjectURL = (blob: Blob | MediaSource) => {
+      shownBlobs.push(blob as Blob);
+      return 'blob:test';
+    };
+    URL.revokeObjectURL = () => undefined;
+
+    const view = await start();
+    const withTheDart = await settle(DARTS, 'with the dart');
+    const dart = { id: 'a', hit: T20, pos: { x: 0, y: 103 } };
+    view.rerender(camera({ darts: [dart], visitInProgress: true }));
+    await settle(DARTS, 'a hand');
+
+    expect(hooks.paused).toBe(false);
+    await act(async () => {
+      screen.getByRole('button', { name: /report/i }).click();
+    });
+    expect(screen.getByRole('dialog')).toBeDefined();
+    expect(shownBlobs.at(-1)).toBe(withTheDart.jpeg);
+    expect(hooks.paused).toBe(true);
   });
 
   it('leaves the visit to the player once a dart was entered by number', async () => {

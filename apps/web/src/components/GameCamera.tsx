@@ -37,6 +37,7 @@ import { newDarts } from '../vision/autoscore.js';
 import { THUMB_SIZE, cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { loadDetector, loadManifest, type Detector, type ModelManifest } from '../vision/detector.js';
 import { boardLooksEmpty } from '../vision/imageStats.js';
+import { cropFrameStyle, squareAround } from '../vision/crop.js';
 import { useCamera } from '../vision/useCamera.js';
 import { BoardOverlay } from './BoardOverlay.js';
 import { SetupCoach } from './SetupCoach.js';
@@ -87,7 +88,7 @@ export function GameCamera({
   const keepFrames = useMatchStore((s) => s.settings.keepFrames);
   const setKeepFrames = useMatchStore((s) => s.setKeepFrames);
   const calibration = useMatchStore((s) => s.settings.calibration);
-  const setScreen = useMatchStore((s) => s.setScreen);
+  const openCameraSetup = useMatchStore((s) => s.openCameraSetup);
   const mode = useMatchStore((s) => s.mode);
   const remoteStream = useMatchStore((s) => s.remoteStream);
   const pairing = useMatchStore((s) => s.pairing);
@@ -102,6 +103,21 @@ export function GameCamera({
   // when something looks wrong.
   const [showPreview, setShowPreview] = useState(false);
   const latestRef = useRef<GrabbedFrame | null>(null);
+  /**
+   * The photograph taken when the visit's latest dart went in. The report
+   * shows this one, not the newest: by the time someone reports a dart, the
+   * newest photograph is often a hand pulling the darts out.
+   */
+  const visitFrameRef = useRef<GrabbedFrame | null>(null);
+  const visitKey = useRef<{ first: string | undefined; count: number }>({ first: undefined, count: 0 });
+  useEffect(() => {
+    const first = darts[0]?.id;
+    const seen = visitKey.current;
+    if (first !== seen.first || darts.length > seen.count) visitFrameRef.current = latestRef.current;
+    visitKey.current = { first, count: darts.length };
+  }, [darts]);
+  /** The photograph a report is open on: fixed for as long as it is open. */
+  const [shown, setShown] = useState<GrabbedFrame | null>(null);
 
   // ---- the autoscorer -----------------------------------------------------
   const autoscore = useMatchStore((s) => s.settings.autoscoreGames);
@@ -281,6 +297,9 @@ export function GameCamera({
     reference,
     stream: mode === 'paired' ? remoteStream : null,
     grab: mode === 'paired' && pairing ? () => pairing.requestPhoto() : null,
+    // While a report is open nothing is photographed: a new photograph
+    // re-rendered the card under the finger placing a marker, and flickered.
+    paused: reporting,
   });
 
   const view = useMemo(
@@ -298,8 +317,13 @@ export function GameCamera({
     calibration.height === latest.height;
 
   const openReport = () => {
-    if (!latest || !calibration) return;
-    const url = URL.createObjectURL(latest.jpeg);
+    const photo =
+      visitFrameRef.current && calibration && visitFrameRef.current.width === calibration.width
+        ? visitFrameRef.current
+        : latest;
+    if (!photo || !calibration) return;
+    const url = URL.createObjectURL(photo.jpeg);
+    setShown(photo);
     setFrameUrl(url);
     // Pre-place a marker wherever a dart already has a position: correcting a
     // marker that is nearly right is much faster than placing three.
@@ -316,11 +340,13 @@ export function GameCamera({
   const closeReport = () => {
     if (frameUrl) URL.revokeObjectURL(frameUrl);
     setFrameUrl(null);
+    setShown(null);
     setReporting(false);
     setMarks([]);
   };
 
   const saveReport = async () => {
+    const latest = shown;
     if (!latest || !calibration) return;
 
     const labelled = marks.filter((mark): mark is LabelledDart => mark !== null);
@@ -378,6 +404,8 @@ export function GameCamera({
   if (!cameraSupported()) return null;
 
   const size = { width: camera.width || 1280, height: camera.height || 720 };
+  const reportCrop =
+    shown && region && calibration?.width === shown.width ? squareAround(region, shown) : null;
 
   return (
     <div className="game-camera">
@@ -399,9 +427,9 @@ export function GameCamera({
             {visitComplete ? t.report.markVisit : t.report.button}
           </button>
         )}
-        {keepFrames && !calibration && (
-          <button type="button" className="chip" onClick={() => setScreen('capture')}>
-            {t.capture.calibrate}
+        {keepFrames && (
+          <button type="button" className="chip" onClick={openCameraSetup}>
+            {calibration ? t.report.cameraSetup : t.capture.calibrate}
           </button>
         )}
         {keepFrames && calibration && (
@@ -489,79 +517,76 @@ export function GameCamera({
       {keepFrames && !usable && latest !== null && <p className="hint">{t.capture.noCalibration}</p>}
       {keepFrames && latest === null && <p className="hint">{t.report.noFrame}</p>}
 
-      {reporting && frameUrl && latest && (
-        <div className="overlay">
-          <div className="overlay-card overlay-card-wide">
-            <h2>{t.report.title}</h2>
-            <p className="hint">{t.report.help}</p>
+      {reporting && frameUrl && shown && (
+        <div className="overlay overlay-report" role="dialog" aria-label={t.report.title}>
+          <div className="report">
+            <div className="report-side">
+              <h2>{t.report.title}</h2>
+              <p className="hint">{t.report.help}</p>
+
+              <div className="chip-row">
+                {darts.map((dart, index) => {
+                  const mark = marks[index];
+                  return (
+                    <button
+                      key={dart.id}
+                      type="button"
+                      className="chip"
+                      onClick={() => setMarks((current) => current.map((m, i) => (i === index ? null : m)))}
+                    >
+                      {index + 1}: {formatHit(dart.hit)}
+                      {mark && mark.hit.value !== dart.hit.value ? ` → ${formatHit(mark.hit)}` : ''}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="controls">
+                <button type="button" className="primary" onClick={() => void saveReport()}>
+                  {t.report.save}
+                </button>
+                <button type="button" className="chip" onClick={closeReport}>
+                  {t.report.cancel}
+                </button>
+              </div>
+            </div>
 
             <div
-              className="stage report-stage"
-              style={{
-                aspectRatio: `${latest.width} / ${latest.height}`,
-                // The card is height-capped, and a flex item with its height
-                // taken away keeps its width: the photograph came out squashed
-                // towards a square. Size it from the height that is left
-                // instead, the way the live preview does.
-                maxWidth: `calc((92vh - 260px) * ${(latest.width / latest.height).toFixed(4)})`,
-              }}
+              className="stage report-board"
+              style={{ aspectRatio: reportCrop ? '1 / 1' : `${shown.width} / ${shown.height}` }}
             >
-              <img className="stage-frozen" src={frameUrl} alt="" />
-              <BoardOverlay
-                width={latest.width}
-                height={latest.height}
-                toImage={calibration?.toImage ?? null}
-                darts={marks
-                  .map((mark, index) => ({ mark, index }))
-                  .filter(({ mark }) => mark !== null)
-                  .map(({ mark, index }) => ({
-                    img: mark!.img,
-                    label: `${index + 1} · ${formatHit(mark!.hit)}`,
-                  }))}
-                onDartMove={(visibleIndex, point) => {
-                  if (!calibration) return;
-                  const indices = marks.map((mark, index) => (mark ? index : -1)).filter((index) => index >= 0);
-                  const target = indices[visibleIndex];
-                  if (target === undefined) return;
-                  setMarks((current) =>
-                    current.map((mark, index) => (index === target ? readDart(calibration, point) : mark)),
-                  );
-                }}
-                onTap={(point) => {
-                  if (!calibration) return;
-                  const next = marks.findIndex((mark) => mark === null);
-                  if (next < 0) return;
-                  setMarks((current) =>
-                    current.map((mark, index) => (index === next ? readDart(calibration, point) : mark)),
-                  );
-                }}
-              />
-            </div>
-
-            <div className="chip-row">
-              {darts.map((dart, index) => {
-                const mark = marks[index];
-                return (
-                  <button
-                    key={dart.id}
-                    type="button"
-                    className="chip"
-                    onClick={() => setMarks((current) => current.map((m, i) => (i === index ? null : m)))}
-                  >
-                    {index + 1}: {formatHit(dart.hit)}
-                    {mark && mark.hit.value !== dart.hit.value ? ` → ${formatHit(mark.hit)}` : ''}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="controls">
-              <button type="button" className="primary" onClick={() => void saveReport()}>
-                {t.report.save}
-              </button>
-              <button type="button" className="chip" onClick={closeReport}>
-                {t.report.cancel}
-              </button>
+              <div className="stage-frame" style={cropFrameStyle(reportCrop, shown)}>
+                <img className="stage-frozen" src={frameUrl} alt="" />
+                <BoardOverlay
+                  width={shown.width}
+                  height={shown.height}
+                  toImage={calibration?.toImage ?? null}
+                  darts={marks
+                    .map((mark, index) => ({ mark, index }))
+                    .filter(({ mark }) => mark !== null)
+                    .map(({ mark, index }) => ({
+                      img: mark!.img,
+                      label: `${index + 1} · ${formatHit(mark!.hit)}`,
+                    }))}
+                  onDartMove={(visibleIndex, point) => {
+                    if (!calibration) return;
+                    const indices = marks.map((mark, index) => (mark ? index : -1)).filter((index) => index >= 0);
+                    const target = indices[visibleIndex];
+                    if (target === undefined) return;
+                    setMarks((current) =>
+                      current.map((mark, index) => (index === target ? readDart(calibration, point) : mark)),
+                    );
+                  }}
+                  onTap={(point) => {
+                    if (!calibration) return;
+                    const next = marks.findIndex((mark) => mark === null);
+                    if (next < 0) return;
+                    setMarks((current) =>
+                      current.map((mark, index) => (index === next ? readDart(calibration, point) : mark)),
+                    );
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

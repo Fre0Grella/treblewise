@@ -10,6 +10,25 @@ import type { Region } from './camera.js';
  * A square around `region`, as large as its longer side, moved (never shrunk
  * below the frame's shorter side) so that it stays inside the frame.
  */
+/**
+ * The style that places a frame-sized box inside a stage cropped to `crop`,
+ * so only the crop shows (the stage hides the rest). Without a crop, the box
+ * simply fills the stage.
+ */
+export function cropFrameStyle(
+  crop: Region | null,
+  frame: { width: number; height: number },
+): Record<string, string> | undefined {
+  if (!crop) return undefined;
+  return {
+    inset: 'auto',
+    left: `${(-crop.x / crop.width) * 100}%`,
+    top: `${(-crop.y / crop.height) * 100}%`,
+    width: `${(frame.width / crop.width) * 100}%`,
+    height: `${(frame.height / crop.height) * 100}%`,
+  };
+}
+
 export function squareAround(region: Region, frame: { width: number; height: number }): Region {
   const side = Math.min(Math.max(region.width, region.height), frame.width, frame.height);
   const cx = region.x + region.width / 2;

@@ -91,6 +91,8 @@ export interface ThrowOptions {
 interface MatchState {
   ready: boolean;
   screen: Screen;
+  /** Where the camera setup goes back to: the match it was opened from, if any. */
+  cameraReturn: Screen | null;
   settings: Settings;
   match: StoredMatch | null;
   snapshot: MatchSnapshot | null;
@@ -119,6 +121,8 @@ interface MatchState {
 
   init: (screen?: Screen) => Promise<void>;
   setScreen: (screen: Screen) => void;
+  /** Camera setup from the match, coming back to the match. */
+  openCameraSetup: () => void;
   startMatch: (config: X01Config) => void;
   resumeMatch: (id: string) => Promise<void>;
   removeMatch: (id: string) => Promise<void>;
@@ -184,6 +188,7 @@ export const useMatchStore = create<MatchState>((set, get) => {
   return {
     ready: false,
     screen: 'landing',
+    cameraReturn: null,
     settings: DEFAULT_SETTINGS,
     match: null,
     snapshot: null,
@@ -259,8 +264,14 @@ export const useMatchStore = create<MatchState>((set, get) => {
       });
     },
 
+    openCameraSetup() {
+      const from = get().screen;
+      get().setScreen('capture');
+      set({ cameraReturn: from });
+    },
+
     setScreen(screen) {
-      set({ screen });
+      set({ screen, ...(screen === 'capture' ? {} : { cameraReturn: null }) });
       if (typeof location !== 'undefined') {
         const hash = hashForScreen(screen);
         if (location.hash !== hash) history.pushState(null, '', hash);

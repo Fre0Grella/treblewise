@@ -59,7 +59,7 @@ import { DARTS_PER_VISIT, carriedInto, inBoardAfter, newDarts, onNewPhoto, worth
 import { useMatchStore } from '../store/match.js';
 import { THUMB_SIZE, cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { loadDetector, loadManifest, type Detector, type ModelManifest } from '../vision/detector.js';
-import { squareAround } from '../vision/crop.js';
+import { cropFrameStyle, squareAround } from '../vision/crop.js';
 import { newDarts as newDartsIn } from '../vision/autoscore.js';
 import { boardLooksEmpty } from '../vision/imageStats.js';
 import { useCamera } from '../vision/useCamera.js';
@@ -130,6 +130,7 @@ const BLIND_SHARE = 0.2;
 export function Capture() {
   const t = useStrings();
   const goHome = useMatchStore((s) => s.goHome);
+  const cameraReturn = useMatchStore((s) => s.cameraReturn);
   const setScreen = useMatchStore((s) => s.setScreen);
   const calibration = useMatchStore((s) => s.settings.calibration);
   const saveCalibration = useMatchStore((s) => s.saveCalibration);
@@ -670,6 +671,7 @@ export function Capture() {
     }
     setLeaving(null);
     if (where === 'done') setMode('setup');
+    else if (cameraReturn) setScreen(cameraReturn);
     else goHome();
   };
 
@@ -924,20 +926,7 @@ export function Capture() {
         </div>
 
         <div className="stage" style={{ aspectRatio: crop ? '1 / 1' : `${frameSize.width} / ${frameSize.height}` }}>
-          <div
-            className="stage-frame"
-            style={
-              crop
-                ? {
-                    inset: 'auto',
-                    left: `${(-crop.x / crop.width) * 100}%`,
-                    top: `${(-crop.y / crop.height) * 100}%`,
-                    width: `${(frameSize.width / crop.width) * 100}%`,
-                    height: `${(frameSize.height / crop.height) * 100}%`,
-                  }
-                : undefined
-            }
-          >
+          <div className="stage-frame" style={cropFrameStyle(crop, frameSize)}>
             <video ref={camera.videoRef} className="stage-video" playsInline muted />
             {mode === 'calibrate' && frozen && <img className="stage-frozen" src={frozen.url} alt="" />}
             {mode === 'try' && pending && <img className="stage-frozen" src={pending.url} alt="" />}
@@ -1078,7 +1067,7 @@ export function Capture() {
 
       <div className="screen-actions">
         <button type="button" className="chip" onClick={() => leave('back')}>
-          {t.capture.back}
+          {cameraReturn === 'game' ? t.capture.backToMatch : t.capture.back}
         </button>
       </div>
     </div>
