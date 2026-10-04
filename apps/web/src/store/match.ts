@@ -31,7 +31,6 @@ import {
   loadSettings,
   putMatch,
   putProfile,
-  saveSetting,
   type Profile,
   type Settings,
   type StoredMatch,
@@ -39,6 +38,7 @@ import {
 
 import type { PairState, PairingConnection } from '../pairing/session.js';
 import { hashForScreen, type Screen } from '../route.js';
+import { createSettings } from './settings.js';
 
 export type { Screen };
 
@@ -162,6 +162,8 @@ function newId(): string {
 }
 
 export const useMatchStore = create<MatchState>((set, get) => {
+  const settings = createSettings({ get, set });
+
   /** Applies a new event list: folds it, persists it, and calls the score. */
   const commit = (events: MatchEvent[], options: { speak?: boolean; first?: string[] } = {}) => {
     const state = get();
@@ -203,7 +205,7 @@ export const useMatchStore = create<MatchState>((set, get) => {
     phone: null,
 
     async init(screen) {
-      const [settings, matches, profiles] = await Promise.all([
+      const [stored, matches, profiles] = await Promise.all([
         loadSettings(),
         listMatches(),
         listProfiles(),
@@ -219,7 +221,7 @@ export const useMatchStore = create<MatchState>((set, get) => {
         session: recalled,
         mode: recalled ?? 'solo',
         ready: true,
-        settings,
+        settings: stored,
         history: matches,
         profiles,
         match: unfinished ?? null,
@@ -328,37 +330,19 @@ export const useMatchStore = create<MatchState>((set, get) => {
     },
 
     toggleSounds() {
-      const soundsEnabled = !get().settings.soundsEnabled;
-      set({ settings: { ...get().settings, soundsEnabled } });
-      void saveSetting('soundsEnabled', soundsEnabled);
+      settings.change('soundsEnabled', !get().settings.soundsEnabled);
     },
 
     toggleCaller() {
       const callerEnabled = !get().settings.callerEnabled;
-      set({ settings: { ...get().settings, callerEnabled } });
-      void saveSetting('callerEnabled', callerEnabled);
+      settings.change('callerEnabled', callerEnabled);
       if (!callerEnabled) caller().cancel();
     },
 
-    setEntryMode(entryMode) {
-      set({ settings: { ...get().settings, entryMode } });
-      void saveSetting('entryMode', entryMode);
-    },
-
-    saveCalibration(calibration) {
-      set({ settings: { ...get().settings, calibration } });
-      void saveSetting('calibration', calibration);
-    },
-
-    setKeepFrames(keepFrames) {
-      set({ settings: { ...get().settings, keepFrames } });
-      void saveSetting('keepFrames', keepFrames);
-    },
-
-    setAutoscoreGames(autoscoreGames) {
-      set({ settings: { ...get().settings, autoscoreGames } });
-      void saveSetting('autoscoreGames', autoscoreGames);
-    },
+    setEntryMode: (entryMode) => settings.change('entryMode', entryMode),
+    saveCalibration: (calibration) => settings.change('calibration', calibration),
+    setKeepFrames: (keepFrames) => settings.change('keepFrames', keepFrames),
+    setAutoscoreGames: (autoscoreGames) => settings.change('autoscoreGames', autoscoreGames),
 
     async createProfile(name) {
       // The id comes from the name once, at creation, and never changes again:
