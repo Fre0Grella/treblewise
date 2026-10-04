@@ -60,8 +60,21 @@
   --scrim: rgb(11 10 8 / 78%);
   --scrim-badge: rgb(11 10 8 / 72%);
 
+  /* One spacing scale, so neighbouring blocks line up instead of differing by
+     two pixels nobody chose. Margins, paddings, gaps and offsets come from
+     here; the sizes of particular things (the board, the numerals, a touch
+     target) are not spacing and stay where they are. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  /* The gap between the blocks of a screen: a role, not a step. */
+  --gap: var(--space-3);
+
   --radius: 12px;
-  --gap: 12px;
 
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -109,21 +122,23 @@ h2 {
   flex-direction: column;
   gap: var(--gap);
   min-height: 100%;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  padding:
+    max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
+    max(var(--space-4), env(safe-area-inset-bottom));
   max-width: 760px;
   margin: 0 auto;
 }
 
 .screen-head p {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--text-dim);
 }
 
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -131,7 +146,7 @@ h2 {
 
 .screen-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   margin-top: auto;
 }
@@ -145,7 +160,7 @@ button {
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: var(--space-2) var(--space-3);
   min-height: 44px;
 }
 
@@ -197,7 +212,7 @@ a:hover {
   color: var(--action-ink);
   border-color: transparent;
   box-shadow: inset 5px 0 0 var(--ring-a), inset 10px 0 0 var(--ring-b);
-  padding-left: 26px;
+  padding-left: var(--space-5);
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -216,7 +231,7 @@ a:hover {
 }
 
 .chip {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   min-height: 40px;
   border-radius: 999px;
   font-size: 0.9rem;
@@ -233,7 +248,7 @@ a:hover {
 .chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 input {
@@ -242,7 +257,7 @@ input {
   background: var(--bg-sunken);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   min-height: 44px;
   width: 100%;
 }
@@ -256,7 +271,7 @@ input {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
   font-size: 0.85rem;
   color: var(--text-dim);
 }
@@ -267,12 +282,12 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .player-list li {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -281,11 +296,11 @@ input {
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .player {
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -301,7 +316,7 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.85rem;
 }
 
@@ -314,7 +329,7 @@ input {
 
 .player-counts {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -337,8 +352,8 @@ input {
 .player-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 4px;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
   font-size: 0.75rem;
   color: var(--text-dim);
 }
@@ -349,7 +364,7 @@ input {
 }
 
 .player-visit {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   font-size: 0.85rem;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
@@ -361,8 +376,8 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -388,7 +403,7 @@ input {
 
 .held-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-basis: 100%;
 }
 
@@ -406,13 +421,13 @@ input {
 
 .throw-darts {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .dart-chip {
   min-width: 52px;
   min-height: 36px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -470,24 +485,24 @@ input {
 .keypad {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
 }
 
 .keypad-multipliers,
 .keypad-specials {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .keypad-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .key {
-  padding: 14px 0;
+  padding: var(--space-3) 0;
   font-size: 1.1rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -522,7 +537,7 @@ input {
 
 .controls {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -542,14 +557,14 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .match-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -566,7 +581,7 @@ input {
 
 .match-actions {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -578,15 +593,15 @@ input {
   display: grid;
   place-items: center;
   background: var(--scrim);
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .overlay-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 24px;
+  padding: var(--space-5);
   background: var(--bg-raised);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
@@ -672,9 +687,9 @@ input {
 .fold > summary {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   width: fit-content;
-  padding: 2px 0;
+  padding: var(--space-1) 0;
   list-style: none;
   cursor: pointer;
   font-size: 0.75rem;
@@ -706,7 +721,7 @@ input {
 }
 
 .fold > :not(summary) {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .phone-battery {
@@ -733,7 +748,7 @@ input {
   .capture-work-split {
     display: grid;
     grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
-    gap: 24px;
+    gap: var(--space-5);
     align-items: start;
   }
 
@@ -742,14 +757,14 @@ input {
     flex-direction: column;
     gap: var(--gap);
     position: sticky;
-    top: 16px;
+    top: var(--space-4);
     max-height: calc(100dvh - 32px);
     overflow-y: auto;
   }
 
   .capture-work-split > .stage {
     position: sticky;
-    top: 16px;
+    top: var(--space-4);
     width: min(100%, calc(100dvh - 32px));
     justify-self: center;
   }
@@ -770,9 +785,9 @@ input {
 
 .stage-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 4px 10px;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: 999px;
   background: var(--scrim-badge);
   border: 1px solid var(--line);
@@ -783,7 +798,7 @@ input {
 
 .warning {
   margin: 0;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: 10px;
   color: var(--danger);
   background: var(--tint-danger);
@@ -797,7 +812,7 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: 0.8rem;
   color: var(--text-dim);
 }
@@ -811,7 +826,7 @@ input {
 .game-camera {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .overlay-card-wide {
@@ -876,7 +891,7 @@ input {
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 16px;
+  padding: var(--space-4);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -899,7 +914,7 @@ input {
     display: grid;
     grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
     align-items: start;
-    gap: 24px;
+    gap: var(--space-5);
   }
 
   .report-board {
@@ -919,9 +934,9 @@ input {
 .coach {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--bg-raised);
@@ -982,7 +997,7 @@ input {
   padding-left: 1.2em;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
   font-size: 0.85rem;
   color: var(--text-dim);
 }
@@ -1039,7 +1054,7 @@ input {
 }
 
 .screen-landing {
-  gap: 20px;
+  gap: var(--space-4);
 }
 
 .landing-hero {
@@ -1054,7 +1069,7 @@ input {
 }
 
 .landing-lede {
-  margin: 12px 0 0;
+  margin: var(--space-3) 0 0;
   font-size: 1.05rem;
   line-height: 1.5;
   color: var(--text-dim);
@@ -1063,7 +1078,7 @@ input {
 
 .landing-cta {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -1080,14 +1095,14 @@ input {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .landing-points li {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-raised);
@@ -1113,10 +1128,10 @@ input {
 .landing-foot {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: var(--space-2);
   font-size: 0.8rem;
   color: var(--text-dim);
 }
@@ -1130,16 +1145,16 @@ input {
 .mode-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .mode-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: stretch;
   text-align: left;
-  padding: 14px;
+  padding: var(--space-3);
   border-radius: var(--radius);
   background: var(--bg-raised);
   border: 1px solid var(--line);
@@ -1172,7 +1187,7 @@ input {
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .mode-card ul li::marker {
@@ -1180,7 +1195,7 @@ input {
 }
 
 .mode-go {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: var(--accent);
   font-weight: 650;
   font-size: 0.9rem;
@@ -1192,7 +1207,7 @@ input {
   color: var(--text);
   background: var(--bg-sunken);
   border-radius: 10px;
-  padding: 6px;
+  padding: var(--space-1);
 }
 
 .mode-waves .wave {
@@ -1255,7 +1270,7 @@ input {
 .pair-fallback {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-sunken);
 }
 
@@ -1266,13 +1281,13 @@ input {
 }
 
 .pair-fallback[open] > summary {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--text);
 }
 
 .pair-code {
-  margin: 8px 0;
-  padding: 10px;
+  margin: var(--space-2) 0;
+  padding: var(--space-2);
   border-radius: var(--radius);
   background: var(--bg);
   border: 1px solid var(--line);
@@ -1289,7 +1304,7 @@ input {
 
 .pair-code-input {
   width: 100%;
-  padding: 12px;
+  padding: var(--space-3);
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--bg-sunken);
@@ -1310,7 +1325,7 @@ input {
 .scanner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .scanner-frame {
@@ -1345,7 +1360,7 @@ input {
 .camera-live {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .camera-live-hidden {
@@ -1368,20 +1383,20 @@ input {
 /* ---------- statistics ---------- */
 
 .screen-stats .panel {
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .tile {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border-radius: 10px;
   background: var(--bg-sunken);
   border: 1px solid var(--line);
@@ -1454,14 +1469,14 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .bars li {
   display: grid;
   grid-template-columns: 3.2em 1fr 4.4em;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .bars-label {
@@ -1513,7 +1528,7 @@ input {
 .legend {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.72rem;
   color: var(--text-dim);
   justify-content: center;
@@ -1540,15 +1555,15 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
   counter-reset: lineup;
 }
 
 .lineup li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 6px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
   border-radius: 10px;
   background: var(--bg-sunken);
   border: 1px solid var(--line);
@@ -1669,9 +1684,11 @@ input {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 100%;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  padding:
+    max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
+    max(var(--space-4), env(safe-area-inset-bottom));
   max-width: 760px;
   margin: 0 auto;
 }
@@ -1679,7 +1696,7 @@ input {
 .lobby-head {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .lobby-kicker {
@@ -1715,13 +1732,13 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .lobby-item {
   width: 100%;
   min-height: 56px;
-  padding: 12px 18px;
+  padding: var(--space-3) var(--space-4);
   text-align: left;
   font-size: 1.05rem;
   font-weight: 650;
@@ -1740,7 +1757,7 @@ input {
   color: var(--action-ink);
   border-color: transparent;
   box-shadow: inset 5px 0 0 var(--ring-a), inset 10px 0 0 var(--ring-b);
-  padding-left: 26px;
+  padding-left: var(--space-5);
 }
 
 .lobby-item-leave:not(.lobby-item-on) {
@@ -1762,7 +1779,7 @@ input {
     left: auto;
     width: 66%;
     opacity: 0.3;
-    padding: 24px;
+    padding: var(--space-5);
   }
 
   .lobby-art-frame {
@@ -1778,8 +1795,8 @@ input {
     width: 46%;
     min-height: 100vh;
     margin: 0;
-    padding: 56px 0 56px 64px;
-    gap: 24px;
+    padding: var(--space-7) 0 var(--space-7) var(--space-7);
+    gap: var(--space-5);
   }
 
   .lobby-kicker {
@@ -1799,7 +1816,7 @@ input {
     /* Room below the second line for the tails of g and p, which the clamp
        would otherwise cut off. */
     min-height: calc(2 * 1.08em);
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
     font-size: clamp(2.6rem, 5vw, 4.5rem);
     font-weight: 700;
     line-height: 1.08;
@@ -1842,7 +1859,7 @@ input {
 .review-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -1851,9 +1868,9 @@ input {
 .review-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
-  padding: 6px;
+  padding: var(--space-1);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
