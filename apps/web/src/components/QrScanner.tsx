@@ -91,7 +91,16 @@ export function QrScanner({ onCode, facing = 'user', hint }: QrScannerProps) {
   return (
     <div className="scanner">
       <div className="scanner-frame">
-        <video ref={videoRef} className="scanner-video" playsInline muted />
+        {/* A front camera is shown as a mirror, the way every video call shows
+            you: moving the phone left then moves it left on screen. Only the
+            picture is flipped; the scanner reads the frames as they come, and
+            a mirrored QR code would not decode. */}
+        <video
+          ref={videoRef}
+          className={`scanner-video${facing === 'user' ? ' scanner-video-mirrored' : ''}`}
+          playsInline
+          muted
+        />
         <div className="scanner-reticle" aria-hidden="true" />
       </div>
       <p className="hint">{error ?? hint ?? (scanning ? t.pair.scanning : t.pair.startingCamera)}</p>

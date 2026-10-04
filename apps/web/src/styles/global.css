@@ -1318,6 +1318,10 @@ input {
   object-fit: cover;
 }
 
+.scanner-video-mirrored {
+  transform: scaleX(-1);
+}
+
 .scanner-reticle {
   position: absolute;
   inset: 12%;
