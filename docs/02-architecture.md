@@ -112,6 +112,9 @@ later is one file rather than a refactor.
 
 - React 19 + Vite 7, TypeScript strict.
 - `zustand` for the game store: it holds the event list and a memoised snapshot.
+  Its logic lives in four framework-free modules beside it (`src/store/`): the
+  match, the players, the settings and the lobby session. Appending to the match
+  returns what to announce; `caller/hookup.ts` speaks it when the caller is on.
 - No component library. The scoreboard is read at 2–3 metres in bad light: huge
   numerals, high contrast, dark theme first, large touch targets.
 - i18n from day one, as one small module per locale (`src/i18n/`) rather than a
