@@ -21,6 +21,10 @@ _Avoid_: awaiting empty, clearing
 **Early pull**:
 The darts coming out before the visit was thrown in full; the darts not thrown missed the board.
 
+**Game visit**:
+In a game, which visit's darts are in the board and where that visit stands: being thrown, held on screen until its darts come out, or closed. Held and closed are never recorded in the match's event log; a reload shows the last visit open again.
+_Avoid_: last visit, current visit (both are positions of the game visit, not separate things)
+
 ### Camera
 
 **Settle**:
@@ -64,6 +68,7 @@ In a game, opening the **visit photo** to mark where the visit's darts really la
 - A **visit** ends in a **pull-out phase**, which ends at an **empty board**, at "Darts out", or when the next visit's first dart is entered by hand.
 - The **board watcher** has one owner at a time: the **capture lab** or a game. The owner decides when a **visit** is over and when a photograph is read; the **board watcher** decides what a **settle** shows.
 - In the **capture lab**, the **marking session** owns the **board watcher**: it hands it each settle, opens or holds the photograph, and keeps it told of saves, undos and "Board cleared".
+- In a game, the **game visit** owns the **board watcher** the same way.
 - Reading a photograph yields at most one **proposal**, never one that a dart in the board claims.
 
 ## Example dialogue
