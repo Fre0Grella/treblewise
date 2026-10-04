@@ -40,7 +40,13 @@ export interface BoardOverlayProps {
   dim?: boolean;
 }
 
-const MARK_COLOUR = { carried: '#9aa4b2', new: '#ffd166', proposed: '#5ad1ff', plain: '#ffffff' } as const;
+/** The overlay's colours live in global.css, with the rest of the palette. */
+const MARK_COLOUR = {
+  carried: 'var(--mark-carried)',
+  new: 'var(--mark-new)',
+  proposed: 'var(--mark-proposed)',
+  plain: 'var(--mark-ink)',
+} as const;
 
 type Drag = { kind: 'handle' | 'dart'; index: number } | null;
 
@@ -191,7 +197,7 @@ export function BoardOverlay({
         drag.current = null;
       }}
     >
-      <g fill="none" stroke="#3ddc84" strokeWidth={px(1)} opacity={0.85}>
+      <g fill="none" stroke="var(--overlay-wire)" strokeWidth={px(1)} opacity={0.85}>
         {wires.map((points, index) => (
           <polyline key={index} points={points} />
         ))}
@@ -203,20 +209,20 @@ export function BoardOverlay({
             cx={handle.point.x}
             cy={handle.point.y}
             r={unit * 2.4}
-            fill="rgb(255 209 102 / 25%)"
-            stroke="#ffd166"
+            fill="var(--overlay-handle-fill)"
+            stroke="var(--overlay-handle)"
             strokeWidth={unit * 0.3}
           />
-          <circle cx={handle.point.x} cy={handle.point.y} r={unit * 0.35} fill="#ffd166" />
+          <circle cx={handle.point.x} cy={handle.point.y} r={unit * 0.35} fill="var(--overlay-handle)" />
           <text
             x={handle.point.x}
             y={handle.point.y - unit * 3}
-            fill="#ffd166"
+            fill="var(--overlay-handle)"
             fontSize={unit * 2.4}
             fontWeight={700}
             textAnchor="middle"
             paintOrder="stroke"
-            stroke="rgb(1 4 9 / 80%)"
+            stroke="var(--mark-shade)"
             strokeWidth={unit * 0.5}
           >
             {handle.label}
@@ -237,10 +243,10 @@ export function BoardOverlay({
         return (
           <g key={index}>
             {ticks.map(([x1, y1, x2, y2], tick) => (
-              <line key={`halo-${tick}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgb(1 4 9 / 70%)" strokeWidth={px(2.5)} />
+              <line key={`halo-${tick}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--mark-shade-soft)" strokeWidth={px(2.5)} />
             ))}
             {ticks.map(([x1, y1, x2, y2], tick) => (
-              <line key={tick} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#ffffff" strokeWidth={px(1)} />
+              <line key={tick} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--mark-ink)" strokeWidth={px(1)} />
             ))}
             <circle
               cx={x}
@@ -256,12 +262,12 @@ export function BoardOverlay({
               /* Staggered, because three darts in a cluster put their labels on
                  top of each other otherwise. */
               y={y - px(15) - index * px(13)}
-              fill="#ffffff"
+              fill="var(--mark-ink)"
               fontSize={px(12)}
               fontWeight={700}
               textAnchor="middle"
               paintOrder="stroke"
-              stroke="rgb(1 4 9 / 80%)"
+              stroke="var(--mark-shade)"
               strokeWidth={px(3)}
             >
               {dart.label}

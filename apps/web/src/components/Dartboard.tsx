@@ -36,14 +36,18 @@ const LENS = {
   offset: 96,
 };
 
+/** The board's colours live in global.css, with the rest of the palette. */
 const COLOURS = {
-  surround: '#141414',
-  dark: '#15130f',
-  light: '#e5d3a8',
-  red: '#c0182f',
-  green: '#00713c',
-  wire: '#9aa0a6',
-  number: '#f2f2f2',
+  surround: 'var(--board-surround)',
+  dark: 'var(--board-black)',
+  light: 'var(--board-beige)',
+  red: 'var(--board-red)',
+  green: 'var(--board-green)',
+  wire: 'var(--board-wire)',
+  number: 'var(--board-number)',
+  marker: 'var(--dart-marker)',
+  ink: 'var(--mark-ink)',
+  plate: 'var(--mark-shade-strong)',
 };
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -219,11 +223,11 @@ export function Dartboard({
   const dartMarkers = darts.map((dart, index) =>
     dart.pos ? (
       <g key={dart.id} opacity={dart.past ? 0.35 : 1}>
-        <circle cx={dart.pos.x} cy={-dart.pos.y} r={7} fill="#0b0b0b" stroke="#ffffff" strokeWidth={2} />
+        <circle cx={dart.pos.x} cy={-dart.pos.y} r={7} fill={COLOURS.marker} stroke={COLOURS.ink} strokeWidth={2} />
         <text
           x={dart.pos.x}
           y={-dart.pos.y + 4}
-          fill="#ffffff"
+          fill={COLOURS.ink}
           fontSize={11}
           fontWeight={700}
           textAnchor="middle"
@@ -301,7 +305,7 @@ export function Dartboard({
           cy={-targetPos.y}
           r={9}
           fill="none"
-          stroke="#ffffff"
+          stroke={COLOURS.ink}
           strokeWidth={2.5}
         />
       )}
@@ -311,15 +315,15 @@ export function Dartboard({
       {preview && finger && lens && (
         <g className="dartboard-lens" pointerEvents="none">
           {/* Where the finger actually is, left visible under the lens. */}
-          <circle cx={finger.x} cy={finger.y} r={12} fill="none" stroke="#ffffff" strokeWidth={1.6} opacity={0.9} />
-          <circle cx={finger.x} cy={finger.y} r={2} fill="#ffffff" />
+          <circle cx={finger.x} cy={finger.y} r={12} fill="none" stroke={COLOURS.ink} strokeWidth={1.6} opacity={0.9} />
+          <circle cx={finger.x} cy={finger.y} r={2} fill={COLOURS.ink} />
 
           <circle
             cx={lens.cx}
             cy={lens.cy}
             r={LENS.radius + 3}
             fill={COLOURS.surround}
-            stroke="#ffffff"
+            stroke={COLOURS.ink}
             strokeWidth={3}
           />
 
@@ -329,13 +333,13 @@ export function Dartboard({
 
             {/* The crosshair sits at the lens centre, which is the finger's
                 exact point magnified — the whole purpose of the thing. */}
-            <g stroke="#ffffff" strokeWidth={1.8} opacity={0.95}>
+            <g stroke={COLOURS.ink} strokeWidth={1.8} opacity={0.95}>
               <line x1={lens.cx - LENS.radius} y1={lens.cy} x2={lens.cx - 9} y2={lens.cy} />
               <line x1={lens.cx + 9} y1={lens.cy} x2={lens.cx + LENS.radius} y2={lens.cy} />
               <line x1={lens.cx} y1={lens.cy - LENS.radius} x2={lens.cx} y2={lens.cy - 9} />
               <line x1={lens.cx} y1={lens.cy + 9} x2={lens.cx} y2={lens.cy + LENS.radius} />
             </g>
-            <circle cx={lens.cx} cy={lens.cy} r={3.5} fill="none" stroke="#ffffff" strokeWidth={1.8} />
+            <circle cx={lens.cx} cy={lens.cy} r={3.5} fill="none" stroke={COLOURS.ink} strokeWidth={1.8} />
 
             <rect
               x={lens.cx - 34}
@@ -343,12 +347,12 @@ export function Dartboard({
               width={68}
               height={26}
               rx={8}
-              fill="rgb(1 4 9 / 85%)"
+              fill={COLOURS.plate}
             />
             <text
               x={lens.cx}
               y={lens.cy + LENS.radius - 11}
-              fill="#ffffff"
+              fill={COLOURS.ink}
               fontSize={19}
               fontWeight={700}
               textAnchor="middle"

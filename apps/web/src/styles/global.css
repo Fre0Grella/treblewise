@@ -59,6 +59,53 @@
   --tint-danger: rgb(192 24 47 / 16%);
   --scrim: rgb(11 10 8 / 78%);
   --scrim-badge: rgb(11 10 8 / 72%);
+  /* The lobby's entries, over its picture: the raised surface, see-through. */
+  --scrim-menu: rgb(31 28 23 / 82%);
+
+  /* Behind a camera picture or a photograph: plain black, so the bars around
+     a picture that does not fill its box read as no picture, not as a
+     surface. */
+  --photo-bg: #000;
+  --lens-shadow: rgb(0 0 0 / 55%);
+  /* A QR code needs its white quiet zone, whatever the page around it. */
+  --qr-paper: #ffffff;
+
+  /* The drawn board. Its beds and rings are the board colours above; these
+     are the parts around them, which nothing else in the app uses. */
+  --board-backdrop: #0a0a0a;
+  --board-surround: #141414;
+  --board-wire: #9aa0a6;
+  --board-number: #f2f2f2;
+  --dart-marker: #0b0b0b;
+
+  /* Marks drawn over a board or a photograph: white ink with a dark shade
+     under it, so a mark reads on a black bed, a cream one and any picture.
+     The shade is darker where the ink is smaller. */
+  --mark-ink: #ffffff;
+  --mark-shade-soft: rgb(1 4 9 / 70%);
+  --mark-shade: rgb(1 4 9 / 80%);
+  --mark-shade-strong: rgb(1 4 9 / 85%);
+  /* A dart's mark on a photograph, by where it came from: carried from an
+     earlier photograph, placed on this one, or proposed by the model. */
+  --mark-carried: #9aa4b2;
+  --mark-new: #ffd166;
+  --mark-proposed: #5ad1ff;
+  /* Calibration over the camera picture: the board's wires as the
+     calibration projects them, and the landmarks being dragged. */
+  --overlay-wire: #3ddc84;
+  --overlay-handle: #ffd166;
+  --overlay-handle-fill: rgb(255 209 102 / 25%);
+
+  /* The statistics' board map: its wireframe and sector numbers, and the
+     heat ramp, dark to light. The map paints the ramp into a canvas, which
+     reads these values, so they stay plain hex. */
+  --map-wire: #ffffff;
+  --map-number: #e6edf3;
+  --heat-1: #3a2f12;
+  --heat-2: #6b5418;
+  --heat-3: #a8811f;
+  --heat-4: #d9a72e;
+  --heat-5: #ffd166;
 
   /* One spacing scale, so neighbouring blocks line up instead of differing by
      two pixels nobody chose. Margins, paddings, gaps and offsets come from
@@ -472,7 +519,7 @@ input {
   touch-action: none;
   user-select: none;
   border-radius: var(--radius-round);
-  background: #0a0a0a;
+  background: var(--board-backdrop);
   /* The magnifying lens stays above the finger even when the finger is at the
      top of the board, which means it has to be allowed to float past the edge
      rather than move out of the way. */
@@ -622,7 +669,7 @@ input {
   position: relative;
   width: 100%;
   overflow: hidden;
-  background: #000;
+  background: var(--photo-bg);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
@@ -858,8 +905,8 @@ input {
   overflow: hidden;
   border-radius: var(--radius-round);
   border: 2px solid var(--accent);
-  background: #000;
-  box-shadow: 0 6px 24px rgb(0 0 0 / 55%);
+  background: var(--photo-bg);
+  box-shadow: 0 6px 24px var(--lens-shadow);
   pointer-events: none;
 }
 
@@ -1261,7 +1308,7 @@ input {
   margin: 0 auto;
   display: block;
   border-radius: var(--radius-md);
-  background: #ffffff;
+  background: var(--qr-paper);
   padding: 0;
 }
 
@@ -1342,7 +1389,7 @@ input {
   aspect-ratio: 4 / 3;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: #000;
+  background: var(--photo-bg);
   border: 1px solid var(--line);
 }
 
@@ -1379,7 +1426,7 @@ input {
   margin: 0 auto;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
-  background: #000;
+  background: var(--photo-bg);
 }
 
 /* A phone acting as a camera should be as dark as the room allows. */
@@ -1529,7 +1576,7 @@ input {
   margin: 0 auto;
   display: block;
   border-radius: var(--radius-round);
-  background: #0a0a0a;
+  background: var(--board-backdrop);
 }
 
 .legend {
@@ -1751,7 +1798,7 @@ input {
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgb(31 28 23 / 82%);
+  background: var(--scrim-menu);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
@@ -1891,7 +1938,7 @@ input {
   width: 100%;
   height: auto;
   border-radius: var(--radius-md);
-  background: #000;
+  background: var(--photo-bg);
 }
 
 .review-card-line {
