@@ -157,12 +157,10 @@ export function GameCamera({
 
   // The darts in the board are the visit's while it is being thrown. Once it
   // is over they are still there, but nothing is read beside them: the
-  // pull-out phase comes first. Kept so that a visit photo taken later, for
-  // the same darts, can be handed to the watcher as well.
-  const heldRef = useRef<BoardDart[]>([]);
+  // pull-out phase comes first.
   useEffect(() => {
-    heldRef.current = (visitInProgress ? darts : []).map((dart) => (dart.pos ? { board: dart.pos } : {}));
-    watcher.holds(heldRef.current, visitFrameRef.current);
+    watcher.holds((visitInProgress ? darts : []).map((dart): BoardDart => (dart.pos ? { board: dart.pos } : {})));
+    watcher.setVisitPhoto(visitFrameRef.current);
   }, [watcher, darts, visitInProgress]);
 
   // A finished visit leaves its darts in the board until someone pulls them,
@@ -181,12 +179,11 @@ export function GameCamera({
   useEffect(() => {
     if (keepFrames) void watcher.findModel();
   }, [watcher, keepFrames]);
-  // The model is switched on only once the site is known to ship one, as the
-  // switch is only offered then: without a manifest the watcher would call the
-  // model unavailable, and the player's setting would be switched back off.
+  // Only with frames kept: the camera is off otherwise, and the runtime is
+  // not worth fetching for nothing.
   useEffect(() => {
-    if (modelInfo) void watcher.switchModel(autoscore);
-  }, [watcher, autoscore, modelInfo]);
+    void watcher.switchModel(keepFrames && autoscore);
+  }, [watcher, keepFrames, autoscore]);
   useEffect(() => {
     if (watched.model.status === 'unavailable') setAutoscore(false); // it cannot run here: say so by switching back off
   }, [watched.model.status, setAutoscore]);
@@ -253,7 +250,7 @@ export function GameCamera({
       latestRef.current = photo;
       setLatest(photo);
       visitFrameRef.current = photo;
-      watcher.holds(heldRef.current, photo);
+      watcher.setVisitPhoto(photo);
     });
     // The camera object changes every render; only a new dart matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps

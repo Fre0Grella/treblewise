@@ -67,7 +67,11 @@ export type Reading =
   /** No model switched on and ready, or no calibration. */
   | { kind: 'off' };
 
-export type ModelStatus = 'off' | 'loading' | 'ready' | 'unavailable';
+/**
+ * `none`: the site ships no model, so there is nothing to switch on.
+ * `unavailable`: it ships one, but it cannot run here.
+ */
+export type ModelStatus = 'none' | 'off' | 'loading' | 'ready' | 'unavailable';
 
 export interface BoardWatcherState {
   pullingOut: boolean;
@@ -88,13 +92,18 @@ export interface BoardWatcher {
   /** The calibration photographs are judged and read under, or null when there is none. */
   setCalibration(calibration: Calibration | null): void;
   /**
-   * The darts of the visit in progress that are in the board now, and the
-   * photograph that shows exactly them (the visit photo), if any. Call it
-   * whenever either changes. A dart going in after an early pull starts the
+   * The darts of the visit in progress that are in the board now. Call it
+   * whenever they change. A dart going in after an early pull starts the
    * visit afresh; more darts than before during the pull-out phase means the
    * next visit has started, so the darts must be out.
    */
-  holds(darts: readonly BoardDart[], visitPhoto: GrabbedFrame | null): void;
+  holds(darts: readonly BoardDart[]): void;
+  /**
+   * The photograph that shows exactly the darts in the board, or null when no
+   * photograph does (the visit photo). A new dart is told apart from the old
+   * ones by what changed since it.
+   */
+  setVisitPhoto(photo: GrabbedFrame | null): void;
   /**
    * The visit is over: its darts stay in the board until they are pulled, so
    * the pull-out phase starts, unless they were already seen coming out. Pass
@@ -116,7 +125,7 @@ export interface BoardWatcher {
   read(photo: GrabbedFrame): Promise<Reading>;
   /** Finds out which model the site ships, without loading it. */
   findModel(): Promise<void>;
-  /** The model is loaded the first time it is switched on; it cannot run here, it says so. */
+  /** The model is loaded the first time it is switched on; if it cannot run here, it says so. */
   switchModel(on: boolean): Promise<void>;
   state(): BoardWatcherState;
   subscribe(listener: () => void): () => void;
@@ -188,7 +197,7 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
   async function findModel(): Promise<void> {
     if (current.model.manifest) return;
     const manifest = await deps.loadManifest();
-    update({ model: { ...current.model, manifest } });
+    update({ model: { status: manifest ? current.model.status : 'none', manifest } });
   }
 
   async function next(photo: GrabbedFrame, done: (reading: Reading) => void): Promise<void> {
@@ -212,13 +221,16 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
       calibrationReference = next?.reference ? Uint8Array.from(next.reference) : null;
     },
 
-    holds(next, photo) {
+    holds(next) {
       if (next.length > darts.length) {
         pulledEarly = false;
         if (current.pullingOut) update({ pullingOut: false });
       }
       if (next.length !== darts.length) board += 1;
       darts = [...next];
+    },
+
+    setVisitPhoto(photo) {
       visitPhoto = photo;
     },
 
@@ -281,7 +293,9 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
     async switchModel(on) {
       wanted = on;
       if (!on) {
-        if (current.model.status !== 'unavailable') update({ model: { ...current.model, status: 'off' } });
+        if (current.model.status !== 'unavailable' && current.model.status !== 'none') {
+          update({ model: { ...current.model, status: 'off' } });
+        }
         return;
       }
       if (detector) {
@@ -290,7 +304,11 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
       }
       update({ model: { ...current.model, status: 'loading' } });
       await findModel();
-      const loaded = current.model.manifest ? await deps.loadDetector() : null;
+      if (!current.model.manifest) {
+        update({ model: { ...current.model, status: 'none' } });
+        return;
+      }
+      const loaded = await deps.loadDetector();
       if (!loaded) {
         update({ model: { ...current.model, status: 'unavailable' } });
         return;

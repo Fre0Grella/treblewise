@@ -92,7 +92,7 @@ describe('settle', () => {
   it('keeps the recent empty board once darts are in the board', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     watcher.settle(photo(), DARTS, ELSEWHERE);
     // Not taken: with a dart in, "before" shows that dart, not an empty board.
     watcher.dartsOut();
@@ -102,7 +102,7 @@ describe('settle', () => {
   it('reads nothing during the pull-out phase, and ends it at an empty board', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0), at(10, 0), at(20, 0)], photo());
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
     watcher.visitOver();
     expect(watcher.state().pullingOut).toBe(true);
     expect(watcher.settle(photo(), DARTS, null).kind).toBe('pull-out');
@@ -114,7 +114,7 @@ describe('settle', () => {
   it('ends the pull-out phase when a person says the darts are out', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     watcher.visitOver();
     watcher.dartsOut();
     expect(watcher.state().pullingOut).toBe(false);
@@ -124,7 +124,7 @@ describe('settle', () => {
   it('takes an empty board mid-visit as an early pull: the darts not thrown missed', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     expect(watcher.settle(photo(), EMPTY, null)).toEqual({ kind: 'early-pull', missed: 2 });
     // The darts are out, so the visit ending now leaves nothing to pull.
     watcher.visitOver();
@@ -134,9 +134,9 @@ describe('settle', () => {
   it('forgets an early pull once a new dart goes in', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     watcher.settle(photo(), EMPTY, null);
-    watcher.holds([at(5, 5)], photo());
+    watcher.holds([at(5, 5)]);
     watcher.visitOver();
     expect(watcher.state().pullingOut).toBe(true);
   });
@@ -144,18 +144,18 @@ describe('settle', () => {
   it('cannot read past a dart with no position, or a full visit', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0), {}], photo());
+    watcher.holds([at(0, 0), {}]);
     expect(watcher.settle(photo(), DARTS, null).kind).toBe('unreadable');
-    watcher.holds([at(0, 0), at(1, 1), at(2, 2)], photo());
+    watcher.holds([at(0, 0), at(1, 1), at(2, 2)]);
     expect(watcher.settle(photo(), DARTS, null).kind).toBe('unreadable');
   });
 
   it('a visit put back on ends the pull-out phase', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
-    watcher.holds([at(0, 0), at(1, 1), at(2, 2)], photo());
+    watcher.holds([at(0, 0), at(1, 1), at(2, 2)]);
     watcher.visitOver();
-    watcher.holds([at(0, 0), at(1, 1)], photo());
+    watcher.holds([at(0, 0), at(1, 1)]);
     watcher.visitOver(false);
     expect(watcher.state().pullingOut).toBe(false);
   });
@@ -165,7 +165,8 @@ describe('read', () => {
   it('proposes the strongest new dart, beside the darts in the board and against the visit photo', async () => {
     const { watcher, pending } = await readyWatcher();
     const visitPhoto = photo();
-    watcher.holds([at(0, 0)], visitPhoto);
+    watcher.holds([at(0, 0)]);
+    watcher.setVisitPhoto(visitPhoto);
     const shot = photo();
     const reading = watcher.read(shot);
     await flush();
@@ -207,7 +208,7 @@ describe('read', () => {
     const { watcher, pending } = await readyWatcher();
     const reading = watcher.read(photo());
     await flush();
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     pending[0]!.resolve([detection({ x: 30, y: 40 })]);
     expect(await reading).toEqual({ kind: 'stale' });
   });
@@ -224,7 +225,7 @@ describe('read', () => {
 
     // A dart went in meanwhile: the first reading is stale, and the one that
     // waited is read against the board as it is when its turn comes.
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     pending[0]!.resolve([]);
     expect(await first).toEqual({ kind: 'stale' });
     await flush();
@@ -254,10 +255,14 @@ describe('the model', () => {
     expect(changes).toContain('loading');
   });
 
-  it('is unavailable when the site ships no model', async () => {
-    const watcher = createBoardWatcher(fakes({ loadManifest: async () => null }).deps);
+  it('has no model to switch on when the site ships none, which is not the model failing', async () => {
+    const loadDetector = vi.fn(async () => null);
+    const watcher = createBoardWatcher(fakes({ loadManifest: async () => null, loadDetector }).deps);
     await watcher.switchModel(true);
-    expect(watcher.state().model).toEqual({ status: 'unavailable', manifest: null });
+    expect(watcher.state().model).toEqual({ status: 'none', manifest: null });
+    expect(loadDetector).not.toHaveBeenCalled();
+    watcher.switchModel(false);
+    expect(watcher.state().model.status).toBe('none');
   });
 
   it('stays off when switched off while it was loading', async () => {
@@ -274,14 +279,14 @@ describe('subscribe', () => {
     const watcher = createBoardWatcher(fakes().deps);
     const listener = vi.fn();
     const unsubscribe = watcher.subscribe(listener);
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     watcher.visitOver();
     expect(listener).toHaveBeenCalledTimes(1);
     const before = watcher.state();
     watcher.dartsOut();
     expect(watcher.state()).not.toBe(before);
     unsubscribe();
-    watcher.holds([at(0, 0)], photo());
+    watcher.holds([at(0, 0)]);
     watcher.visitOver();
     expect(listener).toHaveBeenCalledTimes(2);
   });

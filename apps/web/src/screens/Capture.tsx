@@ -291,7 +291,8 @@ export function Capture() {
     setInBoard(after);
     // The watcher is told of every dart still in the board, a full visit's
     // too: they stay until someone pulls them, and that is the pull-out phase.
-    watcher.holds(frame.darts, frame.darts.length > 0 ? frame.grabbed : null);
+    watcher.holds(frame.darts);
+    watcher.setVisitPhoto(frame.darts.length > 0 ? frame.grabbed : null);
     if (frame.darts.length >= DARTS_PER_VISIT) {
       watcher.visitOver();
       startVisit();
@@ -576,7 +577,7 @@ export function Capture() {
    */
   const undoLast = async () => {
     // The visit photo no longer shows exactly the darts in the board.
-    watcher.holds(inBoardRef.current, null);
+    watcher.setVisitPhoto(null);
     if (pending && pending.darts.length > 0) {
       const wasNew = pending.darts.length > pending.carried;
       setPending((frame) =>
@@ -596,7 +597,7 @@ export function Capture() {
       await deleteFrame(lastSaved.id);
       inBoardRef.current = lastSaved.inBoardBefore;
       setInBoard(lastSaved.inBoardBefore);
-      watcher.holds(lastSaved.inBoardBefore, null);
+      watcher.holds(lastSaved.inBoardBefore);
       watcher.visitOver(false);
       setMarked((list) => list.slice(0, list.length - lastSaved.added));
       setLastSaved(null);
@@ -660,7 +661,8 @@ export function Capture() {
     setWaiting(null);
     inBoardRef.current = [];
     setInBoard([]);
-    watcher.holds([], null);
+    watcher.holds([]);
+    watcher.setVisitPhoto(null);
     watcher.visitOver(false);
     startVisit();
   }, [mode, discardPending, watcher]);
