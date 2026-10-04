@@ -29,6 +29,9 @@ export function Game() {
   const [correcting, setCorrecting] = useState<string | null>(null);
   /** The finished visit whose darts were seen coming out (its first dart's id): no longer correctable here. */
   const [closedVisit, setClosedVisit] = useState<string | null>(null);
+  /** Bumped to open the camera's report from here; and whether one can be opened. */
+  const [reportRequests, setReportRequests] = useState(0);
+  const [canReport, setCanReport] = useState(false);
 
   // The turn passing is a sound. With the autoscorer scoring, it sounds when
   // the darts come out (GameCamera says when); otherwise when a visit ends.
@@ -114,9 +117,26 @@ export function Game() {
         <div className="throw-strip throw-strip-held">
           <span className="throw-who">{fill(t.game.pullOut, { name: nameOf(lastVisit.playerId) })}</span>
           <span className="throw-darts">{lastVisit.darts.map(dartChip)}</span>
-          <button type="button" className="primary darts-out" onClick={dartsOut}>
-            {fill(t.game.dartsOut, { name: nameOf(current.playerId) })}
-          </button>
+          {/* One row, always the same height: while a dart of this visit is
+              being corrected, "Mark where they landed" takes its place beside
+              "Darts out" instead of being searched for further down. */}
+          <div className="held-actions">
+            <button type="button" className="primary darts-out" onClick={dartsOut}>
+              {fill(t.game.dartsOut, { name: nameOf(current.playerId) })}
+            </button>
+            {correcting && canReport && lastVisit.darts.some((dart) => dart.id === correcting) && (
+              <button
+                type="button"
+                className="chip held-mark"
+                onClick={() => {
+                  setCorrecting(null);
+                  setReportRequests((n) => n + 1);
+                }}
+              >
+                {t.report.markVisit}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -221,6 +241,8 @@ export function Game() {
           visitComplete={visit?.complete === true}
           visitInProgress={visitIsCurrent}
           visitClosed={!lastVisitOpen}
+          reportRequests={reportRequests}
+          onReportAvailable={setCanReport}
           canThrow={current !== null && !finished}
           onCorrect={(dartId, hit, pos) => correctDart(dartId, hit, pos)}
           onAutoDart={(hit, pos, confidence) => {

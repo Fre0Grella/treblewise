@@ -386,10 +386,22 @@ input {
   font-weight: 650;
 }
 
-.darts-out {
+.held-actions {
+  display: flex;
+  gap: 8px;
   flex-basis: 100%;
+}
+
+.darts-out {
+  flex: 1;
+  min-width: 0;
   min-height: 56px;
   font-size: 1.1rem;
+}
+
+.held-mark {
+  flex: none;
+  min-height: 56px;
 }
 
 .throw-darts {

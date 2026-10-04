@@ -219,6 +219,38 @@ describe('the autoscorer in a game', () => {
     expect(hooks.paused).toBe(true);
   });
 
+  it('opens the report when the game asks, and says when it can', async () => {
+    useMatchStore.setState((state) => ({ settings: { ...state.settings, autoscoreGames: false } }));
+    URL.createObjectURL = () => 'blob:test';
+    URL.revokeObjectURL = () => undefined;
+    const available = vi.fn<(available: boolean) => void>();
+    const dart = { id: 'a', hit: T20, pos: { x: 0, y: 103 } };
+    const withProps = (reportRequests: number) => (
+      <GameCamera
+        matchId="m"
+        darts={[dart]}
+        visitComplete
+        visitInProgress={false}
+        visitClosed={false}
+        canThrow
+        onCorrect={() => undefined}
+        onAutoDart={onAutoDart}
+        onDartsPulled={onDartsPulled}
+        onTurnPassed={onTurnPassed}
+        reportRequests={reportRequests}
+        onReportAvailable={available}
+      />
+    );
+    const view = render(withProps(0));
+    expect(available).toHaveBeenLastCalledWith(false); // no photograph yet
+    await settle();
+    expect(available).toHaveBeenLastCalledWith(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    view.rerender(withProps(1));
+    expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
   it('leaves the visit to the player once a dart was entered by number', async () => {
     await start({ darts: [{ id: 'a', hit: T20 }], visitInProgress: true });
     hooks.found = [

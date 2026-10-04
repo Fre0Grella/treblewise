@@ -69,6 +69,10 @@ export interface GameCameraProps {
   onDartsPulled: (remaining: number) => void;
   /** The darts of a finished visit came out: the next player is up. */
   onTurnPassed: () => void;
+  /** Opens the report when it changes: the game's own "Mark where they landed", beside the dart being corrected. */
+  reportRequests?: number;
+  /** Whether a report can be opened now (a photograph of this visit, a calibration that fits it). */
+  onReportAvailable?: (available: boolean) => void;
 }
 
 function newId(): string {
@@ -88,6 +92,8 @@ export function GameCamera({
   onAutoDart,
   onDartsPulled,
   onTurnPassed,
+  reportRequests = 0,
+  onReportAvailable,
 }: GameCameraProps) {
   const t = useStrings();
   const keepFrames = useMatchStore((s) => s.settings.keepFrames);
@@ -323,6 +329,21 @@ export function GameCamera({
     latest !== null &&
     calibration.width === latest.width &&
     calibration.height === latest.height;
+
+  const canReport = keepFrames && usable && darts.length > 0;
+  useEffect(() => {
+    onReportAvailable?.(canReport);
+  }, [canReport, onReportAvailable]);
+
+  // The game asks for a report by bumping the counter.
+  const reportsSeen = useRef(reportRequests);
+  useEffect(() => {
+    if (reportRequests === reportsSeen.current) return;
+    reportsSeen.current = reportRequests;
+    if (canReport && !reporting) openReport();
+    // openReport is this render's; the request is what triggers it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportRequests]);
 
   const openReport = () => {
     const photo =
