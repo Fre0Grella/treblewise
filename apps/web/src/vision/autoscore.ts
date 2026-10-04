@@ -7,10 +7,10 @@
 import type { Point } from '@treblewise/core';
 
 import type { Calibration } from '../storage/types.js';
-import { proposalsBeside } from '../storage/visit.js';
 import type { GrabbedFrame } from './camera.js';
 import { NEW_DART_CHANGE, changesAt } from './changeGate.js';
 import type { Detection, Detector } from './detector.js';
+import { proposalsBeside } from './proposals.js';
 
 /**
  * Candidates for the new dart, strongest first.
