@@ -59,12 +59,16 @@ export type Reading =
   | { kind: 'none' }
   /** The model could not run on this photograph. */
   | { kind: 'failed' }
-  /** The darts in the board changed while it was read: the reading answers a board that is gone. */
-  | { kind: 'stale' }
-  /** A newer photograph was asked for before this one's turn came. */
-  | { kind: 'superseded' }
-  /** No model switched on and ready, or no calibration. */
-  | { kind: 'off' };
+  /** Nothing to apply, and nothing to say about the board either. */
+  | { kind: 'dropped'; reason: DropReason };
+
+/**
+ * Why a reading was dropped. `stale`: the darts in the board changed while it
+ * was read, so it answers a board that is gone. `superseded`: a newer
+ * photograph was asked for before this one's turn came. `off`: no model
+ * switched on and ready, or no calibration.
+ */
+export type DropReason = 'stale' | 'superseded' | 'off';
 
 /**
  * `none`: the site ships no model, so there is nothing to switch on.
@@ -105,10 +109,11 @@ export interface BoardWatcher {
   setVisitPhoto(photo: GrabbedFrame | null): void;
   /**
    * The visit is over: its darts stay in the board until they are pulled, so
-   * the pull-out phase starts, unless they were already seen coming out. Pass
-   * false when it turns out not to be over after all (a save taken back).
+   * the pull-out phase starts, unless they were already seen coming out.
    */
-  visitOver(over?: boolean): void;
+  visitOver(): void;
+  /** The visit turns out not to be over after all (a save taken back), or was abandoned: no pull-out phase. */
+  visitResumed(): void;
   /** A person says the darts are out, or a new visit makes it so. */
   dartsOut(): void;
   /**
@@ -180,16 +185,16 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
   async function run(photo: GrabbedFrame): Promise<Reading> {
     const model = current.model.status === 'ready' ? detector : null;
     const calibrated = calibration;
-    if (!model || !calibrated) return { kind: 'off' };
-    const carried = darts.flatMap((dart) => (dart.board ? [{ board: dart.board }] : []));
+    if (!model || !calibrated) return { kind: 'dropped', reason: 'off' };
+    const inBoard = darts.flatMap((dart) => (dart.board ? [{ board: dart.board }] : []));
     const startedOn = board;
     try {
-      const [best] = await deps.newDarts(model, photo, calibrated, carried, carried.length > 0 ? visitPhoto : null);
-      if (board !== startedOn) return { kind: 'stale' };
+      const [best] = await deps.newDarts(model, photo, calibrated, inBoard, inBoard.length > 0 ? visitPhoto : null);
+      if (board !== startedOn) return { kind: 'dropped', reason: 'stale' };
       return best ? { kind: 'proposal', dart: best } : { kind: 'none' };
     } catch (cause) {
       console.warn('[treblewise] the autoscorer failed on a photograph:', cause);
-      return board !== startedOn ? { kind: 'stale' } : { kind: 'failed' };
+      return board !== startedOn ? { kind: 'dropped', reason: 'stale' } : { kind: 'failed' };
     }
   }
 
@@ -233,14 +238,14 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
       visitPhoto = photo;
     },
 
-    visitOver(over = true) {
-      if (!over) {
-        update({ pullingOut: false });
-        return;
-      }
+    visitOver() {
       const pulled = pulledEarly;
       pulledEarly = false;
       if (!pulled) update({ pullingOut: true });
+    },
+
+    visitResumed() {
+      update({ pullingOut: false });
     },
 
     dartsOut() {
@@ -282,7 +287,7 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
           void next(photo, done);
           return;
         }
-        queued?.done({ kind: 'superseded' });
+        queued?.done({ kind: 'dropped', reason: 'superseded' });
         queued = { photo, done };
       });
     },

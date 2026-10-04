@@ -156,7 +156,7 @@ describe('settle', () => {
     watcher.holds([at(0, 0), at(1, 1), at(2, 2)]);
     watcher.visitOver();
     watcher.holds([at(0, 0), at(1, 1)]);
-    watcher.visitOver(false);
+    watcher.visitResumed();
     expect(watcher.state().pullingOut).toBe(false);
   });
 });
@@ -171,9 +171,9 @@ describe('read', () => {
     const reading = watcher.read(shot);
     await flush();
     expect(pending).toHaveLength(1);
-    const [, frame, , carried, previous] = pending[0]!.args;
+    const [, frame, , inBoard, previous] = pending[0]!.args;
     expect(frame).toBe(shot);
-    expect(carried).toEqual([{ board: { x: 0, y: 0 } }]);
+    expect(inBoard).toEqual([{ board: { x: 0, y: 0 } }]);
     expect(previous).toBe(visitPhoto);
     pending[0]!.resolve([detection({ x: 30, y: 40 }), detection({ x: -50, y: 0 })]);
     expect(await reading).toEqual({ kind: 'proposal', dart: detection({ x: 30, y: 40 }) });
@@ -198,10 +198,10 @@ describe('read', () => {
     const { deps } = fakes();
     const watcher = createBoardWatcher(deps);
     watcher.setCalibration(calibration);
-    expect(await watcher.read(photo())).toEqual({ kind: 'off' });
+    expect(await watcher.read(photo())).toEqual({ kind: 'dropped', reason: 'off' });
     await watcher.switchModel(true);
     watcher.switchModel(false);
-    expect(await watcher.read(photo())).toEqual({ kind: 'off' });
+    expect(await watcher.read(photo())).toEqual({ kind: 'dropped', reason: 'off' });
   });
 
   it('calls a reading stale when the darts in the board changed while it ran', async () => {
@@ -210,7 +210,7 @@ describe('read', () => {
     await flush();
     watcher.holds([at(0, 0)]);
     pending[0]!.resolve([detection({ x: 30, y: 40 })]);
-    expect(await reading).toEqual({ kind: 'stale' });
+    expect(await reading).toEqual({ kind: 'dropped', reason: 'stale' });
   });
 
   it('reads one photograph at a time, and only the newest of those that waited', async () => {
@@ -221,13 +221,13 @@ describe('read', () => {
     await flush();
     expect(pending).toHaveLength(1);
     expect(watcher.state().reading).toBe(true);
-    expect(await second).toEqual({ kind: 'superseded' });
+    expect(await second).toEqual({ kind: 'dropped', reason: 'superseded' });
 
     // A dart went in meanwhile: the first reading is stale, and the one that
     // waited is read against the board as it is when its turn comes.
     watcher.holds([at(0, 0)]);
     pending[0]!.resolve([]);
-    expect(await first).toEqual({ kind: 'stale' });
+    expect(await first).toEqual({ kind: 'dropped', reason: 'stale' });
     await flush();
     expect(pending).toHaveLength(2);
     expect(pending[1]!.args[3]).toEqual([{ board: { x: 0, y: 0 } }]);
