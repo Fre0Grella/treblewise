@@ -337,17 +337,34 @@ export function Capture() {
     const model = detectorRef.current;
     const current = calibrationRef.current;
     const empty = emptyFrames.current.get(grabbed) === true;
-    // Pulling the darts out: nothing to mark until the board is empty, and an
-    // empty board with no darts carried is nothing to mark either. Either way
-    // the photograph on screen, if nobody has started on it, goes too.
-    if (awaitingEmptyRef.current || (empty && carried.length === 0)) {
-      if (empty) setAwaitingEmpty(false);
+    /** The photograph on screen, if nobody has started on it, goes. */
+    const dropUntouched = () => {
       const previous = pendingRef.current;
       if (previous && onNewPhoto(previous) === 'replace') {
         URL.revokeObjectURL(previous.url);
         pendingRef.current = null;
         setPending(null);
       }
+    };
+    // Pulling the darts out: nothing to mark until the board is empty, and an
+    // empty board with no darts carried is nothing to mark either.
+    if (awaitingEmptyRef.current || (empty && carried.length === 0)) {
+      if (empty) setAwaitingEmpty(false);
+      dropUntouched();
+      return;
+    }
+    // An empty board with darts carried is an early pull, as in a game: the
+    // darts came out before the visit was thrown in full. Opened, it asked for
+    // a dart on a photograph of the empty board, and the next photograph
+    // carried marks for darts that were gone. Judged here and not at the
+    // settle, because a photograph can wait behind the one being marked, and
+    // only the darts in the board when it opens say what it shows.
+    if (empty) {
+      visitPhotoRef.current = null;
+      inBoardRef.current = [];
+      setInBoard([]);
+      startVisit();
+      dropUntouched();
       return;
     }
     if (carried.length === 0) recentEmptyRef.current = beforeFrames.current.get(grabbed) ?? recentEmptyRef.current;

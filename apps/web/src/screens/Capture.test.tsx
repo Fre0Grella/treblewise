@@ -285,6 +285,25 @@ describe('the capture lab saves only what a person confirmed', () => {
     expect(screen.getByText(/i am watching the board/i)).toBeDefined();
   });
 
+  it('takes an empty board mid-visit as an early pull, judged when the photograph opens', async () => {
+    await settle();
+    // The darts come out while the first dart's photograph is still on
+    // screen: the empty board waits behind it, and only once the first dart
+    // is saved is it an empty board with a dart in it.
+    hooks.found = [];
+    await settle(EMPTY);
+    expect(screen.getByText(/a newer photo is waiting/i)).toBeDefined();
+    await press(/right — save it/i);
+    expect(screen.getByText(/i am watching the board/i)).toBeDefined();
+
+    // The next dart starts a visit of its own: the first is not carried into it.
+    hooks.found = [{ x: 20, y: -40 }];
+    await settle();
+    await press(/right — save it/i);
+    expect(hooks.stored).toHaveLength(2);
+    expect(hooks.stored[1]!.darts.map((dart) => dart.board)).toEqual([{ x: 20, y: -40 }]);
+  });
+
   it('lets a person say the darts are out when the board does not look empty', async () => {
     for (const n of [1, 2, 3]) {
       hooks.found = [1, 2, 3].slice(0, n).map((k) => ({ x: k * 5, y: 103 }));
