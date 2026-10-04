@@ -11,7 +11,7 @@
  * `docs/03` is built around.
  *
  * With "autoscorer scores" on, each settled photograph is also read by the tip
- * model the way the capture lab reads it (vision/autoscore.ts), and a new dart
+ * model the way the capture lab reads it (vision/boardWatcher.ts), and a new dart
  * goes straight into the score as an 'auto' dart and is called. The player
  * corrects a wrong one by tapping it, and the correction keeps the model's
  * reading as the original, which is the agreement measure docs/03 asks for.
@@ -20,7 +20,7 @@
  */
 
 import { assessBoardView, boardRegion, formatHit, type DartSource, type Hit, type Point } from '@treblewise/core';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { fill, useStrings } from '../i18n/index.js';
 import {
@@ -33,11 +33,10 @@ import {
 import { useMatchStore } from '../store/match.js';
 import { unlockCaller } from '../caller/caller.js';
 import { unlockSounds } from '../caller/sounds.js';
-import { newDarts } from '../vision/autoscore.js';
-import { THUMB_SIZE, cameraSupported, type GrabbedFrame } from '../vision/camera.js';
-import { loadDetector, loadManifest, type Detector, type ModelManifest } from '../vision/detector.js';
-import { boardLooksEmpty } from '../vision/imageStats.js';
+import type { BoardDart } from '../vision/boardWatcher.js';
+import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { squareAround } from '../vision/crop.js';
+import { useBoardWatcher } from '../vision/useBoardWatcher.js';
 import { useCamera } from '../vision/useCamera.js';
 import { BoardOverlay } from './BoardOverlay.js';
 import { PhoneBattery } from './PhoneBattery.js';
@@ -143,149 +142,75 @@ export function GameCamera({
   const [shown, setShown] = useState<GrabbedFrame | null>(null);
 
   // ---- the autoscorer -----------------------------------------------------
+  // What the board shows between settles, and reading a photograph for a new
+  // dart, is the board watcher's (vision/boardWatcher.ts). The game tells it
+  // what it knows and decides what a settle means for the score.
   const autoscore = useMatchStore((s) => s.settings.autoscoreGames);
   const setAutoscore = useMatchStore((s) => s.setAutoscoreGames);
-  const [modelInfo, setModelInfo] = useState<ModelManifest | null>(null);
-  const [detector, setDetector] = useState<Detector | null>(null);
-  const [reading, setReading] = useState(false);
-  const [pullingOut, setPullingOut] = useState(false);
+  const { watcher, state: watched } = useBoardWatcher();
+  const modelInfo = watched.model.manifest;
+  const modelReady = watched.model.status === 'ready';
 
-  /** Everything a settle needs, as of the last render: settles arrive between renders. */
-  const live = useRef({ darts, visitInProgress, canThrow, calibration, detector, autoscore, onAutoDart, onDartsPulled, onTurnPassed });
-  live.current = { darts, visitInProgress, canThrow, calibration, detector, autoscore, onAutoDart, onDartsPulled, onTurnPassed };
-  /** The visit just ended because its darts were seen coming out: nothing left to wait for. */
-  const pulledRef = useRef(false);
-  /** The empty board as it was just before this visit's first dart. */
-  const recentEmptyRef = useRef<Uint8Array | null>(null);
-  const awaitingEmptyRef = useRef(false);
-  const busyRef = useRef(false);
-  const queuedRef = useRef<GrabbedFrame | null>(null);
+  useEffect(() => {
+    watcher.setCalibration(calibration);
+  }, [watcher, calibration]);
 
-  const setAwaitingEmpty = (awaiting: boolean) => {
-    awaitingEmptyRef.current = awaiting;
-    setPullingOut(awaiting);
+  // The darts in the board are the visit's while it is being thrown. Once it
+  // is over they are still there, but nothing is read beside them: the
+  // pull-out phase comes first. Kept so that a visit photo taken later, for
+  // the same darts, can be handed to the watcher as well.
+  const heldRef = useRef<BoardDart[]>([]);
+  useEffect(() => {
+    heldRef.current = (visitInProgress ? darts : []).map((dart) => (dart.pos ? { board: dart.pos } : {}));
+    watcher.holds(heldRef.current, visitFrameRef.current);
+  }, [watcher, darts, visitInProgress]);
+
+  // A finished visit leaves its darts in the board until someone pulls them,
+  // unless they were seen coming out before it ended; a dart of the next
+  // visit means they are out, which the watcher sees in the darts it holds.
+  const lastVisitDone = visitComplete && darts.length > 0 && !visitInProgress;
+  useEffect(() => {
+    if (lastVisitDone) watcher.visitOver();
+  }, [watcher, lastVisitDone]);
+  // Only during the pull-out phase: a visit closed by the next one's first
+  // dart already holds that dart, which "darts out" would forget.
+  useEffect(() => {
+    if (visitClosed && watcher.state().pullingOut) watcher.dartsOut();
+  }, [watcher, visitClosed]);
+
+  useEffect(() => {
+    if (keepFrames) void watcher.findModel();
+  }, [watcher, keepFrames]);
+  // The model is switched on only once the site is known to ship one, as the
+  // switch is only offered then: without a manifest the watcher would call the
+  // model unavailable, and the player's setting would be switched back off.
+  useEffect(() => {
+    if (modelInfo) void watcher.switchModel(autoscore);
+  }, [watcher, autoscore, modelInfo]);
+  useEffect(() => {
+    if (watched.model.status === 'unavailable') setAutoscore(false); // it cannot run here: say so by switching back off
+  }, [watched.model.status, setAutoscore]);
+
+  const read = async (frame: GrabbedFrame) => {
+    const reading = await watcher.read(frame);
+    if (reading.kind !== 'proposal') return;
+    // A reading takes a while. A dart entered by hand meanwhile makes it stale
+    // (the watcher says so); the autoscorer switched off is checked here.
+    if (!useMatchStore.getState().settings.autoscoreGames || !canThrow) return;
+    onAutoDart(reading.dart.hit, reading.dart.board, reading.dart.confidence);
   };
 
-  // A finished visit leaves its darts in the board until someone pulls them;
-  // a dart of the next visit entered by hand means they are out.
-  const lastVisitDone = visitComplete && darts.length > 0 && !visitInProgress;
-  const nextVisitStarted = visitInProgress && darts.length > 0;
-  useEffect(() => {
-    if (!lastVisitDone) return;
-    if (pulledRef.current) pulledRef.current = false;
-    else setAwaitingEmpty(true);
-  }, [lastVisitDone]);
-  useEffect(() => {
-    if (nextVisitStarted) setAwaitingEmpty(false);
-  }, [nextVisitStarted]);
-  useEffect(() => {
-    if (visitClosed && awaitingEmptyRef.current) setAwaitingEmpty(false);
-  }, [visitClosed]);
-
-  useEffect(() => {
-    if (!keepFrames) return;
-    let cancelled = false;
-    void loadManifest().then((loaded) => {
-      if (!cancelled) setModelInfo(loaded);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [keepFrames]);
-
-  useEffect(() => {
-    if (!autoscore || !modelInfo || detector) return;
-    let cancelled = false;
-    void loadDetector().then((loaded) => {
-      if (cancelled) return;
-      setDetector(loaded);
-      if (!loaded) setAutoscore(false); // it cannot run here: say so by switching back off
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [autoscore, modelInfo, detector, setAutoscore]);
-
-  const read = useCallback(async (frame: GrabbedFrame) => {
-    const state = live.current;
-    const model = state.detector;
-    const calibrated = state.calibration;
-    if (!model || !calibrated) return;
-    const inVisit = state.visitInProgress ? state.darts : [];
-    const carried = inVisit.map((dart) => ({ board: dart.pos! }));
-    const previous = visitFrameRef.current;
-    busyRef.current = true;
-    setReading(true);
-    try {
-      const [best] = await newDarts(model, frame, calibrated, carried, inVisit.length > 0 ? previous : null);
-      // Only if the visit is where it was: a dart entered by hand meanwhile wins.
-      const now = live.current;
-      const nowInVisit = now.visitInProgress ? now.darts.length : 0;
-      if (best && now.autoscore && now.canThrow && nowInVisit === inVisit.length) {
-        now.onAutoDart(best.hit, best.board, best.confidence);
-      }
-    } catch (cause) {
-      console.warn('[treblewise] the autoscorer failed on a photograph:', cause);
-    } finally {
-      busyRef.current = false;
-      setReading(false);
-      const next = queuedRef.current;
-      queuedRef.current = null;
-      if (next) void readRef.current(next);
-    }
-  }, []);
-  const readRef = useRef(read);
-  readRef.current = read;
-
-  const onSettle = useCallback((frame: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) => {
+  // useCamera calls the latest of these, so the props it reads are current.
+  const onSettle = (frame: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) => {
     latestRef.current = frame;
     setLatest(frame);
+    if (!autoscore || !modelReady || !canThrow) return;
 
-    const state = live.current;
-    const calibrated = state.calibration;
-    const ready =
-      state.autoscore &&
-      state.detector !== null &&
-      state.canThrow &&
-      calibrated !== null &&
-      calibrated.width === frame.width &&
-      calibrated.height === frame.height;
-    if (!ready) return;
-
-    const references = [recentEmptyRef.current, calibrated.reference ? Uint8Array.from(calibrated.reference) : null];
-    const empty =
-      thumbnail !== undefined &&
-      references.some((reference) => reference !== null && boardLooksEmpty(thumbnail, reference, THUMB_SIZE, THUMB_SIZE));
-
-    if (awaitingEmptyRef.current) {
-      if (empty) {
-        setAwaitingEmpty(false);
-        state.onTurnPassed();
-      }
-      return;
-    }
-
-    const inVisit = state.visitInProgress ? state.darts : [];
-    // Out before the visit was thrown: the darts not in the board missed it.
-    if (inVisit.length > 0 && inVisit.length < 3 && empty) {
-      pulledRef.current = true;
-      state.onDartsPulled(3 - inVisit.length);
-      return;
-    }
-    // Three in already, or one entered by number with no position to tell it
-    // apart from the next: that visit is the player's to finish.
-    if (inVisit.length >= 3 || inVisit.some((dart) => !dart.pos)) return;
-    if (inVisit.length === 0) {
-      if (before) recentEmptyRef.current = before;
-      if (empty) return;
-    }
-
-    if (busyRef.current) {
-      queuedRef.current = frame;
-      return;
-    }
-    void readRef.current(frame);
-  }, []);
+    const seen = watcher.settle(frame, thumbnail, before);
+    if (seen.kind === 'emptied') onTurnPassed();
+    else if (seen.kind === 'early-pull') onDartsPulled(seen.missed);
+    else if (seen.kind === 'throw') void read(frame);
+  };
 
   // The capture trigger looks only at the board — see vision/settle.ts.
   const region = useMemo(
@@ -328,6 +253,7 @@ export function GameCamera({
       latestRef.current = photo;
       setLatest(photo);
       visitFrameRef.current = photo;
+      watcher.holds(heldRef.current, photo);
     });
     // The camera object changes every render; only a new dart matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -525,13 +451,13 @@ export function GameCamera({
             }}
             disabled={!canThrow && !autoscore}
           >
-            {autoscore ? (detector ? t.report.autoscoreOn : t.report.autoscoreLoading) : t.report.autoscoreOff}
+            {autoscore ? (modelReady ? t.report.autoscoreOn : t.report.autoscoreLoading) : t.report.autoscoreOff}
           </button>
         </div>
       )}
       {keepFrames && calibration && modelInfo && autoscore && (
         <p className="hint">
-          {pullingOut ? t.report.autoscorePullOut : reading ? t.report.autoscoreReading : t.report.autoscoreHelp}{' '}
+          {watched.pullingOut ? t.report.autoscorePullOut : watched.reading ? t.report.autoscoreReading : t.report.autoscoreHelp}{' '}
           {fill(t.capture.modelName, { name: modelInfo.name })} {t.report.autoscoreUnchecked}
           {modelInfo.deepdarts && ` ${t.capture.deepdartsCredit}`}
           {modelInfo.dartscribe && ` ${t.capture.dartscribeCredit}`}
