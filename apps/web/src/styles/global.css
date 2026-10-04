@@ -130,9 +130,26 @@
   --radius-pill: 999px;
   --radius-round: 50%;
 
+  /* Six text sizes, small print to a tile's number. In rem, so the whole
+     scale follows the browser's own font-size setting. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.85rem;
+  --text-base: 1rem;
+  --text-md: 1.15rem;
+  --text-lg: 1.4rem;
+  --text-xl: 1.9rem;
+  /* Off the scale on purpose: the score read from the oche, the landing
+     page's name and the lobby's title grow with the screen. */
+  --text-display-score: clamp(2.6rem, 14vw, 4.2rem);
+  --text-display-mark: clamp(3rem, 18vw, 5.5rem);
+  --text-display-title: clamp(2.6rem, 5vw, 4.5rem);
+  /* The written pairing code shrinks on a narrow phone rather than scroll
+     sideways, since it is read off one screen and typed into another. */
+  --text-code: clamp(0.8rem, 3.6vw, 1.05rem);
+
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 16px;
+  font-size: var(--text-base);
 }
 
 * {
@@ -160,12 +177,12 @@ h2 {
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: var(--text-lg);
   letter-spacing: 0.02em;
 }
 
 h2 {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -288,7 +305,7 @@ a:hover {
   padding: var(--space-2) var(--space-3);
   min-height: 40px;
   border-radius: var(--radius-pill);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .chip-on,
@@ -326,7 +343,7 @@ input {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
 }
 
@@ -371,7 +388,7 @@ input {
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-2);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .player-name {
@@ -390,7 +407,7 @@ input {
 }
 
 .player-remaining {
-  font-size: clamp(2.6rem, 14vw, 4.2rem);
+  font-size: var(--text-display-score);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -408,7 +425,7 @@ input {
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-1);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -419,7 +436,7 @@ input {
 
 .player-visit {
   margin-top: var(--space-1);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -439,7 +456,7 @@ input {
 
 .throw-who {
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 /* A finished visit whose darts are still in the board: it wraps, so the big
@@ -465,7 +482,7 @@ input {
   flex: 1;
   min-width: 0;
   min-height: 56px;
-  font-size: 1.1rem;
+  font-size: var(--text-md);
 }
 
 .held-mark {
@@ -489,7 +506,7 @@ input {
   background: var(--bg-sunken);
   border: 1px solid var(--line);
   font-variant-numeric: tabular-nums;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 
 .dart-chip-empty {
@@ -557,7 +574,7 @@ input {
 
 .key {
   padding: var(--space-3) 0;
-  font-size: 1.1rem;
+  font-size: var(--text-md);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -599,7 +616,7 @@ input {
 .hint {
   margin: 0;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -629,7 +646,7 @@ input {
 }
 
 .match-meta {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -746,7 +763,7 @@ input {
   padding: var(--space-1) 0;
   list-style: none;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -779,14 +796,14 @@ input {
 }
 
 .phone-battery {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
 .capture-status {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -845,7 +862,7 @@ input {
   border-radius: var(--radius-pill);
   background: var(--scrim-badge);
   border: 1px solid var(--line);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -857,7 +874,7 @@ input {
   color: var(--danger);
   background: var(--tint-danger);
   border: 1px solid var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .landmark-list {
@@ -867,7 +884,7 @@ input {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -994,7 +1011,7 @@ input {
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--bg-raised);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.35;
 }
 
@@ -1042,7 +1059,7 @@ input {
 .coach-numbers {
   width: 100%;
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1052,7 +1069,7 @@ input {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
 }
 
@@ -1116,7 +1133,7 @@ input {
 }
 
 .landing-mark {
-  font-size: clamp(3rem, 18vw, 5.5rem);
+  font-size: var(--text-display-mark);
   line-height: 0.95;
   letter-spacing: -0.03em;
   font-weight: 700;
@@ -1124,7 +1141,7 @@ input {
 
 .landing-lede {
   margin: var(--space-3) 0 0;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   line-height: 1.5;
   color: var(--text-dim);
   max-width: 46ch;
@@ -1139,7 +1156,7 @@ input {
 .landing-cta .primary {
   flex: 1;
   min-width: 200px;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   min-height: 52px;
 }
 
@@ -1163,18 +1180,18 @@ input {
 }
 
 .landing-points b {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 
 .landing-points span {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.45;
 }
 
 .landing-honest p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.5;
 }
@@ -1186,7 +1203,7 @@ input {
   flex-wrap: wrap;
   margin-top: auto;
   padding-top: var(--space-2);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -1221,7 +1238,7 @@ input {
 }
 
 .mode-card h2 {
-  font-size: 1.15rem;
+  font-size: var(--text-md);
   text-transform: none;
   letter-spacing: 0;
   color: var(--text);
@@ -1229,7 +1246,7 @@ input {
 
 .mode-card p {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.45;
 }
@@ -1237,7 +1254,7 @@ input {
 .mode-card ul {
   margin: 0;
   padding-left: 1.1em;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
@@ -1252,7 +1269,7 @@ input {
   margin-top: var(--space-1);
   color: var(--accent);
   font-weight: 650;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .mode-art {
@@ -1315,7 +1332,7 @@ input {
 .pair-instruction {
   margin: 0;
   text-align: center;
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--text);
 }
 
@@ -1347,7 +1364,7 @@ input {
   border: 1px solid var(--line);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   /* Big enough to read off one screen and type into another. */
-  font-size: clamp(0.8rem, 3.6vw, 1.05rem);
+  font-size: var(--text-code);
   letter-spacing: 0.08em;
   line-height: 1.7;
   text-align: center;
@@ -1364,7 +1381,7 @@ input {
   background: var(--bg-sunken);
   color: var(--text);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--text-base);
   letter-spacing: 0.08em;
   line-height: 1.7;
   text-transform: uppercase;
@@ -1457,25 +1474,25 @@ input {
 }
 
 .tile-label {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
 }
 
 .tile-value {
-  font-size: 1.9rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
 }
 
 .tile-small .tile-value {
-  font-size: 1.25rem;
+  font-size: var(--text-md);
 }
 
 .tile-note {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -1491,6 +1508,8 @@ input {
   stroke-width: 1;
 }
 
+/* The chart's text sizes are off the type scale on purpose: inside the SVG a
+   px is a unit of its viewBox, and the text scales with the chart. */
 .chart-grid text,
 .chart-axis-label {
   fill: var(--text-dim);
@@ -1534,7 +1553,7 @@ input {
 }
 
 .bars-label {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -1560,13 +1579,13 @@ input {
 
 .bars-value {
   text-align: right;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
 .bars-value small {
   display: block;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -1583,7 +1602,7 @@ input {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   justify-content: center;
 }
@@ -1597,7 +1616,7 @@ input {
 
 .stat-sentence {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
@@ -1632,7 +1651,7 @@ input {
   border-radius: var(--radius-round);
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
@@ -1755,7 +1774,7 @@ input {
 
 .lobby-kicker {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1770,7 +1789,7 @@ input {
 
 .lobby-desc {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-dim);
   max-width: 46ch;
@@ -1794,7 +1813,7 @@ input {
   min-height: 56px;
   padding: var(--space-3) var(--space-4);
   text-align: left;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1854,7 +1873,7 @@ input {
   }
 
   .lobby-kicker {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
 
   /* The title and the line under it keep the same height whichever entry is
@@ -1871,7 +1890,7 @@ input {
        would otherwise cut off. */
     min-height: calc(2 * 1.08em);
     margin: var(--space-1) 0 0;
-    font-size: clamp(2.6rem, 5vw, 4.5rem);
+    font-size: var(--text-display-title);
     font-weight: 700;
     line-height: 1.08;
     letter-spacing: -0.02em;
@@ -1884,7 +1903,7 @@ input {
     -webkit-line-clamp: 3;
     overflow: hidden;
     min-height: calc(3 * 1.5em);
-    font-size: 1.05rem;
+    font-size: var(--text-base);
     line-height: 1.5;
   }
 
@@ -1946,6 +1965,6 @@ input {
 }
 
 .review-card-tags {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   opacity: 0.75;
 }
