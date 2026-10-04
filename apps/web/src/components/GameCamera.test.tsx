@@ -65,11 +65,12 @@ vi.mock('../storage/frames.js', async (importOriginal) => ({
   },
 }));
 
-// Every candidate changed: the change gate is tested on its own.
-vi.mock('../vision/changeGate.js', () => ({
-  NEW_DART_CHANGE: 5,
-  changesAt: async (...args: unknown[]) => (args[5] as unknown[]).map(() => 50),
+// Every candidate changed: the change gate is tested on its own. What it is
+// asked to compare is recorded, to check which photograph a read compares against.
+const gate = vi.hoisted(() => ({
+  changesAt: vi.fn(async (...args: unknown[]) => (args[5] as unknown[]).map(() => 50)),
 }));
+vi.mock('../vision/changeGate.js', () => ({ NEW_DART_CHANGE: 5, changesAt: gate.changesAt }));
 
 /** The board-region thumbnail of the empty board, as stored at calibration. */
 const EMPTY = new Uint8Array(64 * 64).fill(120);
@@ -352,6 +353,50 @@ describe('the autoscorer in a game', () => {
     });
     expect(saved.frames).toHaveLength(1);
     expect(saved.frames[0]!.reviewed).toBeUndefined();
+  });
+
+  it('compares a new photograph with the visit photo, not a settle that entered nothing', async () => {
+    hooks.found = [{ x: 0, y: 103 }];
+    const view = await start();
+    const withTheDart = await settle(DARTS, 'with the dart');
+    expect(onAutoDart).toHaveBeenCalledTimes(1);
+    const dart = { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const };
+    view.rerender(camera({ darts: [dart], visitInProgress: true }));
+
+    // A hand reaching in: the model sees only the dart in the board, so nothing is entered.
+    await settle(DARTS, 'a hand');
+    expect(onAutoDart).toHaveBeenCalledTimes(1);
+
+    gate.changesAt.mockClear();
+    hooks.found = [
+      { x: 0, y: 103 },
+      { x: 5, y: 103 },
+    ];
+    await settle(DARTS, 'the second dart');
+    expect(gate.changesAt).toHaveBeenCalledTimes(1);
+    expect(gate.changesAt.mock.calls[0]![0]).toBe(withTheDart.jpeg);
+  });
+
+  it('compares with the photograph taken when a dart was entered by hand', async () => {
+    const view = await start();
+    await settle(DARTS, 'before the dart');
+    // Tapped on the drawn board: it has a position, and the camera photographs it.
+    const tapped = photo('the tapped dart');
+    hooks.capture = tapped;
+    await act(async () => {
+      view.rerender(camera({ darts: [{ id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'manual' }], visitInProgress: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    hooks.capture = null;
+
+    gate.changesAt.mockClear();
+    hooks.found = [
+      { x: 0, y: 103 },
+      { x: 5, y: 103 },
+    ];
+    await settle(DARTS, 'the second dart');
+    expect(gate.changesAt).toHaveBeenCalledTimes(1);
+    expect(gate.changesAt.mock.calls[0]![0]).toBe(tapped.jpeg);
   });
 
   it('leaves the visit to the player once a dart was entered by number', async () => {

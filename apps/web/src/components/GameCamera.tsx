@@ -124,9 +124,12 @@ export function GameCamera({
   const [showPreview, setShowPreview] = useState(false);
   const latestRef = useRef<GrabbedFrame | null>(null);
   /**
-   * The photograph taken when the visit's latest dart went in. The report
-   * shows this one, not the newest: by the time someone reports a dart, the
-   * newest photograph is often a hand pulling the darts out.
+   * The visit photo: the photograph taken when the visit's latest dart went
+   * in. The report shows this one, not the newest: by the time someone reports
+   * a dart, the newest photograph is often a hand pulling the darts out. And a
+   * new photograph is compared with it for what changed, for the same reason:
+   * the newest settle may be a hand reaching in, which would hide the dart
+   * that came after it.
    */
   const visitFrameRef = useRef<GrabbedFrame | null>(null);
   const visitKey = useRef<{ first: string | undefined; count: number }>({ first: undefined, count: 0 });
@@ -152,8 +155,6 @@ export function GameCamera({
   live.current = { darts, visitInProgress, canThrow, calibration, detector, autoscore, onAutoDart, onDartsPulled, onTurnPassed };
   /** The visit just ended because its darts were seen coming out: nothing left to wait for. */
   const pulledRef = useRef(false);
-  /** The photograph before the one being read: the board with the darts already entered. */
-  const previousRef = useRef<GrabbedFrame | null>(null);
   /** The empty board as it was just before this visit's first dart. */
   const recentEmptyRef = useRef<Uint8Array | null>(null);
   const awaitingEmptyRef = useRef(false);
@@ -212,7 +213,7 @@ export function GameCamera({
     if (!model || !calibrated) return;
     const inVisit = state.visitInProgress ? state.darts : [];
     const carried = inVisit.map((dart) => ({ board: dart.pos! }));
-    const previous = previousRef.current;
+    const previous = visitFrameRef.current;
     busyRef.current = true;
     setReading(true);
     try {
@@ -226,7 +227,6 @@ export function GameCamera({
     } catch (cause) {
       console.warn('[treblewise] the autoscorer failed on a photograph:', cause);
     } finally {
-      previousRef.current = frame;
       busyRef.current = false;
       setReading(false);
       const next = queuedRef.current;
@@ -250,10 +250,7 @@ export function GameCamera({
       calibrated !== null &&
       calibrated.width === frame.width &&
       calibrated.height === frame.height;
-    if (!ready) {
-      previousRef.current = frame;
-      return;
-    }
+    if (!ready) return;
 
     const references = [recentEmptyRef.current, calibrated.reference ? Uint8Array.from(calibrated.reference) : null];
     const empty =
@@ -265,30 +262,22 @@ export function GameCamera({
         setAwaitingEmpty(false);
         state.onTurnPassed();
       }
-      previousRef.current = frame;
       return;
     }
 
     const inVisit = state.visitInProgress ? state.darts : [];
     // Out before the visit was thrown: the darts not in the board missed it.
     if (inVisit.length > 0 && inVisit.length < 3 && empty) {
-      previousRef.current = frame;
       pulledRef.current = true;
       state.onDartsPulled(3 - inVisit.length);
       return;
     }
     // Three in already, or one entered by number with no position to tell it
     // apart from the next: that visit is the player's to finish.
-    if (inVisit.length >= 3 || inVisit.some((dart) => !dart.pos)) {
-      previousRef.current = frame;
-      return;
-    }
+    if (inVisit.length >= 3 || inVisit.some((dart) => !dart.pos)) return;
     if (inVisit.length === 0) {
       if (before) recentEmptyRef.current = before;
-      if (empty) {
-        previousRef.current = frame;
-        return;
-      }
+      if (empty) return;
     }
 
     if (busyRef.current) {
