@@ -35,6 +35,18 @@ describe('the phone battery', () => {
     expect(screen.getByText(/battery 12%, charging/i)).toBeDefined();
   });
 
+  it('leaves out "100%, charging": some browsers say it whatever the battery does', () => {
+    useMatchStore.setState({ ...connected, phone: { battery: 100, charging: true } });
+    const { container } = render(<PhoneBattery />);
+    expect(container.textContent).toBe('');
+  });
+
+  it('still shows a full phone that is not charging', () => {
+    useMatchStore.setState({ ...connected, phone: { battery: 100, charging: false } });
+    render(<PhoneBattery />);
+    expect(screen.getByText(/battery 100%/i)).toBeDefined();
+  });
+
   it('shows nothing on a single device', () => {
     useMatchStore.setState({ session: 'solo', phone: { battery: 12, charging: false } });
     const { container } = render(<PhoneBattery />);

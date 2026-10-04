@@ -21,6 +21,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 
 import { LobbyArt, type LobbyArtKind } from '../components/LobbyArt.js';
+import { shownBattery } from '../components/PhoneBattery.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { useMatchStore } from '../store/match.js';
 
@@ -155,8 +156,8 @@ export function Lobby() {
               </span>
               {phoneLive && phone && (
                 <span className="coach-numbers">
-                  {phone.battery !== undefined &&
-                    fill(t.lobby.battery, { n: phone.battery, charging: phone.charging ? t.lobby.charging : '' })}
+                  {shownBattery(phone) !== undefined &&
+                    fill(t.lobby.battery, { n: shownBattery(phone)!, charging: phone.charging ? t.lobby.charging : '' })}
                   {phone.width && phone.height ? ` · ${phone.width}×${phone.height}` : ''}
                 </span>
               )}
