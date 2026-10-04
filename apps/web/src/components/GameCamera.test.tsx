@@ -3,6 +3,7 @@ import { CALIBRATION_BOARD_POINTS, type Hit, type Point } from '@treblewise/core
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useMatchStore } from '../store/match.js';
+import type { CapturedFrame } from '../storage/frames.js';
 import type { GrabbedFrame } from '../vision/camera.js';
 import { GameCamera, type ReportableDart } from './GameCamera.js';
 
@@ -54,6 +55,14 @@ vi.mock('../vision/detector.js', () => ({
         confidence: 0.8,
       })),
   }),
+}));
+
+const saved = vi.hoisted(() => ({ frames: [] as CapturedFrame[] }));
+vi.mock('../storage/frames.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../storage/frames.js')>()),
+  putFrame: async (frame: CapturedFrame) => {
+    saved.frames.push(frame);
+  },
 }));
 
 // Every candidate changed: the change gate is tested on its own.
@@ -280,6 +289,46 @@ describe('the autoscorer in a game', () => {
     });
     expect(shownBlobs.at(-1)).toBe(now.jpeg);
     hooks.capture = null;
+  });
+
+  it('keeps a report for training only if every dart has a mark, and marks the autoscorer’s as the model’s', async () => {
+    useMatchStore.setState((state) => ({ settings: { ...state.settings, autoscoreGames: false } }));
+    URL.createObjectURL = () => 'blob:test';
+    URL.revokeObjectURL = () => undefined;
+    saved.frames = [];
+    const read = [
+      { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
+      { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'auto' as const },
+    ];
+    const view = await start({ darts: read, visitInProgress: true });
+    await settle();
+    const keypad = { id: 'c', hit: T20, source: 'manual' as const };
+    await act(async () => {
+      view.rerender(camera({ darts: [...read, keypad], visitComplete: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // The keypad dart is left without a mark: nothing is kept.
+    await act(async () => {
+      screen.getByRole('button', { name: /mark where they landed/i }).click();
+    });
+    await act(async () => {
+      screen.getByRole('button', { name: /save report/i }).click();
+    });
+    expect(saved.frames).toHaveLength(0);
+    expect(screen.getByText(/not kept for training/i)).toBeDefined();
+
+    // Without the keypad dart, every dart is marked: kept, the model's marks as the model's.
+    view.rerender(camera({ darts: read, visitInProgress: true }));
+    await act(async () => {
+      screen.getByRole('button', { name: /report/i }).click();
+    });
+    await act(async () => {
+      screen.getByRole('button', { name: /save report/i }).click();
+    });
+    expect(saved.frames).toHaveLength(1);
+    expect(saved.frames[0]!.darts.every((dart) => dart.by === 'model')).toBe(true);
+    expect(saved.frames[0]!.model).toBe('test-model');
   });
 
   it('leaves the visit to the player once a dart was entered by number', async () => {

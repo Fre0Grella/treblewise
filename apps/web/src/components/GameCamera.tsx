@@ -380,7 +380,14 @@ export function GameCamera({
     setMarks(
       darts.map((dart) =>
         dart.pos && usable
-          ? { img: projectToImage(calibration, dart.pos), board: dart.pos, hit: dart.hit }
+          ? {
+              img: projectToImage(calibration, dart.pos),
+              board: dart.pos,
+              hit: dart.hit,
+              // The autoscorer's own reading stays the model's until a person
+              // moves it, so the trainer never grades the model against itself.
+              ...(dart.source === 'auto' ? { by: 'model' as const } : {}),
+            }
           : null,
       ),
     );
@@ -400,6 +407,11 @@ export function GameCamera({
     if (!latest || !calibration) return;
 
     const labelled = marks.filter((mark): mark is LabelledDart => mark !== null);
+    // A photograph is only a training example if every dart of the visit has a
+    // mark on it. A dart entered on the keypad has no position, and left
+    // unmarked it would teach the model that a dart it can see is background.
+    const complete = darts.length > 0 && marks.length === darts.length && labelled.length === darts.length;
+    const byModel = labelled.some((mark) => mark.by === 'model');
     const frame: CapturedFrame = {
       id: newId(),
       ts: Date.now(),
@@ -418,15 +430,16 @@ export function GameCamera({
       },
       darts: labelled,
       labelled: labelled.length > 0,
+      ...(byModel && modelInfo ? { model: modelInfo.name } : {}),
       reported: {
         hits: darts.map((dart) => formatHit(dart.hit)),
         dartIds: darts.map((dart) => dart.id),
         source: 'manual',
       },
     };
-    await putFrame(frame);
+    if (complete) await putFrame(frame);
 
-    // Anything whose score moved is corrected in the match as well.
+    // Anything whose score moved is corrected in the match as well, kept or not.
     let corrections = 0;
     marks.forEach((mark, index) => {
       const dart = darts[index];
@@ -437,11 +450,16 @@ export function GameCamera({
     });
 
     setSaved(
-      corrections > 0
-        ? fill(t.report.scoreChanged, {
-            score: labelled.map((mark) => formatHit(mark.hit)).join(' '),
-          })
-        : t.report.saved,
+      [
+        corrections > 0
+          ? fill(t.report.scoreChanged, { score: labelled.map((mark) => formatHit(mark.hit)).join(' ') })
+          : complete
+            ? t.report.saved
+            : '',
+        complete ? '' : t.report.notKept,
+      ]
+        .filter(Boolean)
+        .join(' '),
     );
     setTimeout(() => setSaved(null), 4000);
     closeReport();

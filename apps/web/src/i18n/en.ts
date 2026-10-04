@@ -507,6 +507,7 @@ export const en = {
     cameraOn: 'Camera on',
     cameraOff: 'Camera off',
     scoreChanged: 'Score corrected to {score}',
+    notKept: 'The photo was not kept for training: every dart of the visit needs a mark for that.',
   },
   stats: {
     title: 'Statistics',
