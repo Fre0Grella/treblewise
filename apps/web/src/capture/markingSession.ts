@@ -90,8 +90,12 @@ export interface MarkingSessionState {
   canUndo: boolean;
   /** Photographs where the model proposed: let stand, or corrected. */
   tally: { letStand: number; corrected: number };
-  /** A person asked to leave with marks unsaved, and is being asked what to do with them. */
-  leaving: Exit | null;
+  /**
+   * On the way out. `asking`: there are marks nobody saved, and the person is
+   * being asked what to do with them; otherwise they are clear to go, and the
+   * view takes them to `exit`.
+   */
+  leaving: { exit: Exit; asking: boolean } | null;
   /** The board watcher's pull-out phase: no photograph opens until the darts are out. */
   pullingOut: boolean;
   /** The model the site ships, and whether it is in use (the board watcher's). */
@@ -105,6 +109,12 @@ export interface MarkingSessionDeps {
   deleteFrame(id: string): Promise<void>;
   /** Calls a score out loud. */
   say(hit: Hit): void;
+  /**
+   * Lets the page speak later: browsers allow it only from a gesture. Every tap
+   * unlocks it, the caller on or not, so switching the caller on mid-session
+   * does not leave the next score silent.
+   */
+  unlockSpeech(): void;
   createObjectURL(blob: Blob): string;
   revokeObjectURL(url: string): void;
   /** For the blind roll: a number in [0, 1). */
@@ -129,30 +139,28 @@ export interface MarkingSession {
   mark(point: Point): void;
   /** Drags the mark at `index` to a point of the photograph, in image pixels. */
   move(index: number, point: Point): void;
-  /** Saves the photograph as marked, and opens the one waiting behind it. */
-  save(): Promise<void>;
-  /** "No new dart": saves the photograph without the model's proposals on it, kept as rejected. */
-  noNewDart(): Promise<void>;
+  /** Saves the photograph as marked, and opens the one waiting behind it. True if a frame was written. */
+  save(): Promise<boolean>;
+  /** "No new dart": saves the photograph without the model's proposals on it, kept as rejected. True if a frame was written. */
+  noNewDart(): Promise<boolean>;
   /** Drops the photograph without saving it, and opens the one waiting behind it. */
   skip(): void;
   /**
    * Takes the last mark off the photograph: the dart just tapped, or, once
    * those are gone, one that was in the board, which is how a dart that fell
-   * out is removed. With no mark on screen it deletes the last saved photograph.
+   * out is removed. With no mark on screen it deletes the last saved photograph,
+   * and then resolves true.
    */
-  undo(): Promise<void>;
+  undo(): Promise<boolean>;
   /** "I pulled the darts out", before the third or after it. */
   boardCleared(): void;
-  /**
-   * Done or Back. Returns where to go now, or null when there are marks
-   * nobody saved: then `state().leaving` asks, and `answer` settles it.
-   */
-  leave(exit: Exit): Exit | null;
-  /** The answer to the leave prompt: where to go now, or null to stay. */
-  answer(choice: LeaveAnswer): Promise<Exit | null>;
+  /** Done or Back: `state().leaving` says whether to ask first or go. */
+  leave(exit: Exit): void;
+  /** The answer to the leave prompt. True if a frame was written. */
+  answer(choice: LeaveAnswer): Promise<boolean>;
   /**
    * Try-it is over. By the time anyone comes back the darts may be out, or
-   * the camera recalibrated, so the visit ends and nothing is carried.
+   * the camera recalibrated, so the visit ends with no darts in the board.
    */
   end(): void;
   /** Finds out which model the site ships, without loading it. */
@@ -175,7 +183,7 @@ interface WaitingPhoto {
 }
 
 /** The marks a new photograph opens with: copies, so dragging one does not move a saved frame. */
-function carriedInto(inBoard: readonly LabelledDart[]): LabelledDart[] {
+function marksInBoard(inBoard: readonly LabelledDart[]): LabelledDart[] {
   return inBoard.map((dart) => ({ ...dart, img: { ...dart.img }, board: { ...dart.board } }));
 }
 
@@ -209,6 +217,7 @@ export function realDeps(): MarkingSessionDeps {
       unlockCaller();
       caller().say(strings().caller.hit(hit));
     },
+    unlockSpeech: () => unlockCaller(),
     createObjectURL: (blob) => URL.createObjectURL(blob),
     revokeObjectURL: (url) => URL.revokeObjectURL(url),
     random: () => Math.random(),
@@ -230,7 +239,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
   /** The last saved photograph, to take back: how many darts it added, and the darts in the board before it. */
   let lastSaved: { id: string; added: number; inBoardBefore: LabelledDart[] } | null = null;
   let tally = { letStand: 0, corrected: 0 };
-  let leaving: Exit | null = null;
+  let leaving: { exit: Exit; asking: boolean } | null = null;
 
   /**
    * Whether the model is kept out of the current visit. Rolled when a visit
@@ -312,7 +321,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
         return;
       // The darts came out before the visit was thrown in full, as in a game.
       // Opened, it asked for a dart on a photograph of the empty board, and the
-      // next photograph carried marks for darts that were gone.
+      // next photograph opened with marks for darts that were gone.
       case 'early-pull':
         inBoard = [];
         startVisit();
@@ -320,12 +329,13 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
         return;
     }
 
-    const darts = carriedInto(inBoard);
+    const darts = marksInBoard(inBoard);
     const { status, manifest } = watcher.state().model;
     const model = status === 'ready' ? manifest : null;
     const blind = model !== null && blindVisit;
-    // Every dart in the lab has a position and a full visit is never carried,
-    // so 'unreadable' does not happen here; if it did, a person would mark it.
+    // Every dart in the lab has a position and a full visit is never in the
+    // board when a photograph opens, so 'unreadable' does not happen here; if
+    // it did, a person would mark it.
     const checking = model !== null && !blind && settled.kind === 'throw';
     close();
     photo = {
@@ -351,8 +361,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
         reading.kind === 'proposal' && !photo.edited
           ? [{ img: reading.dart.img, board: reading.dart.board, hit: reading.dart.hit, by: 'model' }]
           : [];
-      const answered = reading.kind === 'proposal' || reading.kind === 'none' || reading.kind === 'failed';
-      photo = answered
+      photo = reading.kind !== 'dropped'
         ? {
             ...photo,
             darts: [...photo.darts, ...proposals],
@@ -373,7 +382,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
    * Writes the photograph away. `reject`: the model's marks on it come off,
    * and it is kept as the person says it is, a lesson in what is not a dart.
    */
-  async function store(reject: boolean): Promise<void> {
+  async function store(reject: boolean): Promise<boolean> {
     const opened = photo;
     // Only this photograph's proposals: a dart in the board the model proposed
     // earlier was confirmed then, and stays.
@@ -391,7 +400,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
     if (!frame || !calibration || (!worthSaving(frame) && rejected.length === 0)) {
       if (frame) deps.revokeObjectURL(frame.url);
       publish();
-      return;
+      return false;
     }
 
     const stored: CapturedFrame = {
@@ -440,6 +449,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
     saved = frame.darts;
     openWaiting();
     publish();
+    return true;
   }
 
   function skip(): void {
@@ -449,10 +459,9 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
     publish();
   }
 
-  function leave(exit: Exit): Exit | null {
-    leaving = worthSaving(photo) ? exit : null;
+  function leave(exit: Exit): void {
+    leaving = { exit, asking: worthSaving(photo) };
     publish();
-    return leaving ? null : exit;
   }
 
   return {
@@ -477,6 +486,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
     mark(point) {
       if (!photo || !calibration) return;
       const dart = readDart(calibration, point);
+      deps.unlockSpeech();
       call(dart.hit);
       marked = [...marked, { hit: dart.hit, id: deps.newId() }];
       photo = { ...photo, darts: [...photo.darts, dart], edited: true };
@@ -508,17 +518,18 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
         };
         if (wasNew) marked = marked.slice(0, -1);
         publish();
-        return;
+        return false;
       }
       const taken = lastSaved;
-      if (!taken) return;
+      if (!taken) return false;
       await deps.deleteFrame(taken.id);
       inBoard = taken.inBoardBefore;
       watcher.holds(taken.inBoardBefore);
-      watcher.visitOver(false);
+      watcher.visitResumed();
       marked = marked.slice(0, marked.length - taken.added);
       lastSaved = null;
       publish();
+      return true;
     },
 
     boardCleared() {
@@ -540,17 +551,17 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
     leave,
 
     async answer(choice) {
-      const exit = leaving;
+      const exit = leaving?.exit;
       if (!exit || choice === 'stay') {
         leaving = null;
         publish();
-        return null;
+        return false;
       }
-      if (choice === 'save') await store(false);
-      else skip();
+      const wrote = choice === 'save' ? await store(false) : (skip(), false);
       // Asked again, of whatever opened behind it: a photograph just opened
       // has nothing on it yet, so this goes.
-      return leave(exit);
+      leave(exit);
+      return wrote;
     },
 
     end() {
@@ -560,7 +571,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
       inBoard = [];
       watcher.holds([]);
       watcher.setVisitPhoto(null);
-      watcher.visitOver(false);
+      watcher.visitResumed();
       startVisit();
       publish();
     },

@@ -47,7 +47,8 @@ function fakeWatcher() {
       told.push(`holds ${darts.length}`);
     },
     setVisitPhoto: (visitPhoto) => told.push(visitPhoto ? 'visit photo' : 'no visit photo'),
-    visitOver: (over = true) => told.push(over ? 'visit over' : 'visit not over'),
+    visitOver: () => told.push('visit over'),
+    visitResumed: () => told.push('visit resumed'),
     dartsOut: () => told.push('darts out'),
     settle: () => shows,
     read: (read) =>
@@ -93,6 +94,7 @@ function setUp({ model = false, rolls = [0.99] }: { model?: boolean; rolls?: num
   const said: string[] = [];
   const live = new Set<string>();
   let urls = 0;
+  let unlocks = 0;
   let ids = 0;
   const dice = [...rolls];
   const deps: MarkingSessionDeps = {
@@ -104,6 +106,9 @@ function setUp({ model = false, rolls = [0.99] }: { model?: boolean; rolls?: num
       deleted.push(id);
     },
     say: (hit) => said.push(`${hit.ring} ${hit.sector}`),
+    unlockSpeech: () => {
+      unlocks += 1;
+    },
     createObjectURL: () => {
       const url = `blob:${(urls += 1)}`;
       live.add(url);
@@ -117,7 +122,7 @@ function setUp({ model = false, rolls = [0.99] }: { model?: boolean; rolls?: num
   };
   const session = createMarkingSession(deps);
   session.setCalibration(calibration);
-  return { session, board, stored, deleted, said, live, dice };
+  return { session, board, stored, deleted, said, live, dice, unlocks: () => unlocks };
 }
 
 /** A photograph settles and opens, and a dart is tapped on it. */
@@ -257,8 +262,8 @@ describe('a reading', () => {
     ['a proposal', proposal(T20), { darts: 1, proposed: 1, missed: false, failed: false }],
     ['no new dart', { kind: 'none' }, { darts: 0, proposed: 0, missed: true, failed: false }],
     ['a failure', { kind: 'failed' }, { darts: 0, proposed: 0, missed: false, failed: true }],
-    ['a stale one', { kind: 'stale' }, { darts: 0, proposed: 0, missed: false, failed: false }],
-    ['a superseded one', { kind: 'superseded' }, { darts: 0, proposed: 0, missed: false, failed: false }],
+    ['a stale one', { kind: 'dropped', reason: 'stale' }, { darts: 0, proposed: 0, missed: false, failed: false }],
+    ['a superseded one', { kind: 'dropped', reason: 'superseded' }, { darts: 0, proposed: 0, missed: false, failed: false }],
   ])('shows %s on the photograph, which stops saying the model is looking', async (_, reading, expected) => {
     const { session, board } = setUp({ model: true });
     session.settle(photo());
@@ -438,12 +443,34 @@ describe('undo', () => {
       await session.save();
     }
     board.told.length = 0;
-    await session.undo();
+    expect(await session.undo()).toBe(true);
     expect(deleted).toEqual(['id-6']);
     expect(session.state().inBoard).toHaveLength(2);
     expect(session.state().marked).toHaveLength(2);
-    expect(board.told).toEqual(['no visit photo', 'holds 2', 'visit not over']);
+    expect(board.told).toEqual(['no visit photo', 'holds 2', 'visit resumed']);
     expect(session.state().canUndo).toBe(false);
+  });
+});
+
+describe('marking', () => {
+  it('unlocks speech on every tap, and calls the score only with the caller on', () => {
+    const { session, said, unlocks } = setUp();
+    session.setCaller(false);
+    throwAndMark(session);
+    expect(unlocks()).toBe(1);
+    expect(said).toEqual([]);
+    session.setCaller(true);
+    session.mark({ x: 0, y: 103 });
+    expect(unlocks()).toBe(2);
+    expect(said).toHaveLength(1);
+  });
+
+  it('says whether a save wrote anything, so the storage numbers refresh only then', async () => {
+    const { session } = setUp();
+    session.settle(photo());
+    expect(await session.save()).toBe(false);
+    throwAndMark(session);
+    expect(await session.save()).toBe(true);
   });
 });
 
@@ -451,25 +478,26 @@ describe('leaving', () => {
   it('goes straight away with nothing worth saving', () => {
     const { session } = setUp();
     session.settle(photo());
-    expect(session.leave('back')).toBe('back');
-    expect(session.state().leaving).toBeNull();
+    session.leave('back');
+    expect(session.state().leaving).toEqual({ exit: 'back', asking: false });
   });
 
   it.each([
-    ['save', 'done', 1],
-    ['discard', 'done', 0],
+    ['save', { exit: 'done', asking: false }, 1],
+    ['discard', { exit: 'done', asking: false }, 0],
     ['stay', null, 0],
-  ] as const)('with marks unsaved asks first, and "%s" settles it', async (choice, exit, saves) => {
+  ] as const)('with marks unsaved asks first, and "%s" settles it', async (choice, leaving, saves) => {
     const { session, stored } = setUp();
     throwAndMark(session);
-    expect(session.leave('done')).toBeNull();
-    expect(session.state().leaving).toBe('done');
-    expect(await session.answer(choice)).toBe(exit);
-    expect(session.state().leaving).toBeNull();
+    session.leave('done');
+    expect(session.state().leaving).toEqual({ exit: 'done', asking: true });
+    // True only when the answer wrote a frame: the storage numbers follow it.
+    expect(await session.answer(choice)).toBe(saves > 0);
+    expect(session.state().leaving).toEqual(leaving);
     expect(stored).toHaveLength(saves);
   });
 
-  it('ends try-it with nothing carried, and the watcher told', async () => {
+  it('ends try-it with no darts in the board, and the watcher told', async () => {
     const { session, board } = setUp();
     throwAndMark(session);
     await session.save();
@@ -478,7 +506,7 @@ describe('leaving', () => {
     board.told.length = 0;
     session.end();
     expect(session.state()).toMatchObject({ photo: null, waiting: false, inBoard: [] });
-    expect(board.told).toEqual(['holds 0', 'no visit photo', 'visit not over']);
+    expect(board.told).toEqual(['holds 0', 'no visit photo', 'visit resumed']);
   });
 });
 

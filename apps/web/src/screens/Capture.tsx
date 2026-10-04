@@ -264,34 +264,36 @@ export function Capture() {
   }, [marking.model.status]);
 
   // Leaving try-it ends the visit: by the time anyone comes back the darts may
-  // be out, or the camera recalibrated, and a carried mark would be a ghost.
+  // be out, or the camera recalibrated, and a mark of a dart in the board would
+  // be a ghost.
   // Unmounting cannot ask, so it saves nothing: Back asks first (see leave()).
   useEffect(() => {
     if (mode !== 'try') session.end();
   }, [mode, session]);
   useEffect(() => () => session.end(), [session]);
 
-  /** Where Done and Back go, once the session lets them. */
-  const go = (exit: Exit | null) => {
-    if (exit === 'done') setMode('setup');
-    else if (exit === 'back') {
-      if (cameraReturn) setScreen(cameraReturn);
-      else goHome();
-    }
+  // Done and Back go once the session lets them: straight away, or after the
+  // question about marks nobody saved has been answered.
+  const leaving = marking.leaving;
+  useEffect(() => {
+    if (!leaving || leaving.asking) return;
+    if (leaving.exit === 'done') setMode('setup');
+    else if (cameraReturn) setScreen(cameraReturn);
+    else goHome();
+    // Only a new decision to leave moves anyone.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaving]);
+
+  const leave = (exit: Exit) => session.leave(exit);
+
+  /** The storage numbers follow whatever wrote or deleted a photograph. */
+  const refreshIf = (wrote: boolean) => {
+    if (wrote) void refreshStats();
   };
-
-  /** Done or Back: straight away, unless there are marks nobody saved. */
-  const leave = (exit: Exit) => go(session.leave(exit));
-
-  /** Each saves or takes back a photograph, or may: the count follows. */
-  const save = () => void session.save().then(refreshStats);
-  const noNewDart = () => void session.noNewDart().then(refreshStats);
-  const undo = () => void session.undo().then(refreshStats);
-  const answer = (choice: 'save' | 'discard') =>
-    void session.answer(choice).then((exit) => {
-      void refreshStats();
-      go(exit);
-    });
+  const save = () => void session.save().then(refreshIf);
+  const noNewDart = () => void session.noNewDart().then(refreshIf);
+  const undo = () => void session.undo().then(refreshIf);
+  const answer = (choice: 'save' | 'discard') => void session.answer(choice).then(refreshIf);
 
   useEffect(
     () => () => {
@@ -458,7 +460,7 @@ export function Capture() {
                   {t.capture.doneTrying}
                 </button>
               </div>
-              {marking.leaving && (
+              {marking.leaving?.asking && (
                 <div className="panel" role="alertdialog" aria-label={t.capture.unsavedTitle}>
                   <p>{t.capture.unsavedTitle}</p>
                   <div className="controls">
