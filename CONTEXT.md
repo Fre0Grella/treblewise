@@ -51,6 +51,10 @@ A capture-lab visit the model is kept out of entirely, so a person marks it from
 The screen where the camera is set up and calibrated, and throws are marked to build training data.
 _Avoid_: capture screen, camera setup
 
+**Marking session**:
+The capture lab's try-it loop: the photograph being marked, the newer one waiting behind it, the darts in the board, the blind roll, the let-stand/corrected tally, undo of the last save, and leaving with marks unsaved.
+_Avoid_: try-it state, pending frame (a pending frame is just the photograph being marked)
+
 **Report**:
 In a game, opening the **visit photo** to mark where the visit's darts really landed, which corrects the score and saves a labelled photograph.
 
@@ -59,6 +63,7 @@ In a game, opening the **visit photo** to mark where the visit's darts really la
 - A **visit** has at most three darts; while it lasts, those darts are the **darts in the board**.
 - A **visit** ends in a **pull-out phase**, which ends at an **empty board**, at "Darts out", or when the next visit's first dart is entered by hand.
 - The **board watcher** has one owner at a time: the **capture lab** or a game. The owner decides when a **visit** is over and when a photograph is read; the **board watcher** decides what a **settle** shows.
+- In the **capture lab**, the **marking session** owns the **board watcher**: it hands it each settle, opens or holds the photograph, and keeps it told of saves, undos and "Board cleared".
 - Reading a photograph yields at most one **proposal**, never one that a dart in the board claims.
 
 ## Example dialogue
