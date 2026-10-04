@@ -25,12 +25,10 @@ import { strings } from '../i18n/index.js';
 import {
   DEFAULT_SETTINGS,
   deleteMatch as deleteStoredMatch,
-  deleteProfile as deleteStoredProfile,
   listMatches,
   listProfiles,
   loadSettings,
   putMatch,
-  putProfile,
   type Profile,
   type Settings,
   type StoredMatch,
@@ -38,6 +36,7 @@ import {
 
 import type { PairState, PairingConnection } from '../pairing/session.js';
 import { hashForScreen, type Screen } from '../route.js';
+import { createPlayers } from './players.js';
 import { createSettings } from './settings.js';
 
 export type { Screen };
@@ -163,6 +162,7 @@ function newId(): string {
 
 export const useMatchStore = create<MatchState>((set, get) => {
   const settings = createSettings({ get, set });
+  const players = createPlayers({ get, set });
 
   /** Applies a new event list: folds it, persists it, and calls the score. */
   const commit = (events: MatchEvent[], options: { speak?: boolean; first?: string[] } = {}) => {
@@ -246,17 +246,7 @@ export const useMatchStore = create<MatchState>((set, get) => {
     },
 
     startMatch(config) {
-      // Playing marks a profile as used, which is what orders the picker.
-      const now = Date.now();
-      const played = get().profiles.map((profile) =>
-        config.players.some((player) => player.id === profile.id && !player.temporary)
-          ? { ...profile, lastPlayedAt: now }
-          : profile,
-      );
-      set({ profiles: played });
-      for (const profile of played) {
-        if (profile.lastPlayedAt === now) void putProfile(profile);
-      }
+      players.played(config.players);
 
       const match: StoredMatch = {
         id: newId(),
@@ -344,53 +334,11 @@ export const useMatchStore = create<MatchState>((set, get) => {
     setKeepFrames: (keepFrames) => settings.change('keepFrames', keepFrames),
     setAutoscoreGames: (autoscoreGames) => settings.change('autoscoreGames', autoscoreGames),
 
-    async createProfile(name) {
-      // The id comes from the name once, at creation, and never changes again:
-      // renaming someone must not orphan their history.
-      const trimmed = name.trim() || 'Player';
-      const base = trimmed.toLowerCase().replace(/\s+/g, ' ');
-      const taken = new Set(get().profiles.map((profile) => profile.id));
-      let id = base;
-      let suffix = 2;
-      while (taken.has(id)) id = `${base} ${suffix++}`;
-
-      const profile: Profile = { id, name: trimmed, createdAt: Date.now(), lastPlayedAt: null };
-      await putProfile(profile);
-      set({ profiles: [profile, ...get().profiles] });
-      return profile;
-    },
-
-    addSessionGuest(name) {
-      // A guest keeps an id of their own so two guests in one match stay apart,
-      // and `temporary` keeps them out of the statistics for good.
-      const guest: PlayerConfig = {
-        id: `guest-${Math.random().toString(36).slice(2, 8)}`,
-        name: name.trim() || 'Guest',
-        temporary: true,
-      };
-      set({ sessionGuests: [...get().sessionGuests, guest] });
-      return guest;
-    },
-
-    removeSessionGuest(id) {
-      set({ sessionGuests: get().sessionGuests.filter((guest) => guest.id !== id) });
-    },
-
-    async renameProfile(id, name) {
-      const trimmed = name.trim();
-      if (!trimmed) return;
-      const profiles = get().profiles.map((profile) =>
-        profile.id === id ? { ...profile, name: trimmed } : profile,
-      );
-      set({ profiles });
-      const changed = profiles.find((profile) => profile.id === id);
-      if (changed) await putProfile(changed);
-    },
-
-    async removeProfile(id) {
-      await deleteStoredProfile(id);
-      set({ profiles: get().profiles.filter((profile) => profile.id !== id) });
-    },
+    createProfile: players.createProfile,
+    renameProfile: players.renameProfile,
+    removeProfile: players.removeProfile,
+    addSessionGuest: players.addSessionGuest,
+    removeSessionGuest: players.removeSessionGuest,
 
     setMode(mode) {
       set({ mode });
