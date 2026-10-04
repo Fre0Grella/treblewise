@@ -34,49 +34,14 @@ import {
   type StoredMatch,
 } from '../storage/db.js';
 
-import type { PairState, PairingConnection } from '../pairing/session.js';
+import type { PairingConnection } from '../pairing/session.js';
 import { hashForScreen, type Screen } from '../route.js';
-import { createPlayers } from './players.js';
-import { createSettings } from './settings.js';
+import { createLobbySession, recallLobbySession, type LobbySessionState, type PlayMode } from './lobbySession.js';
+import { createPlayers, type PlayersState } from './players.js';
+import { createSettings, type SettingsState } from './settings.js';
 
 export type { Screen };
-
-/** Solo: the phone does everything. Paired: a phone films, a laptop thinks. */
-export type PlayMode = 'solo' | 'paired';
-
-/** What the paired phone last said about itself. */
-export interface PhoneStatus {
-  battery?: number;
-  charging?: boolean;
-  width?: number;
-  height?: number;
-}
-
-/**
- * Remembered for the tab only, so a reload can say "you were paired, the phone
- * is gone" instead of pretending nothing happened. The connection itself
- * cannot survive a reload. The key keeps the project's old name, so a tab
- * open across the rename still finds it.
- */
-const SESSION_KEY = 'oche.session';
-
-function rememberSession(session: PlayMode | null): void {
-  try {
-    if (session) sessionStorage.setItem(SESSION_KEY, session);
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // No storage (private window, tests): the lobby simply starts fresh.
-  }
-}
-
-function recalledSession(): PlayMode | null {
-  try {
-    const value = sessionStorage.getItem(SESSION_KEY);
-    return value === 'solo' || value === 'paired' ? value : null;
-  } catch {
-    return null;
-  }
-}
+export type { PhoneStatus, PlayMode } from './lobbySession.js';
 
 export interface ThrowOptions {
   pos?: Point;
@@ -87,36 +52,18 @@ export interface ThrowOptions {
   call?: boolean;
 }
 
-interface MatchState {
+/**
+ * The app's state, in one zustand store for now. The settings, the players and
+ * the lobby session each describe their own part, beside their logic.
+ */
+interface MatchState extends SettingsState, PlayersState, LobbySessionState {
   ready: boolean;
   screen: Screen;
   /** Where the camera setup goes back to: the match it was opened from, if any. */
   cameraReturn: Screen | null;
-  settings: Settings;
   match: StoredMatch | null;
   snapshot: MatchSnapshot | null;
   history: StoredMatch[];
-
-  profiles: Profile[];
-  /**
-   * Guests added during this session. They are people, for as long as the tab
-   * is open — added once and then pickable again for the next leg — but they
-   * are never written to IndexedDB and never reach the statistics.
-   */
-  sessionGuests: PlayerConfig[];
-  mode: PlayMode;
-  /** The paired phone, when there is one. Never persisted: it is a live socket. */
-  pairing: PairingConnection | null;
-  /** The video coming from the paired phone. */
-  remoteStream: MediaStream | null;
-  /**
-   * The lobby's session: set once a mode is chosen (and, for two devices, the
-   * phone is connected). While there is one, every screen goes back to the
-   * lobby rather than to the landing page, so nobody pairs twice by accident.
-   */
-  session: PlayMode | null;
-  pairState: PairState | null;
-  phone: PhoneStatus | null;
 
   init: (screen?: Screen) => Promise<void>;
   setScreen: (screen: Screen) => void;
@@ -163,6 +110,7 @@ function newId(): string {
 export const useMatchStore = create<MatchState>((set, get) => {
   const settings = createSettings({ get, set });
   const players = createPlayers({ get, set });
+  const lobby = createLobbySession({ get, set });
 
   /** Applies a new event list: folds it, persists it, and calls the score. */
   const commit = (events: MatchEvent[], options: { speak?: boolean; first?: string[] } = {}) => {
@@ -215,11 +163,10 @@ export const useMatchStore = create<MatchState>((set, get) => {
       // A match in progress is resumed, but the landing page still comes first
       // unless the address says otherwise: arriving at treblewise should explain what
       // it is before it drops you into someone else's half-finished leg.
-      const recalled = recalledSession();
-      const resolved: Screen = screen ?? (recalled ? 'lobby' : 'landing');
+      const recalled = recallLobbySession();
+      const resolved: Screen = screen ?? (recalled.session ? 'lobby' : 'landing');
       set({
-        session: recalled,
-        mode: recalled ?? 'solo',
+        ...recalled,
         ready: true,
         settings: stored,
         history: matches,
@@ -340,48 +287,17 @@ export const useMatchStore = create<MatchState>((set, get) => {
     addSessionGuest: players.addSessionGuest,
     removeSessionGuest: players.removeSessionGuest,
 
-    setMode(mode) {
-      set({ mode });
-      if (mode === 'solo') get().clearPairing();
-    },
-
-    setPairing(pairing, remoteStream) {
-      set({ pairing, remoteStream, mode: 'paired', pairState: pairing.state, phone: null });
-      // From here on the store owns the connection, and the lobby shows how it
-      // is doing: the screen that paired it may be long gone.
-      pairing.onState = (state) => {
-        if (get().pairing === pairing) set({ pairState: state });
-      };
-      pairing.onMessage = (message) => {
-        if (get().pairing !== pairing) return;
-        if (message.type === 'bye') set({ pairState: 'closed' });
-        if (message.type === 'status') {
-          const { battery, charging, width, height } = message;
-          set({ phone: { battery, charging, width, height } });
-        }
-      };
-    },
-
-    clearPairing() {
-      const { pairing } = get();
-      if (pairing) {
-        pairing.onState = null;
-        pairing.onMessage = null;
-        pairing.close();
-      }
-      set({ pairing: null, remoteStream: null, pairState: null, phone: null });
-    },
+    setMode: lobby.setMode,
+    setPairing: lobby.setPairing,
+    clearPairing: lobby.clearPairing,
 
     enterLobby(mode) {
-      set({ session: mode, mode });
-      rememberSession(mode);
+      lobby.enter(mode);
       get().setScreen('lobby');
     },
 
     leaveLobby() {
-      get().clearPairing();
-      set({ session: null, mode: 'solo' });
-      rememberSession(null);
+      lobby.leave();
       get().setScreen('landing');
     },
 

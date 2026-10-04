@@ -71,6 +71,12 @@ _Avoid_: try-it state, pending frame (a pending frame is just the photograph bei
 **Report**:
 In a game, opening the **visit photo** to mark where the visit's darts really landed, which corrects the score and saves a labelled photograph.
 
+### Playing
+
+**Lobby session**:
+How this tab is playing, solo or paired with a phone, from the moment a mode is chosen until the lobby is left. While there is one, "back" goes to the lobby, and the connection to the phone is kept across every screen.
+_Avoid_: session on its own (a **marking session** is something else), pairing (the connection to the phone is one part of a paired lobby session)
+
 ## Relationships
 
 - A **visit** has at most three darts; while it lasts, those darts are the **darts in the board**.
@@ -79,6 +85,7 @@ In a game, opening the **visit photo** to mark where the visit's darts really la
 - In the **capture lab**, the **marking session** owns the **board watcher**: it hands it each settle, opens or holds the photograph, and keeps it told of saves, undos and "Board cleared".
 - In a game, the **game visit** owns the **board watcher** the same way.
 - Reading a photograph yields at most one **proposal**, never one that a dart in the board claims.
+- A **lobby session** survives a reload of the tab, as solo or paired; the connection to the phone does not, so a reload knows it was paired and that the phone is gone.
 
 ## Example dialogue
 
