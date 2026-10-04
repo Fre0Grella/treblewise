@@ -210,42 +210,6 @@ export const useMatchStore = create<MatchState>((set, get) => {
       ]);
       const unfinished = matches.find((m) => !m.finished && m.events.length > 0);
 
-      // Before profiles existed, a player's id was derived from their name at
-      // the start of every match — the same derivation `createProfile` still
-      // uses. So the matches already on this device name their players, and a
-      // returning player should find their history waiting rather than a list
-      // that has forgotten them.
-      let seeded = profiles;
-      if (!settings.profilesSeeded) {
-        const found = new Map<string, Profile>();
-        for (const match of matches) {
-          const at = match.updatedAt;
-          for (const player of match.config.players) {
-            if (player.temporary) continue;
-            const known = found.get(player.id) ?? profiles.find((p) => p.id === player.id);
-            if (known) {
-              found.set(player.id, { ...known, lastPlayedAt: Math.max(known.lastPlayedAt ?? 0, at) });
-              continue;
-            }
-            found.set(player.id, {
-              id: player.id,
-              name: player.name,
-              createdAt: match.createdAt,
-              lastPlayedAt: at,
-            });
-          }
-        }
-        const fresh = [...found.values()].filter((p) => !profiles.some((known) => known.id === p.id));
-        if (fresh.length > 0) {
-          await Promise.all(fresh.map((profile) => putProfile(profile)));
-          seeded = [...fresh, ...profiles].sort(
-            (a, b) => (b.lastPlayedAt ?? b.createdAt) - (a.lastPlayedAt ?? a.createdAt),
-          );
-        }
-        void saveSetting('profilesSeeded', true);
-        settings.profilesSeeded = true;
-      }
-
       // A match in progress is resumed, but the landing page still comes first
       // unless the address says otherwise: arriving at treblewise should explain what
       // it is before it drops you into someone else's half-finished leg.
@@ -257,7 +221,7 @@ export const useMatchStore = create<MatchState>((set, get) => {
         ready: true,
         settings,
         history: matches,
-        profiles: seeded,
+        profiles,
         match: unfinished ?? null,
         snapshot: unfinished ? reduceMatch(unfinished.config, unfinished.events) : null,
         screen: resolved === 'game' && !unfinished ? 'setup' : resolved,

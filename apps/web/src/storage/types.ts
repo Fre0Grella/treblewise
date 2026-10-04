@@ -116,7 +116,8 @@ export interface Settings {
   /**
    * Whether the profile list has been seeded from matches played before
    * profiles existed. It is a one-shot: without it, deleting every profile on
-   * purpose would bring them all back on the next load.
+   * purpose would bring them all back on the next load. The data migration in
+   * storage/db.ts sets it when the database opens; nothing else reads it.
    */
   profilesSeeded: boolean;
 }
