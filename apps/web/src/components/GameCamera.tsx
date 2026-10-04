@@ -110,6 +110,13 @@ export function GameCamera({
   const [reporting, setReporting] = useState(false);
   const [frameUrl, setFrameUrl] = useState<string | null>(null);
   const [marks, setMarks] = useState<(LabelledDart | null)[]>([]);
+  /**
+   * The marks the report opened with for darts tapped on the drawn board: a
+   * point on a drawing, not the tip in the photograph. Left where they are,
+   * the photograph is kept but waits in Review to be confirmed. Moving one
+   * replaces it with a person's mark, which is no longer in this set.
+   */
+  const boardPlaced = useRef(new WeakSet<LabelledDart>());
   const [saved, setSaved] = useState<string | null>(null);
   // During a game the preview is clutter: the coach line says whether the
   // camera is happy, and that is all anyone needs mid-leg. It is one tap away
@@ -377,19 +384,21 @@ export function GameCamera({
     setFrameUrl(url);
     // Pre-place a marker wherever a dart already has a position: correcting a
     // marker that is nearly right is much faster than placing three.
+    boardPlaced.current = new WeakSet();
     setMarks(
-      darts.map((dart) =>
-        dart.pos && usable
-          ? {
-              img: projectToImage(calibration, dart.pos),
-              board: dart.pos,
-              hit: dart.hit,
-              // The autoscorer's own reading stays the model's until a person
-              // moves it, so the trainer never grades the model against itself.
-              ...(dart.source === 'auto' ? { by: 'model' as const } : {}),
-            }
-          : null,
-      ),
+      darts.map((dart) => {
+        if (!dart.pos || !usable) return null;
+        const mark: LabelledDart = {
+          img: projectToImage(calibration, dart.pos),
+          board: dart.pos,
+          hit: dart.hit,
+          // The autoscorer's own reading stays the model's until a person
+          // moves it, so the trainer never grades the model against itself.
+          ...(dart.source === 'auto' ? { by: 'model' as const } : {}),
+        };
+        if (dart.source !== 'auto') boardPlaced.current.add(mark);
+        return mark;
+      }),
     );
     setReporting(true);
   };
@@ -412,6 +421,9 @@ export function GameCamera({
     // unmarked it would teach the model that a dart it can see is background.
     const complete = darts.length > 0 && marks.length === darts.length && labelled.length === darts.length;
     const byModel = labelled.some((mark) => mark.by === 'model');
+    // Marks a person placed or moved here, and the autoscorer's let stand, are
+    // accepted as they are; a drawn-board tap left unmoved waits in Review.
+    const confirmed = !labelled.some((mark) => boardPlaced.current.has(mark));
     const frame: CapturedFrame = {
       id: newId(),
       ts: Date.now(),
@@ -431,6 +443,7 @@ export function GameCamera({
       darts: labelled,
       labelled: labelled.length > 0,
       ...(byModel && modelInfo ? { model: modelInfo.name } : {}),
+      ...(confirmed ? { reviewed: true } : {}),
       reported: {
         hits: darts.map((dart) => formatHit(dart.hit)),
         dartIds: darts.map((dart) => dart.id),

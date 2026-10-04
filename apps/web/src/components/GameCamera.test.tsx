@@ -329,6 +329,29 @@ describe('the autoscorer in a game', () => {
     expect(saved.frames).toHaveLength(1);
     expect(saved.frames[0]!.darts.every((dart) => dart.by === 'model')).toBe(true);
     expect(saved.frames[0]!.model).toBe('test-model');
+    // The autoscorer's marks, let stand by a person: accepted already.
+    expect(saved.frames[0]!.reviewed).toBe(true);
+  });
+
+  it('keeps a dart tapped on the drawn board for Review to confirm, when its mark is left where it was', async () => {
+    useMatchStore.setState((state) => ({ settings: { ...state.settings, autoscoreGames: false } }));
+    URL.createObjectURL = () => 'blob:test';
+    URL.revokeObjectURL = () => undefined;
+    saved.frames = [];
+    const tapped = [
+      { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
+      { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'manual' as const },
+    ];
+    await start({ darts: tapped, visitInProgress: true });
+    await settle();
+    await act(async () => {
+      screen.getByRole('button', { name: /report/i }).click();
+    });
+    await act(async () => {
+      screen.getByRole('button', { name: /save report/i }).click();
+    });
+    expect(saved.frames).toHaveLength(1);
+    expect(saved.frames[0]!.reviewed).toBeUndefined();
   });
 
   it('leaves the visit to the player once a dart was entered by number', async () => {
