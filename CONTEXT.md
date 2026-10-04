@@ -22,8 +22,17 @@ _Avoid_: awaiting empty, clearing
 The darts coming out before the visit was thrown in full; the darts not thrown missed the board.
 
 **Game visit**:
-In a game, which visit's darts are in the board and where that visit stands: being thrown, held on screen until its darts come out, or closed. Held and closed are never recorded in the match's event log; a reload shows the last visit open again.
+In a game, which visit's darts are in the board and where that visit stands: **throwing**, **open**, **held** or **closed**. Open, held and closed are never recorded in the match's event log; a reload shows the last visit open again.
 _Avoid_: last visit, current visit (both are positions of the game visit, not separate things)
+
+**Open** (a visit):
+Thrown in full, with the autoscorer not scoring: still shown and still correctable until the next player throws or "Darts out" is pressed; the scoreboard has already moved on.
+
+**Held** (a visit):
+Thrown in full, with the autoscorer scoring: the scoreboard waits on the player who threw until the darts are seen coming out, or "Darts out" is pressed.
+
+**Closed** (a visit):
+Its darts are out of the board: no longer correctable from the game screen.
 
 ### Camera
 
