@@ -58,11 +58,9 @@ import {
 import { storageEstimate } from '../storage/db.js';
 import { DARTS_PER_VISIT, carriedInto, inBoardAfter, newDarts, onNewPhoto, worthSaving } from '../storage/visit.js';
 import { useMatchStore } from '../store/match.js';
-import { THUMB_SIZE, cameraSupported, type GrabbedFrame } from '../vision/camera.js';
-import { loadDetector, loadManifest, type Detector, type ModelManifest } from '../vision/detector.js';
+import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { cropFrameStyle, squareAround } from '../vision/crop.js';
-import { newDarts as newDartsIn } from '../vision/autoscore.js';
-import { boardLooksEmpty } from '../vision/imageStats.js';
+import { useBoardWatcher } from '../vision/useBoardWatcher.js';
 import { useCamera } from '../vision/useCamera.js';
 
 type Mode = 'setup' | 'calibrate' | 'try';
@@ -118,6 +116,17 @@ interface PendingFrame {
 }
 
 /**
+ * A settled photograph held back while the one on screen is being marked. Its
+ * thumbnails go with it, because the board watcher judges it when it opens,
+ * against the darts in the board then, not when the camera went still.
+ */
+interface WaitingPhoto {
+  grabbed: GrabbedFrame;
+  thumbnail?: Uint8Array;
+  before?: Uint8Array | null;
+}
+
+/**
  * With the autoscorer proposing, one visit in five is still left for a person
  * to mark from scratch. A visit where the model proposed anything can never be
  * in a test set (the model would be marking its own homework; see
@@ -152,14 +161,28 @@ export function Capture() {
   );
   /** The darts in the board as of the last saved photograph. */
   const [inBoard, setInBoard] = useState<LabelledDart[]>([]);
+  /**
+   * What the board shows between settles: the pull-out phase, the empty-board
+   * checks, and reading a photograph for a new dart (vision/boardWatcher.ts).
+   * The lab tells it which darts are in the board and when a visit is over,
+   * and asks it about a photograph when that photograph opens.
+   */
+  const { watcher, state: watching } = useBoardWatcher();
+  /**
+   * A full visit was saved and its darts are still in the board until someone
+   * pulls them. The photographs taken meanwhile show a hand reaching in, or
+   * darts half out; opened, they asked for a dart to be tapped and the model
+   * proposed the old darts as new ones. So during this phase no photograph is
+   * opened at all, and the coach says to pull the darts out.
+   */
+  const pullingOut = watching.pullingOut;
   /** The model the site ships, known from its manifest; the model itself loads only when asked for. */
-  const [modelInfo, setModelInfo] = useState<ModelManifest | null>(null);
-  const [detector, setDetector] = useState<Detector | null>(null);
+  const modelInfo = watching.model.manifest;
   // Off until a model has been tested on this board (issue #5): a proposal
   // from one that has not marks flights as often as tips.
   const [proposing, setProposing] = useState(false);
   /** The newest photograph, held back while the one on screen is being marked. */
-  const [waiting, setWaiting] = useState<GrabbedFrame | null>(null);
+  const [waiting, setWaiting] = useState<WaitingPhoto | null>(null);
   /** Leaving with marks on screen that are not saved: ask first. */
   const [leaving, setLeaving] = useState<'done' | 'back' | null>(null);
   const [savedNote, setSavedNote] = useState<string | null>(null);
@@ -181,8 +204,6 @@ export function Capture() {
   inBoardRef.current = inBoard;
   const waitingRef = useRef(waiting);
   waitingRef.current = waiting;
-  const detectorRef = useRef(detector);
-  detectorRef.current = proposing ? detector : null;
   /**
    * Whether the model is kept out of the current visit. Rolled when a visit
    * starts, and only then: rolled on every photograph of an empty board, a
@@ -195,34 +216,6 @@ export function Capture() {
   const startVisit = () => {
     blindVisitRef.current = Math.random() < BLIND_SHARE;
   };
-  /**
-   * A full visit was saved and its darts are still in the board until someone
-   * pulls them: the pull-out phase. The photographs taken meanwhile show a
-   * hand reaching in, or darts half out; opened, they asked for a dart to be
-   * tapped and the model proposed the old darts as new ones. So during this
-   * phase no photograph is opened at all, and the coach says to pull the darts
-   * out. It ends when the board looks as it did at calibration again, or when
-   * a person says the darts are out.
-   */
-  const awaitingEmptyRef = useRef(false);
-  const [pullingOut, setPullingOut] = useState(false);
-  const setAwaitingEmpty = (awaiting: boolean) => {
-    awaitingEmptyRef.current = awaiting;
-    setPullingOut(awaiting);
-  };
-  /** What each settled photograph looked like to the empty-board check. */
-  const emptyFrames = useRef(new WeakMap<GrabbedFrame, boolean>());
-  const emptyReferenceRef = useRef<Uint8Array | null>(null);
-  /** The board as it was just before each settle's change. */
-  const beforeFrames = useRef(new WeakMap<GrabbedFrame, Uint8Array>());
-  /**
-   * The empty board as it looked seconds before this visit's first dart: a far
-   * better reference for "the darts are out" than the calibration's, which
-   * can be hours old, taken in another light.
-   */
-  const recentEmptyRef = useRef<Uint8Array | null>(null);
-  /** The last saved photograph of this visit, to tell a new dart from a phantom (changeGate.ts). */
-  const visitPhotoRef = useRef<GrabbedFrame | null>(null);
   const callerRef = useRef(callerEnabled);
   callerRef.current = callerEnabled;
 
@@ -296,10 +289,13 @@ export function Capture() {
     const after = inBoardAfter(frame.darts);
     inBoardRef.current = after;
     setInBoard(after);
-    const full = frame.darts.length >= DARTS_PER_VISIT;
-    setAwaitingEmpty(full);
-    if (full) startVisit();
-    visitPhotoRef.current = after.length > 0 ? frame.grabbed : null;
+    // The watcher is told of every dart still in the board, a full visit's
+    // too: they stay until someone pulls them, and that is the pull-out phase.
+    watcher.holds(frame.darts, frame.darts.length > 0 ? frame.grabbed : null);
+    if (frame.darts.length >= DARTS_PER_VISIT) {
+      watcher.visitOver();
+      startVisit();
+    }
 
     URL.revokeObjectURL(frame.url);
     await putFrame(stored);
@@ -312,7 +308,7 @@ export function Capture() {
     );
     void refreshStats();
     openWaiting();
-  }, [refreshStats, t]);
+  }, [refreshStats, t, watcher]);
 
   /** Drops the photograph on screen without saving it. */
   const discardPending = useCallback(() => {
@@ -332,11 +328,8 @@ export function Capture() {
     if (next) openFrameRef.current(next);
   }
 
-  const openFrame = useCallback((grabbed: GrabbedFrame) => {
-    const carried = carriedInto(inBoardRef.current);
-    const model = detectorRef.current;
-    const current = calibrationRef.current;
-    const empty = emptyFrames.current.get(grabbed) === true;
+  const openFrame = useCallback((photo: WaitingPhoto) => {
+    const { grabbed } = photo;
     /** The photograph on screen, if nobody has started on it, goes. */
     const dropUntouched = () => {
       const previous = pendingRef.current;
@@ -346,30 +339,39 @@ export function Capture() {
         setPending(null);
       }
     };
-    // Pulling the darts out: nothing to mark until the board is empty, and an
-    // empty board with no darts carried is nothing to mark either.
-    if (awaitingEmptyRef.current || (empty && carried.length === 0)) {
-      if (empty) setAwaitingEmpty(false);
-      dropUntouched();
-      return;
+    // Judged now, not when the camera went still: a photograph can wait
+    // behind the one being marked, and only the darts in the board when it
+    // opens say what it shows.
+    const settled = watcher.settle(grabbed, photo.thumbnail, photo.before);
+    switch (settled.kind) {
+      case 'unfit':
+        return;
+      // Pulling the darts out: nothing to mark until the board is empty, and an
+      // empty board with no darts in it is nothing to mark either.
+      case 'pull-out':
+      case 'emptied':
+      case 'empty':
+        dropUntouched();
+        return;
+      // The darts came out before the visit was thrown in full, as in a game.
+      // Opened, it asked for a dart on a photograph of the empty board, and the
+      // next photograph carried marks for darts that were gone.
+      case 'early-pull':
+        inBoardRef.current = [];
+        setInBoard([]);
+        startVisit();
+        dropUntouched();
+        return;
     }
-    // An empty board with darts carried is an early pull, as in a game: the
-    // darts came out before the visit was thrown in full. Opened, it asked for
-    // a dart on a photograph of the empty board, and the next photograph
-    // carried marks for darts that were gone. Judged here and not at the
-    // settle, because a photograph can wait behind the one being marked, and
-    // only the darts in the board when it opens say what it shows.
-    if (empty) {
-      visitPhotoRef.current = null;
-      inBoardRef.current = [];
-      setInBoard([]);
-      startVisit();
-      dropUntouched();
-      return;
-    }
-    if (carried.length === 0) recentEmptyRef.current = beforeFrames.current.get(grabbed) ?? recentEmptyRef.current;
+
+    const carried = carriedInto(inBoardRef.current);
+    // Asked of the watcher, not of React state: a settle arrives between renders.
+    const { status, manifest } = watcher.state().model;
+    const model = status === 'ready' ? manifest : null;
     const blind = model !== null && blindVisitRef.current;
-    const checking = model !== null && current !== null && !blind;
+    // Every dart in the lab has a position and a full visit is never carried,
+    // so 'unreadable' does not happen here; if it did, a person would mark it.
+    const checking = model !== null && !blind && settled.kind === 'throw';
     const previous = pendingRef.current;
     if (previous) URL.revokeObjectURL(previous.url);
     const opened: PendingFrame = {
@@ -383,49 +385,43 @@ export function Capture() {
       missed: false,
       failed: false,
       blind,
-      ...(model ? { model: model.manifest.name } : {}),
+      ...(model ? { model: model.name } : {}),
     };
     // The ref moves now, not on the next render: a fast model can answer
     // before React has drawn the photograph, and its answer must still find it.
     pendingRef.current = opened;
     setPending(opened);
-    if (!checking || !model || !current) return;
+    if (!checking) return;
 
-    let failed = false;
-    const visitPhoto = carried.length > 0 ? visitPhotoRef.current : null;
-    // Beside darts already in the board, a candidate only counts where the
-    // photograph changed since the last one of this visit (vision/autoscore.ts).
-    void newDartsIn(model, grabbed, current, carried, visitPhoto)
-      .catch((cause: unknown) => {
-        console.warn('[treblewise] the autoscorer failed on a photograph:', cause);
-        failed = true;
-        return [];
-      })
-      .then((candidates) => {
-        // Only onto the same photograph, and only if nobody has started on it.
-        const frame = pendingRef.current;
-        if (!frame || frame.grabbed !== grabbed) return;
-        // One new dart per photograph is the normal case; a second is rarer than
-        // a phantom from a model that has not seen this board, so the strongest
-        // one is proposed and a genuine second dart is tapped by hand.
-        const fresh = frame.edited ? [] : candidates.slice(0, 1);
-        const marks: LabelledDart[] = fresh.map((d) => ({ img: d.img, board: d.board, hit: d.hit, by: 'model' }));
-        const next = {
-          ...frame,
-          darts: [...frame.darts, ...marks],
-          proposed: marks.length,
-          checking: false,
-          missed: !failed && marks.length === 0,
-          failed,
-        };
-        pendingRef.current = next;
-        setPending((p) => (p && p.grabbed === grabbed ? next : p));
-        if (marks.length > 0 && callerRef.current) {
-          unlockCaller();
-          marks.forEach((mark) => caller().say(t.caller.hit(mark.hit)));
-        }
-      });
-  }, [t]);
+    void watcher.read(grabbed).then((reading) => {
+      const frame = pendingRef.current;
+      if (!frame || frame.grabbed !== grabbed) return;
+      // A proposal goes only onto a photograph nobody has started on.
+      const marks: LabelledDart[] =
+        reading.kind === 'proposal' && !frame.edited
+          ? [{ img: reading.dart.img, board: reading.dart.board, hit: reading.dart.hit, by: 'model' }]
+          : [];
+      const answered = reading.kind === 'proposal' || reading.kind === 'none' || reading.kind === 'failed';
+      const next: PendingFrame = answered
+        ? {
+            ...frame,
+            darts: [...frame.darts, ...marks],
+            proposed: marks.length,
+            checking: false,
+            missed: reading.kind !== 'failed' && marks.length === 0,
+            failed: reading.kind === 'failed',
+          }
+        : // A reading of a board that is gone, or with no model at all: nothing
+          // to show, but the photograph must stop saying the model is looking.
+          { ...frame, checking: false };
+      pendingRef.current = next;
+      setPending((p) => (p && p.grabbed === grabbed ? next : p));
+      if (marks.length > 0 && callerRef.current) {
+        unlockCaller();
+        marks.forEach((mark) => caller().say(t.caller.hit(mark.hit)));
+      }
+    });
+  }, [t, watcher]);
   const openFrameRef = useRef(openFrame);
   openFrameRef.current = openFrame;
 
@@ -437,23 +433,18 @@ export function Capture() {
   const onSettle = useCallback(
     (grabbed: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) => {
       if (modeRef.current !== 'try') return;
+      // A photograph the calibration does not fit is never shown, not even as waiting.
       const current = calibrationRef.current;
       if (!current) return;
       if (current.width !== grabbed.width || current.height !== grabbed.height) return;
-      if (before) beforeFrames.current.set(grabbed, before);
-      if (thumbnail) {
-        const empty = [recentEmptyRef.current, emptyReferenceRef.current].some(
-          (reference) => reference !== null && boardLooksEmpty(thumbnail, reference, THUMB_SIZE, THUMB_SIZE),
-        );
-        emptyFrames.current.set(grabbed, empty);
-      }
 
+      const photo: WaitingPhoto = { grabbed, thumbnail, before };
       if (onNewPhoto(pendingRef.current) === 'wait') {
-        waitingRef.current = grabbed;
-        setWaiting(grabbed);
+        waitingRef.current = photo;
+        setWaiting(photo);
         return;
       }
-      openFrame(grabbed);
+      openFrame(photo);
     },
     [openFrame],
   );
@@ -470,7 +461,6 @@ export function Capture() {
     () => (calibration?.reference ? Uint8Array.from(calibration.reference) : null),
     [calibration],
   );
-  emptyReferenceRef.current = reference;
 
   const camera = useCamera({
     active: cameraOn || paired,
@@ -585,7 +575,8 @@ export function Capture() {
    * removed. With nothing on screen it deletes the last saved photograph.
    */
   const undoLast = async () => {
-    visitPhotoRef.current = null;
+    // The visit photo no longer shows exactly the darts in the board.
+    watcher.holds(inBoardRef.current, null);
     if (pending && pending.darts.length > 0) {
       const wasNew = pending.darts.length > pending.carried;
       setPending((frame) =>
@@ -605,7 +596,8 @@ export function Capture() {
       await deleteFrame(lastSaved.id);
       inBoardRef.current = lastSaved.inBoardBefore;
       setInBoard(lastSaved.inBoardBefore);
-      setAwaitingEmpty(false);
+      watcher.holds(lastSaved.inBoardBefore, null);
+      watcher.visitOver(false);
       setMarked((list) => list.slice(0, list.length - lastSaved.added));
       setLastSaved(null);
       void refreshStats();
@@ -617,10 +609,9 @@ export function Capture() {
    * screen, and let the model propose again.
    */
   const boardCleared = () => {
-    visitPhotoRef.current = null;
+    watcher.dartsOut();
     inBoardRef.current = [];
     setInBoard([]);
-    setAwaitingEmpty(false);
     startVisit();
     setPending((frame) =>
       frame
@@ -643,29 +634,22 @@ export function Capture() {
   );
 
   useEffect(() => {
-    if (mode !== 'try') return;
-    let cancelled = false;
-    void loadManifest().then((loaded) => {
-      if (!cancelled) setModelInfo(loaded);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
+    watcher.setCalibration(calibration);
+  }, [watcher, calibration]);
+
+  useEffect(() => {
+    if (mode === 'try') void watcher.findModel();
+  }, [watcher, mode]);
 
   // The runtime and the model are only fetched once proposals are switched on.
   useEffect(() => {
-    if (!proposing || !modelInfo || detector) return;
-    let cancelled = false;
-    void loadDetector().then((loaded) => {
-      if (cancelled) return;
-      setDetector(loaded);
-      if (!loaded) setProposing(false); // it could not be loaded here: say so by switching back off
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [proposing, modelInfo, detector]);
+    void watcher.switchModel(proposing);
+  }, [watcher, proposing]);
+
+  // It could not be loaded here: say so by switching back off.
+  useEffect(() => {
+    if (watching.model.status === 'unavailable') setProposing(false);
+  }, [watching.model.status]);
 
   // Leaving try-it ends the visit: by the time anyone comes back the darts may
   // be out, or the camera recalibrated, and a carried mark would be a ghost.
@@ -676,10 +660,10 @@ export function Capture() {
     setWaiting(null);
     inBoardRef.current = [];
     setInBoard([]);
-    setAwaitingEmpty(false);
-    visitPhotoRef.current = null;
+    watcher.holds([], null);
+    watcher.visitOver(false);
     startVisit();
-  }, [mode, discardPending]);
+  }, [mode, discardPending, watcher]);
 
   /** Done or Back: straight away, unless there are marks nobody saved. */
   const leave = (where: 'done' | 'back') => {
@@ -920,7 +904,7 @@ export function Capture() {
                       className={`chip${proposing ? ' chip-on' : ''}`}
                       onClick={() => setProposing((on) => !on)}
                     >
-                      {proposing ? (detector ? t.capture.proposingOn : t.capture.proposingLoading) : t.capture.proposingOff}
+                      {proposing ? (watching.model.status === 'ready' ? t.capture.proposingOn : t.capture.proposingLoading) : t.capture.proposingOff}
                     </button>
                   </div>
                   {pending?.blind && <p className="hint">{t.capture.blindFrame}</p>}
