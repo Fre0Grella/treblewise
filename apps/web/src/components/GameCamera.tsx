@@ -19,7 +19,7 @@
  * again (or the next dart is entered by hand) nothing is read.
  */
 
-import { assessBoardView, boardRegion, formatHit, type Hit, type Point } from '@treblewise/core';
+import { assessBoardView, boardRegion, formatHit, type DartSource, type Hit, type Point } from '@treblewise/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fill, useStrings } from '../i18n/index.js';
@@ -48,6 +48,8 @@ export interface ReportableDart {
   id: string;
   hit: Hit;
   pos?: Point;
+  /** How it was entered: a dart the autoscorer did not read is photographed when it is entered. */
+  source?: DartSource;
 }
 
 export interface GameCameraProps {
@@ -315,6 +317,25 @@ export function GameCamera({
     // re-rendered the card under the finger placing a marker, and flickered.
     paused: reporting,
   });
+
+  // A dart entered by hand has no photograph of its own: it was not read, so
+  // most likely it did not change the picture enough to be photographed (one
+  // hidden behind another, say). Take one now, so the report shows it.
+  const newestSeen = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const newest = darts.at(-1);
+    if (!newest || newest.id === newestSeen.current) return;
+    newestSeen.current = newest.id;
+    if (newest.source === 'auto' || !keepFrames || !camera.ready) return;
+    void camera.capture().then((photo) => {
+      if (!photo || newestSeen.current !== newest.id) return;
+      latestRef.current = photo;
+      setLatest(photo);
+      visitFrameRef.current = photo;
+    });
+    // The camera object changes every render; only a new dart matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [darts]);
 
   const view = useMemo(
     () =>

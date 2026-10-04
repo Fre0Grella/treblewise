@@ -15,6 +15,8 @@ const hooks = vi.hoisted(() => ({
   found: [] as { x: number; y: number }[],
   /** Whether the camera was last asked to pause. */
   paused: false,
+  /** What "take a photograph now" gives back. */
+  capture: null as GrabbedFrame | null,
 }));
 
 vi.mock('../vision/useCamera.js', () => ({
@@ -32,7 +34,7 @@ vi.mock('../vision/useCamera.js', () => ({
       motion: 0,
       change: 0,
       quality: null,
-      capture: async () => null,
+      capture: async () => hooks.capture,
       sampleThumbnail: () => null,
     };
   },
@@ -249,6 +251,35 @@ describe('the autoscorer in a game', () => {
 
     view.rerender(withProps(1));
     expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
+  it('photographs a dart entered by hand, so the report shows it', async () => {
+    useMatchStore.setState((state) => ({ settings: { ...state.settings, autoscoreGames: false } }));
+    const shownBlobs: Blob[] = [];
+    URL.createObjectURL = (blob: Blob | MediaSource) => {
+      shownBlobs.push(blob as Blob);
+      return 'blob:test';
+    };
+    URL.revokeObjectURL = () => undefined;
+    const two = [
+      { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
+      { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'auto' as const },
+    ];
+    const view = await start({ darts: two, visitInProgress: true });
+    await settle(DARTS, 'two darts');
+
+    // The third went in behind the others: nothing settled, so it is entered by hand.
+    const now = photo('three darts');
+    hooks.capture = now;
+    await act(async () => {
+      view.rerender(camera({ darts: [...two, { id: 'c', hit: T20, source: 'manual' }], visitComplete: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await act(async () => {
+      screen.getByRole('button', { name: /mark where they landed/i }).click();
+    });
+    expect(shownBlobs.at(-1)).toBe(now.jpeg);
+    hooks.capture = null;
   });
 
   it('leaves the visit to the player once a dart was entered by number', async () => {

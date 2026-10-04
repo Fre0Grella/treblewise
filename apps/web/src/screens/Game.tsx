@@ -236,6 +236,7 @@ export function Game() {
           darts={(visit?.darts ?? []).map((dart) => ({
             id: dart.id,
             hit: dart.hit,
+            source: dart.source,
             ...(dart.pos ? { pos: dart.pos } : {}),
           }))}
           visitComplete={visit?.complete === true}
