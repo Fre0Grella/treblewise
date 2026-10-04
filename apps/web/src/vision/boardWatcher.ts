@@ -21,10 +21,9 @@
  * camera went still.
  */
 
-import type { Point } from '@treblewise/core';
+import { DARTS_PER_VISIT, type Point } from '@treblewise/core';
 
 import type { Calibration } from '../storage/types.js';
-import { DARTS_PER_VISIT } from '../storage/visit.js';
 import { newDarts } from './autoscore.js';
 import { THUMB_SIZE, type GrabbedFrame } from './camera.js';
 import { loadDetector, loadManifest, type Detection, type Detector, type ModelManifest } from './detector.js';

@@ -13,9 +13,11 @@
  * "board cleared" is for.
  */
 
+import { DARTS_PER_VISIT } from '@treblewise/core';
+
 import type { LabelledDart } from './types.js';
 
-export const DARTS_PER_VISIT = 3;
+export { DARTS_PER_VISIT };
 
 /** The marks a new photograph opens with: the darts already in the board. */
 export function carriedInto(inBoard: readonly LabelledDart[]): LabelledDart[] {
