@@ -1,5 +1,5 @@
-import { MISS, formatHit, formatRoute, type Hit, type Point } from '@treblewise/core';
-import { useEffect, useRef, useState } from 'react';
+import { formatHit, formatRoute, type Hit, type Point } from '@treblewise/core';
+import { useEffect, useState } from 'react';
 
 import { Dartboard, type BoardDart } from '../components/Dartboard.js';
 import { GameCamera } from '../components/GameCamera.js';
@@ -7,8 +7,10 @@ import { Keypad } from '../components/Keypad.js';
 import { Scoreboard } from '../components/Scoreboard.js';
 import { unlockCaller } from '../caller/caller.js';
 import { playThud, playTurn, unlockSounds } from '../caller/sounds.js';
+import { useGameVisit } from '../game/useGameVisit.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { useMatchStore } from '../store/match.js';
+import type { GrabbedFrame } from '../vision/camera.js';
 
 export function Game() {
   const t = useStrings();
@@ -27,50 +29,52 @@ export function Game() {
 
   /** id of the dart being corrected, if any. */
   const [correcting, setCorrecting] = useState<string | null>(null);
-  /** The finished visit whose darts were seen coming out (its first dart's id): no longer correctable here. */
-  const [closedVisit, setClosedVisit] = useState<string | null>(null);
-  /** Bumped to open the camera's report from here; and whether one can be opened. */
-  const [reportRequests, setReportRequests] = useState(0);
-  const [canReport, setCanReport] = useState(false);
+  /** The photograph the game visit's report is open on: the game decides when, the camera shows it. */
+  const [reportOn, setReportOn] = useState<GrabbedFrame | null>(null);
 
-  // The turn passing is a sound. With the autoscorer scoring, it sounds when
-  // the darts come out (GameCamera says when); otherwise when a visit ends.
+  // Which visit's darts are in the board, and where it stands, is the game
+  // visit's (game/gameVisit.ts); so is what the camera sees of it.
   const autoscoring = settings.keepFrames && settings.autoscoreGames;
-  const visitsDone = snapshot?.legs.reduce((n, leg) => n + leg.visits.filter((v) => v.complete).length, 0) ?? 0;
-  const visitsDoneBefore = useRef(visitsDone);
-  useEffect(() => {
-    const more = visitsDone > visitsDoneBefore.current;
-    visitsDoneBefore.current = visitsDone;
-    if (more && !autoscoring && settings.soundsEnabled && snapshot?.winnerId === null) playTurn();
-  }, [visitsDone, autoscoring, settings.soundsEnabled, snapshot?.winnerId]);
+  const { gameVisit, state: gameVisitState, watcher } = useGameVisit({
+    snapshot,
+    autoscoring,
+    calibration: settings.calibration,
+  });
+
+  // The game visit says when the autoscorer entered a dart and when the turn
+  // passes; the sounds are the game's.
+  useEffect(
+    () =>
+      gameVisit.listen((signal) => {
+        if (!useMatchStore.getState().settings.soundsEnabled) return;
+        if (signal === 'dart-read') playThud();
+        else playTurn();
+      }),
+    [gameVisit],
+  );
 
   if (!snapshot) return null;
 
-  const leg = snapshot.legs.at(-1);
   const current = snapshot.current;
   const finished = snapshot.winnerId !== null;
 
-  // The visit in progress. Between visits this is the one just thrown, so the
-  // darts stay on the board until the next player throws — a player walking
+  // The visit being thrown, or between visits the one just thrown, so its
+  // darts stay on the board until the next player throws: a player walking
   // back from the board should still see where their darts landed.
-  const visit = leg?.visits.at(-1) ?? null;
-  const visitIsCurrent = current !== null && visit?.playerId === current.playerId && !visit.complete;
-
-  // The visit just thrown stays correctable until its darts come out (seen by
-  // the camera, or "I pulled the darts out") or the next player throws: the
-  // third dart used to vanish the moment it went in, wrong or not.
-  const lastVisit = !visitIsCurrent && visit?.complete ? visit : null;
-  const lastVisitKey = lastVisit?.darts[0]?.id ?? null;
-  const lastVisitOpen = lastVisit !== null && lastVisitKey !== null && lastVisitKey !== closedVisit && !finished;
-  // With the autoscorer scoring, the screen stays on the player who just threw
-  // until the darts come out: the next player is not at the oche yet, and the
-  // finished visit is the one anyone looks at to check it. The score itself
-  // has moved on; only what is shown waits.
-  const held = autoscoring && lastVisitOpen && lastVisit !== null;
+  const { visit, position } = gameVisitState;
+  const visitIsCurrent = position === 'throwing';
+  // The visit just thrown, for as long as it is correctable here.
+  const lastVisit = position === 'open' || position === 'held' ? visit : null;
+  // Held, with the autoscorer scoring: the screen stays on the player who just
+  // threw until the darts come out. The next player is not at the oche yet,
+  // and the finished visit is the one anyone looks at to check it. The score
+  // itself has moved on; only what is shown waits.
+  const held = position === 'held';
   const nameOf = (id: string) => snapshot.config.players.find((p) => p.id === id)?.name ?? '';
-  const dartsOut = () => {
-    setClosedVisit(lastVisitKey);
-    if (settings.soundsEnabled) playTurn();
+
+  const canReport = settings.keepFrames && gameVisitState.reportable;
+  const openReport = () => {
+    if (canReport && !reportOn && gameVisitState.photo) setReportOn(gameVisitState.photo);
   };
 
   const dartChip = (dart: { id: string; hit: Hit; source: string }) => (
@@ -121,7 +125,7 @@ export function Game() {
               being corrected, "Mark where they landed" takes its place beside
               "Darts out" instead of being searched for further down. */}
           <div className="held-actions">
-            <button type="button" className="primary darts-out" onClick={dartsOut}>
+            <button type="button" className="primary darts-out" onClick={() => gameVisit.dartsOut()}>
               {fill(t.game.dartsOut, { name: nameOf(current.playerId) })}
             </button>
             {correcting && canReport && lastVisit.darts.some((dart) => dart.id === correcting) && (
@@ -130,7 +134,7 @@ export function Game() {
                 className="chip held-mark"
                 onClick={() => {
                   setCorrecting(null);
-                  setReportRequests((n) => n + 1);
+                  openReport();
                 }}
               >
                 {t.report.markVisit}
@@ -156,7 +160,7 @@ export function Game() {
         </div>
       )}
 
-      {lastVisitOpen && !held && lastVisit && (
+      {position === 'open' && lastVisit && (
         <div className="throw-strip throw-strip-last">
           <span className="throw-who">
             {fill(t.game.lastVisit, {
@@ -233,34 +237,13 @@ export function Game() {
       {match && (
         <GameCamera
           matchId={match.id}
-          darts={(visit?.darts ?? []).map((dart) => ({
-            id: dart.id,
-            hit: dart.hit,
-            source: dart.source,
-            ...(dart.pos ? { pos: dart.pos } : {}),
-          }))}
-          visitComplete={visit?.complete === true}
-          visitInProgress={visitIsCurrent}
-          visitClosed={!lastVisitOpen}
-          reportRequests={reportRequests}
-          onReportAvailable={setCanReport}
+          gameVisit={gameVisit}
+          watcher={watcher}
           canThrow={current !== null && !finished}
+          report={reportOn}
+          onReport={openReport}
+          onCloseReport={() => setReportOn(null)}
           onCorrect={(dartId, hit, pos) => correctDart(dartId, hit, pos)}
-          onAutoDart={(hit, pos, confidence) => {
-            if (settings.soundsEnabled) playThud();
-            throwDart(hit, { pos, source: 'auto', confidence, call: true });
-          }}
-          onDartsPulled={(remaining) => {
-            // Pulled out with darts still to throw: the rest missed the board.
-            // Its darts are out, so the visit is not left open for correcting.
-            setClosedVisit(visit?.darts[0]?.id ?? null);
-            for (let n = 0; n < remaining; n += 1) throwDart(MISS, { source: 'auto' });
-            if (settings.soundsEnabled) playTurn();
-          }}
-          onTurnPassed={() => {
-            setClosedVisit(lastVisitKey);
-            if (settings.soundsEnabled) playTurn();
-          }}
         />
       )}
 

@@ -17,11 +17,17 @@
  * reading as the original, which is the agreement measure docs/03 asks for.
  * After a visit the darts have to come out first: until the board looks empty
  * again (or the next dart is entered by hand) nothing is read.
+ *
+ * What a settle means for the visit and the score is the game visit's
+ * (game/gameVisit.ts): this component is the camera, and hands it every
+ * photograph. Which report is open is the game's; this only shows it.
  */
 
-import { assessBoardView, boardRegion, formatHit, type DartSource, type Hit, type Point } from '@treblewise/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { assessBoardView, boardRegion, formatHit, type Hit, type Point } from '@treblewise/core';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
+import type { GameVisit } from '../game/gameVisit.js';
+import { useGameVisitState } from '../game/useGameVisit.js';
 import { fill, useStrings } from '../i18n/index.js';
 import {
   projectToImage,
@@ -33,47 +39,30 @@ import {
 import { useMatchStore } from '../store/match.js';
 import { unlockCaller } from '../caller/caller.js';
 import { unlockSounds } from '../caller/sounds.js';
-import type { BoardDart } from '../vision/boardWatcher.js';
+import type { BoardWatcher } from '../vision/boardWatcher.js';
 import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { squareAround } from '../vision/crop.js';
-import { useBoardWatcher } from '../vision/useBoardWatcher.js';
 import { useCamera } from '../vision/useCamera.js';
 import { BoardOverlay } from './BoardOverlay.js';
 import { PhoneBattery } from './PhoneBattery.js';
 import { PhotoStage } from './PhotoStage.js';
 import { SetupCoach } from './SetupCoach.js';
 
-export interface ReportableDart {
-  id: string;
-  hit: Hit;
-  pos?: Point;
-  /** How it was entered: a dart the autoscorer did not read is photographed when it is entered. */
-  source?: DartSource;
-}
-
 export interface GameCameraProps {
   matchId: string;
-  /** The darts of the visit on the board right now. */
-  darts: ReportableDart[];
-  /** True once the visit is thrown: the moment to mark where they landed. */
-  visitComplete: boolean;
-  /** The darts above belong to the visit being thrown now, not the last one. */
-  visitInProgress: boolean;
-  /** The game says the finished visit's darts are out ("Darts out" was pressed): stop waiting for them. */
-  visitClosed: boolean;
+  /** The game visit: handed every photograph, and the visit whose darts a report marks. */
+  gameVisit: GameVisit;
+  /** The board watcher the game visit drives: here only for its model, switched on with the setting. */
+  watcher: BoardWatcher;
   /** Someone is to throw: the match is on and not won. */
   canThrow: boolean;
+  /** The photograph the game visit's report is open on, or null: the game decides when one opens. */
+  report: GrabbedFrame | null;
+  /** "Report" pressed here: the game opens one, if it can be. */
+  onReport: () => void;
+  /** The report is done with, saved or cancelled. */
+  onCloseReport: () => void;
   onCorrect: (dartId: string, hit: Hit, pos: Point) => void;
-  /** The autoscorer read a new dart. */
-  onAutoDart: (hit: Hit, pos: Point, confidence: number) => void;
-  /** The darts came out with `remaining` of the visit unthrown: those missed the board. */
-  onDartsPulled: (remaining: number) => void;
-  /** The darts of a finished visit came out: the next player is up. */
-  onTurnPassed: () => void;
-  /** Opens the report when it changes: the game's own "Mark where they landed", beside the dart being corrected. */
-  reportRequests?: number;
-  /** Whether a report can be opened now (a photograph of this visit, a calibration that fits it). */
-  onReportAvailable?: (available: boolean) => void;
 }
 
 function newId(): string {
@@ -84,17 +73,13 @@ function newId(): string {
 
 export function GameCamera({
   matchId,
-  darts,
-  visitComplete,
-  visitInProgress,
-  visitClosed,
+  gameVisit,
+  watcher,
   canThrow,
+  report,
+  onReport,
+  onCloseReport,
   onCorrect,
-  onAutoDart,
-  onDartsPulled,
-  onTurnPassed,
-  reportRequests = 0,
-  onReportAvailable,
 }: GameCameraProps) {
   const t = useStrings();
   const keepFrames = useMatchStore((s) => s.settings.keepFrames);
@@ -105,9 +90,13 @@ export function GameCamera({
   const remoteStream = useMatchStore((s) => s.remoteStream);
   const pairing = useMatchStore((s) => s.pairing);
 
+  const { visit } = useGameVisitState(gameVisit);
+  const darts = visit?.darts ?? [];
+  const visitComplete = visit?.complete === true;
+
   const [latest, setLatest] = useState<GrabbedFrame | null>(null);
-  const [reporting, setReporting] = useState(false);
-  const [frameUrl, setFrameUrl] = useState<string | null>(null);
+  /** The report on screen: the photograph it was opened on, and its object URL. */
+  const [opened, setOpened] = useState<{ photo: GrabbedFrame; url: string } | null>(null);
   const [marks, setMarks] = useState<(LabelledDart | null)[]>([]);
   /**
    * The marks the report opened with for darts tapped on the drawn board: a
@@ -121,60 +110,15 @@ export function GameCamera({
   // camera is happy, and that is all anyone needs mid-leg. It is one tap away
   // when something looks wrong.
   const [showPreview, setShowPreview] = useState(false);
-  const latestRef = useRef<GrabbedFrame | null>(null);
-  /**
-   * The visit photo: the photograph taken when the visit's latest dart went
-   * in. The report shows this one, not the newest: by the time someone reports
-   * a dart, the newest photograph is often a hand pulling the darts out. And a
-   * new photograph is compared with it for what changed, for the same reason:
-   * the newest settle may be a hand reaching in, which would hide the dart
-   * that came after it.
-   */
-  const visitFrameRef = useRef<GrabbedFrame | null>(null);
-  const visitKey = useRef<{ first: string | undefined; count: number }>({ first: undefined, count: 0 });
-  useEffect(() => {
-    const first = darts[0]?.id;
-    const seen = visitKey.current;
-    if (first !== seen.first || darts.length > seen.count) visitFrameRef.current = latestRef.current;
-    visitKey.current = { first, count: darts.length };
-  }, [darts]);
-  /** The photograph a report is open on: fixed for as long as it is open. */
-  const [shown, setShown] = useState<GrabbedFrame | null>(null);
 
   // ---- the autoscorer -----------------------------------------------------
-  // What the board shows between settles, and reading a photograph for a new
-  // dart, is the board watcher's (vision/boardWatcher.ts). The game tells it
-  // what it knows and decides what a settle means for the score.
+  // The game visit drives the board watcher; the camera only switches its
+  // model on and off with the setting, and says what it is doing.
   const autoscore = useMatchStore((s) => s.settings.autoscoreGames);
   const setAutoscore = useMatchStore((s) => s.setAutoscoreGames);
-  const { watcher, state: watched } = useBoardWatcher();
+  const watched = useSyncExternalStore(watcher.subscribe, watcher.state);
   const modelInfo = watched.model.manifest;
   const modelReady = watched.model.status === 'ready';
-
-  useEffect(() => {
-    watcher.setCalibration(calibration);
-  }, [watcher, calibration]);
-
-  // The darts in the board are the visit's while it is being thrown. Once it
-  // is over they are still there, but nothing is read beside them: the
-  // pull-out phase comes first.
-  useEffect(() => {
-    watcher.holds((visitInProgress ? darts : []).map((dart): BoardDart => (dart.pos ? { board: dart.pos } : {})));
-    watcher.setVisitPhoto(visitFrameRef.current);
-  }, [watcher, darts, visitInProgress]);
-
-  // A finished visit leaves its darts in the board until someone pulls them,
-  // unless they were seen coming out before it ended; a dart of the next
-  // visit means they are out, which the watcher sees in the darts it holds.
-  const lastVisitDone = visitComplete && darts.length > 0 && !visitInProgress;
-  useEffect(() => {
-    if (lastVisitDone) watcher.visitOver();
-  }, [watcher, lastVisitDone]);
-  // Only during the pull-out phase: a visit closed by the next one's first
-  // dart already holds that dart, which "darts out" would forget.
-  useEffect(() => {
-    if (visitClosed && watcher.state().pullingOut) watcher.dartsOut();
-  }, [watcher, visitClosed]);
 
   useEffect(() => {
     if (keepFrames) void watcher.findModel();
@@ -188,25 +132,9 @@ export function GameCamera({
     if (watched.model.status === 'unavailable') setAutoscore(false); // it cannot run here: say so by switching back off
   }, [watched.model.status, setAutoscore]);
 
-  const read = async (frame: GrabbedFrame) => {
-    const reading = await watcher.read(frame);
-    if (reading.kind !== 'proposal') return;
-    // A reading takes a while. A dart entered by hand meanwhile makes it stale
-    // (the watcher says so); the autoscorer switched off is checked here.
-    if (!useMatchStore.getState().settings.autoscoreGames || !canThrow) return;
-    onAutoDart(reading.dart.hit, reading.dart.board, reading.dart.confidence);
-  };
-
-  // useCamera calls the latest of these, so the props it reads are current.
   const onSettle = (frame: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) => {
-    latestRef.current = frame;
     setLatest(frame);
-    if (!autoscore || !modelReady || !canThrow) return;
-
-    const seen = watcher.settle(frame, thumbnail, before);
-    if (seen.kind === 'emptied') onTurnPassed();
-    else if (seen.kind === 'early-pull') onDartsPulled(seen.missed);
-    else if (seen.kind === 'throw') void read(frame);
+    gameVisit.settle(frame, thumbnail, before);
   };
 
   // The capture trigger looks only at the board — see vision/settle.ts.
@@ -233,7 +161,7 @@ export function GameCamera({
     grab: mode === 'paired' && pairing ? () => pairing.requestPhoto() : null,
     // While a report is open nothing is photographed: a new photograph
     // re-rendered the card under the finger placing a marker, and flickered.
-    paused: reporting,
+    paused: report !== null,
   });
 
   // A dart entered by hand has no photograph of its own: it was not read, so
@@ -247,14 +175,12 @@ export function GameCamera({
     if (newest.source === 'auto' || !keepFrames || !camera.ready) return;
     void camera.capture().then((photo) => {
       if (!photo || newestSeen.current !== newest.id) return;
-      latestRef.current = photo;
       setLatest(photo);
-      visitFrameRef.current = photo;
-      watcher.setVisitPhoto(photo);
+      gameVisit.photographed(photo);
     });
     // The camera object changes every render; only a new dart matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [darts]);
+  }, [visit]);
 
   const view = useMemo(
     () =>
@@ -270,30 +196,12 @@ export function GameCamera({
     calibration.width === latest.width &&
     calibration.height === latest.height;
 
-  const canReport = keepFrames && usable && darts.length > 0;
+  // The game opens a report on a photograph, which stays fixed for as long as
+  // the report is open.
   useEffect(() => {
-    onReportAvailable?.(canReport);
-  }, [canReport, onReportAvailable]);
-
-  // The game asks for a report by bumping the counter.
-  const reportsSeen = useRef(reportRequests);
-  useEffect(() => {
-    if (reportRequests === reportsSeen.current) return;
-    reportsSeen.current = reportRequests;
-    if (canReport && !reporting) openReport();
-    // openReport is this render's; the request is what triggers it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportRequests]);
-
-  const openReport = () => {
-    const photo =
-      visitFrameRef.current && calibration && visitFrameRef.current.width === calibration.width
-        ? visitFrameRef.current
-        : latest;
-    if (!photo || !calibration) return;
-    const url = URL.createObjectURL(photo.jpeg);
-    setShown(photo);
-    setFrameUrl(url);
+    if (!report || !calibration) return;
+    const url = URL.createObjectURL(report.jpeg);
+    setOpened({ photo: report, url });
     // Pre-place a marker wherever a dart already has a position: correcting a
     // marker that is nearly right is much faster than placing three.
     boardPlaced.current = new WeakSet();
@@ -312,15 +220,17 @@ export function GameCamera({
         return mark;
       }),
     );
-    setReporting(true);
-  };
+    return () => URL.revokeObjectURL(url);
+    // The darts and the calibration are read as they are when it opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report]);
+  const shown = report !== null && opened?.photo === report ? report : null;
+  const frameUrl = shown ? opened!.url : null;
 
   const closeReport = () => {
-    if (frameUrl) URL.revokeObjectURL(frameUrl);
-    setFrameUrl(null);
-    setShown(null);
-    setReporting(false);
+    setOpened(null);
     setMarks([]);
+    onCloseReport();
   };
 
   const saveReport = async () => {
@@ -390,10 +300,6 @@ export function GameCamera({
     closeReport();
   };
 
-  useEffect(() => () => {
-    if (frameUrl) URL.revokeObjectURL(frameUrl);
-  }, [frameUrl]);
-
   if (!cameraSupported()) return null;
 
   const size = { width: camera.width || 1280, height: camera.height || 720 };
@@ -414,7 +320,7 @@ export function GameCamera({
           <button
             type="button"
             className={visitComplete && usable && darts.length > 0 ? 'primary' : 'chip'}
-            onClick={openReport}
+            onClick={onReport}
             disabled={!usable || darts.length === 0}
           >
             {visitComplete ? t.report.markVisit : t.report.button}
@@ -500,7 +406,7 @@ export function GameCamera({
       {keepFrames && !usable && latest !== null && <p className="hint">{t.capture.noCalibration}</p>}
       {keepFrames && latest === null && <p className="hint">{t.report.noFrame}</p>}
 
-      {reporting && frameUrl && shown && (
+      {frameUrl && shown && (
         <div className="overlay overlay-report" role="dialog" aria-label={t.report.title}>
           <div className="report">
             <div className="report-side">

@@ -1,11 +1,14 @@
 import { act, render, screen } from '@testing-library/react';
-import { CALIBRATION_BOARD_POINTS, type Hit, type Point } from '@treblewise/core';
+import { CALIBRATION_BOARD_POINTS, dartEvent, reduceMatch, type DartSource, type Hit, type Point } from '@treblewise/core';
+import { useEffect, useMemo, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { GameVisitState } from '../game/gameVisit.js';
+import { useGameVisit } from '../game/useGameVisit.js';
 import { useMatchStore } from '../store/match.js';
 import type { CapturedFrame } from '../storage/frames.js';
 import type { GrabbedFrame } from '../vision/camera.js';
-import { GameCamera, type ReportableDart } from './GameCamera.js';
+import { GameCamera } from './GameCamera.js';
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -90,31 +93,81 @@ async function settle(thumbnail: Uint8Array = DARTS, content = 'x'): Promise<Gra
 
 const T20: Hit = { sector: 20, ring: 'treble', value: 60 };
 
+const config = {
+  startScore: 501,
+  inRule: 'straight' as const,
+  outRule: 'double' as const,
+  legsPerSet: 1,
+  setsToWin: 1,
+  players: [
+    { id: 'ann', name: 'Ann' },
+    { id: 'bob', name: 'Bob' },
+  ],
+};
+
+interface TestDart {
+  id: string;
+  hit: Hit;
+  pos?: Point;
+  source?: DartSource;
+}
+
 describe('the autoscorer in a game', () => {
   const onAutoDart = vi.fn<(hit: Hit, pos: Point, confidence: number) => void>();
-  const onDartsPulled = vi.fn<(remaining: number) => void>();
+  /** A dart entered because the darts came out before the visit was thrown in full. */
+  const onMissed = vi.fn<(hit: Hit) => void>();
   const onTurnPassed = vi.fn<() => void>();
+  /** The game visit's state, and opening its report the way the game does. */
+  const game = { state: null as GameVisitState | null, openReport: () => undefined as void };
 
-  function camera(props: { darts?: ReportableDart[]; visitComplete?: boolean; visitInProgress?: boolean }) {
+  /**
+   * The camera as the game screen wires it, on a match of these darts: Ann's
+   * first visit, thrown in full at three. The darts the game visit enters are
+   * recorded rather than entered.
+   */
+  function Harness({ darts }: { darts: TestDart[] }) {
+    const snapshot = useMemo(
+      () =>
+        reduceMatch(
+          config,
+          darts.map((dart) =>
+            dartEvent(dart.hit, { id: dart.id, ts: 0, source: dart.source ?? 'manual', ...(dart.pos ? { pos: dart.pos } : {}) }),
+          ),
+        ),
+      [darts],
+    );
+    const autoscoring = useMatchStore((s) => s.settings.keepFrames && s.settings.autoscoreGames);
+    const calibration = useMatchStore((s) => s.settings.calibration);
+    const { gameVisit, state, watcher } = useGameVisit(
+      { snapshot, autoscoring, calibration },
+      { throwDart: (hit, options) => (options.call ? onAutoDart(hit, options.pos!, options.confidence!) : onMissed(hit)) },
+    );
+    useEffect(() => gameVisit.listen((signal) => signal === 'turn-passed' && onTurnPassed()), [gameVisit]);
+    const [report, setReport] = useState<GrabbedFrame | null>(null);
+    const openReport = () => {
+      if (state.reportable && state.photo) setReport(state.photo);
+    };
+    game.state = state;
+    game.openReport = openReport;
     return (
       <GameCamera
         matchId="m"
-        darts={props.darts ?? []}
-        visitComplete={props.visitComplete ?? false}
-        visitInProgress={props.visitInProgress ?? false}
-        visitClosed={false}
+        gameVisit={gameVisit}
+        watcher={watcher}
         canThrow
+        report={report}
+        onReport={openReport}
+        onCloseReport={() => setReport(null)}
         onCorrect={() => undefined}
-        onAutoDart={onAutoDart}
-        onDartsPulled={onDartsPulled}
-        onTurnPassed={onTurnPassed}
       />
     );
   }
 
+  const camera = (darts: TestDart[] = []) => <Harness darts={darts} />;
+
   beforeEach(async () => {
     onAutoDart.mockReset();
-    onDartsPulled.mockReset();
+    onMissed.mockReset();
     onTurnPassed.mockReset();
     hooks.found = [];
     const { calibrate } = await import('../storage/frames.js');
@@ -138,8 +191,8 @@ describe('the autoscorer in a game', () => {
   });
 
   /** Renders, and waits for the model to load. */
-  async function start(props: Parameters<typeof camera>[0] = {}) {
-    const view = render(camera(props));
+  async function start(darts: TestDart[] = []) {
+    const view = render(camera(darts));
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -158,8 +211,8 @@ describe('the autoscorer in a game', () => {
   });
 
   it('reads the second dart beside the first, not the first again', async () => {
-    const view = await start({ darts: [{ id: 'a', hit: T20, pos: { x: 0, y: 103 } }], visitInProgress: true });
-    view.rerender(camera({ darts: [{ id: 'a', hit: T20, pos: { x: 0, y: 103 } }], visitInProgress: true }));
+    const view = await start([{ id: 'a', hit: T20, pos: { x: 0, y: 103 } }]);
+    view.rerender(camera([{ id: 'a', hit: T20, pos: { x: 0, y: 103 } }]));
     hooks.found = [
       { x: 0.4, y: 103.1 },
       { x: 5, y: 103 },
@@ -175,7 +228,7 @@ describe('the autoscorer in a game', () => {
       { id: 'b', hit: T20, pos: { x: 5, y: 103 } },
       { id: 'c', hit: T20, pos: { x: -5, y: 103 } },
     ];
-    await start({ darts: thrown, visitComplete: true });
+    await start(thrown);
     hooks.found = [{ x: 0, y: 103 }];
     await settle(); // a hand pulling the darts: all three still seen
     expect(onAutoDart).not.toHaveBeenCalled();
@@ -195,13 +248,14 @@ describe('the autoscorer in a game', () => {
       { id: 'a', hit: T20, pos: { x: 0, y: 103 } },
       { id: 'b', hit: T20, pos: { x: 5, y: 103 } },
     ];
-    const view = await start({ darts: two, visitInProgress: true });
+    const view = await start(two);
     await settle(EMPTY);
-    expect(onDartsPulled).toHaveBeenCalledWith(1);
+    expect(onMissed).toHaveBeenCalledTimes(1);
+    expect(onTurnPassed).toHaveBeenCalledTimes(1);
 
     // The missing dart is entered and the visit ends; its darts are already
     // out, so the next dart thrown is read straight away.
-    view.rerender(camera({ darts: [...two, { id: 'c', hit: { sector: 0, ring: 'miss', value: 0 } }], visitComplete: true }));
+    view.rerender(camera([...two, { id: 'c', hit: { sector: 0, ring: 'miss', value: 0 } }]));
     hooks.found = [{ x: 30, y: -50 }];
     await settle();
     expect(onAutoDart).toHaveBeenCalledTimes(1);
@@ -219,7 +273,7 @@ describe('the autoscorer in a game', () => {
     const view = await start();
     const withTheDart = await settle(DARTS, 'with the dart');
     const dart = { id: 'a', hit: T20, pos: { x: 0, y: 103 } };
-    view.rerender(camera({ darts: [dart], visitInProgress: true }));
+    view.rerender(camera([dart]));
     await settle(DARTS, 'a hand');
 
     expect(hooks.paused).toBe(false);
@@ -231,35 +285,20 @@ describe('the autoscorer in a game', () => {
     expect(hooks.paused).toBe(true);
   });
 
-  it('opens the report when the game asks, and says when it can', async () => {
+  it('opens the report when the game asks, once the game visit says it can', async () => {
     useMatchStore.setState((state) => ({ settings: { ...state.settings, autoscoreGames: false } }));
     URL.createObjectURL = () => 'blob:test';
     URL.revokeObjectURL = () => undefined;
-    const available = vi.fn<(available: boolean) => void>();
     const dart = { id: 'a', hit: T20, pos: { x: 0, y: 103 } };
-    const withProps = (reportRequests: number) => (
-      <GameCamera
-        matchId="m"
-        darts={[dart]}
-        visitComplete
-        visitInProgress={false}
-        visitClosed={false}
-        canThrow
-        onCorrect={() => undefined}
-        onAutoDart={onAutoDart}
-        onDartsPulled={onDartsPulled}
-        onTurnPassed={onTurnPassed}
-        reportRequests={reportRequests}
-        onReportAvailable={available}
-      />
-    );
-    const view = render(withProps(0));
-    expect(available).toHaveBeenLastCalledWith(false); // no photograph yet
+    render(camera([dart]));
+    expect(game.state!.reportable).toBe(false); // no photograph yet
     await settle();
-    expect(available).toHaveBeenLastCalledWith(true);
+    expect(game.state!.reportable).toBe(true);
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    view.rerender(withProps(1));
+    await act(async () => {
+      game.openReport();
+    });
     expect(screen.getByRole('dialog')).toBeDefined();
   });
 
@@ -275,14 +314,14 @@ describe('the autoscorer in a game', () => {
       { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
       { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'auto' as const },
     ];
-    const view = await start({ darts: two, visitInProgress: true });
+    const view = await start(two);
     await settle(DARTS, 'two darts');
 
     // The third went in behind the others: nothing settled, so it is entered by hand.
     const now = photo('three darts');
     hooks.capture = now;
     await act(async () => {
-      view.rerender(camera({ darts: [...two, { id: 'c', hit: T20, source: 'manual' }], visitComplete: true }));
+      view.rerender(camera([...two, { id: 'c', hit: T20, source: 'manual' }]));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     await act(async () => {
@@ -301,11 +340,11 @@ describe('the autoscorer in a game', () => {
       { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
       { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'auto' as const },
     ];
-    const view = await start({ darts: read, visitInProgress: true });
+    const view = await start(read);
     await settle();
     const keypad = { id: 'c', hit: T20, source: 'manual' as const };
     await act(async () => {
-      view.rerender(camera({ darts: [...read, keypad], visitComplete: true }));
+      view.rerender(camera([...read, keypad]));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
@@ -320,7 +359,7 @@ describe('the autoscorer in a game', () => {
     expect(screen.getByText(/not kept for training/i)).toBeDefined();
 
     // Without the keypad dart, every dart is marked: kept, the model's marks as the model's.
-    view.rerender(camera({ darts: read, visitInProgress: true }));
+    view.rerender(camera(read));
     await act(async () => {
       screen.getByRole('button', { name: /report/i }).click();
     });
@@ -343,7 +382,7 @@ describe('the autoscorer in a game', () => {
       { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
       { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'manual' as const },
     ];
-    await start({ darts: tapped, visitInProgress: true });
+    await start(tapped);
     await settle();
     await act(async () => {
       screen.getByRole('button', { name: /report/i }).click();
@@ -361,7 +400,7 @@ describe('the autoscorer in a game', () => {
     const withTheDart = await settle(DARTS, 'with the dart');
     expect(onAutoDart).toHaveBeenCalledTimes(1);
     const dart = { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const };
-    view.rerender(camera({ darts: [dart], visitInProgress: true }));
+    view.rerender(camera([dart]));
 
     // A hand reaching in: the model sees only the dart in the board, so nothing is entered.
     await settle(DARTS, 'a hand');
@@ -384,7 +423,7 @@ describe('the autoscorer in a game', () => {
     const tapped = photo('the tapped dart');
     hooks.capture = tapped;
     await act(async () => {
-      view.rerender(camera({ darts: [{ id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'manual' }], visitInProgress: true }));
+      view.rerender(camera([{ id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'manual' }]));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     hooks.capture = null;
@@ -400,7 +439,7 @@ describe('the autoscorer in a game', () => {
   });
 
   it('leaves the visit to the player once a dart was entered by number', async () => {
-    await start({ darts: [{ id: 'a', hit: T20 }], visitInProgress: true });
+    await start([{ id: 'a', hit: T20 }]);
     hooks.found = [
       { x: 0, y: 103 },
       { x: 30, y: -50 },

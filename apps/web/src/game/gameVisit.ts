@@ -103,7 +103,12 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
 
   /** The newest photograph, settled or taken. */
   let latest: GrabbedFrame | null = null;
-  /** The photograph taken when the visit's latest dart went in. */
+  /**
+   * The visit photo: the photograph taken when the visit's latest dart went
+   * in. A new photograph is compared with it for what changed, not with the
+   * newest settle, which may be a hand reaching in and would hide the dart
+   * that came after it; and a report opens on it, for the same reason.
+   */
   let visitPhoto: GrabbedFrame | null = null;
   /** The visit the visit photo was last taken for, to tell when a dart went in. */
   let photographedFor: { first: string | undefined; count: number } = { first: undefined, count: 0 };
