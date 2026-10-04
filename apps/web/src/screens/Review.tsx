@@ -11,19 +11,47 @@
  * A photograph confirmed here is recorded as `reviewed`, and that is exported.
  */
 
-import { formatHit } from '@treblewise/core';
+import { boardRegion, formatHit } from '@treblewise/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { BoardOverlay } from '../components/BoardOverlay.js';
+import { PhotoStage } from '../components/PhotoStage.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { deleteFrame, listFrames, putFrame, readDart, type CapturedFrame, type LabelledDart } from '../storage/frames.js';
 import { filterFrames, hasModelMarks, markedBy, modelsWithMarks, type ReviewFilter } from '../storage/review.js';
 import { useMatchStore } from '../store/match.js';
+import { squareAround } from '../vision/crop.js';
 
 const PAGE = 12;
 
+/**
+ * The same marks, by value. Not by identity: every reload reads the
+ * photographs back from IndexedDB as new objects, and comparing objects made
+ * every photograph after the first one "changed", which disabled Previous,
+ * Next and Back to the list.
+ */
 function sameMarks(a: readonly LabelledDart[], b: readonly LabelledDart[]): boolean {
-  return a.length === b.length && a.every((dart, i) => dart === b[i]);
+  return (
+    a.length === b.length &&
+    a.every((dart, i) => {
+      const other = b[i]!;
+      return (
+        dart.img.x === other.img.x &&
+        dart.img.y === other.img.y &&
+        dart.board.x === other.board.x &&
+        dart.board.y === other.board.y &&
+        dart.hit.ring === other.hit.ring &&
+        dart.hit.value === other.hit.value &&
+        dart.by === other.by
+      );
+    })
+  );
+}
+
+/** The board's square in a stored photograph, from the calibration it was taken with. */
+function reviewCrop(frame: CapturedFrame) {
+  const size = { width: frame.width, height: frame.height };
+  const region = boardRegion(frame.calibration.toImage, size);
+  return region ? squareAround(region, size) : null;
 }
 
 export function Review() {
@@ -125,17 +153,13 @@ export function Review() {
           <p>{t.review.detailHelp}</p>
         </header>
 
-        <div
-          className="stage report-stage"
-          style={{
-            aspectRatio: `${open.width} / ${open.height}`,
-            maxWidth: `calc((100vh - 300px) * ${(open.width / open.height).toFixed(4)})`,
-          }}
-        >
-          {url && <img className="stage-frozen" src={url} alt="" />}
-          <BoardOverlay
+        {url && (
+          <PhotoStage
+            className="review-board"
+            url={url}
             width={open.width}
             height={open.height}
+            crop={reviewCrop(open)}
             toImage={open.calibration.toImage}
             darts={marks.map((dart, index) => ({
               img: dart.img,
@@ -147,7 +171,7 @@ export function Review() {
             }
             onTap={(point) => setMarks((list) => [...list, readDart(open.calibration, point)])}
           />
-        </div>
+        )}
 
         <div className="chip-row">
           {marks.map((dart, index) => (

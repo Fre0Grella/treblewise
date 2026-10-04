@@ -10,7 +10,11 @@ const store = vi.hoisted(() => ({ frames: [] as CapturedFrame[] }));
 
 vi.mock('../storage/frames.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../storage/frames.js')>()),
-  listFrames: async () => [...store.frames].sort((a, b) => b.ts - a.ts),
+  // New objects on every read, as IndexedDB gives back.
+  listFrames: async () =>
+    [...store.frames]
+      .sort((a, b) => b.ts - a.ts)
+      .map((f) => ({ ...f, darts: f.darts.map((d) => ({ ...d, img: { ...d.img }, board: { ...d.board }, hit: { ...d.hit } })) })),
   putFrame: async (frame: CapturedFrame) => {
     store.frames = [...store.frames.filter((f) => f.id !== frame.id), frame];
   },
@@ -73,6 +77,22 @@ describe('reviewing labelled photographs', () => {
     expect(markedBy(store.frames, 'tips-v1').map((f) => f.id)).toEqual(['guess-a', 'guess-b']);
     expect(filterFrames(store.frames, 'model')).toHaveLength(2);
     expect(filterFrames(store.frames, 'unreviewed')).toHaveLength(3);
+  });
+
+  it('keeps Previous, Next and Back working after a photograph is confirmed', async () => {
+    render(<Review />);
+    const cards = await screen.findAllByRole('button', { name: /lab/i });
+    await act(async () => {
+      cards[0]!.click();
+    });
+    await press(/looks right/i);
+
+    // The next photograph is open, untouched: nothing should be held back.
+    expect((await screen.findByRole('button', { name: /^next$/i })).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: /^previous$/i }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: /back to the list/i }).hasAttribute('disabled')).toBe(false);
+    await press(/back to the list/i);
+    expect(await screen.findAllByRole('button', { name: /lab/i })).toHaveLength(3);
   });
 
   it('deletes exactly the photographs with one model’s marks, after asking', async () => {

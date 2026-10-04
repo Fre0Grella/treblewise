@@ -810,6 +810,45 @@ input {
   align-items: stretch;
 }
 
+/* A photograph to put marks on, and its lens. The lens floats above the
+   pointer and may stick out past the photograph, so the wrapper does not clip
+   (the stage inside it does). */
+.photo-stage {
+  position: relative;
+  touch-action: none;
+}
+
+.lens {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: #000;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 55%);
+  pointer-events: none;
+}
+
+.lens-content {
+  position: absolute;
+}
+
+/* The exact point under the pointer: a thin cross with a gap, like a mark. */
+.lens-crosshair {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--accent), var(--accent)) center calc(50% - 10px) / 1px 12px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) center calc(50% + 10px) / 1px 12px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) calc(50% - 10px) center / 12px 1px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) calc(50% + 10px) center / 12px 1px no-repeat;
+}
+
+.review-board {
+  width: min(100%, calc(100dvh - 300px));
+  margin: 0 auto;
+}
+
 /* Correcting a dart in a game: the whole screen, the board's square as large
    as it fits. On a phone the controls come first and the board under them; on
    a laptop they sit beside it, as in the capture lab. */

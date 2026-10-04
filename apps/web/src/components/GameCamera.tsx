@@ -37,10 +37,11 @@ import { newDarts } from '../vision/autoscore.js';
 import { THUMB_SIZE, cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { loadDetector, loadManifest, type Detector, type ModelManifest } from '../vision/detector.js';
 import { boardLooksEmpty } from '../vision/imageStats.js';
-import { cropFrameStyle, squareAround } from '../vision/crop.js';
+import { squareAround } from '../vision/crop.js';
 import { useCamera } from '../vision/useCamera.js';
 import { BoardOverlay } from './BoardOverlay.js';
 import { PhoneBattery } from './PhoneBattery.js';
+import { PhotoStage } from './PhotoStage.js';
 import { SetupCoach } from './SetupCoach.js';
 
 export interface ReportableDart {
@@ -548,43 +549,38 @@ export function GameCamera({
               </div>
             </div>
 
-            <div
-              className="stage report-board"
-              style={{ aspectRatio: reportCrop ? '1 / 1' : `${shown.width} / ${shown.height}` }}
-            >
-              <div className="stage-frame" style={cropFrameStyle(reportCrop, shown)}>
-                <img className="stage-frozen" src={frameUrl} alt="" />
-                <BoardOverlay
-                  width={shown.width}
-                  height={shown.height}
-                  toImage={calibration?.toImage ?? null}
-                  darts={marks
-                    .map((mark, index) => ({ mark, index }))
-                    .filter(({ mark }) => mark !== null)
-                    .map(({ mark, index }) => ({
-                      img: mark!.img,
-                      label: `${index + 1} · ${formatHit(mark!.hit)}`,
-                    }))}
-                  onDartMove={(visibleIndex, point) => {
-                    if (!calibration) return;
-                    const indices = marks.map((mark, index) => (mark ? index : -1)).filter((index) => index >= 0);
-                    const target = indices[visibleIndex];
-                    if (target === undefined) return;
-                    setMarks((current) =>
-                      current.map((mark, index) => (index === target ? readDart(calibration, point) : mark)),
-                    );
-                  }}
-                  onTap={(point) => {
-                    if (!calibration) return;
-                    const next = marks.findIndex((mark) => mark === null);
-                    if (next < 0) return;
-                    setMarks((current) =>
-                      current.map((mark, index) => (index === next ? readDart(calibration, point) : mark)),
-                    );
-                  }}
-                />
-              </div>
-            </div>
+            <PhotoStage
+              className="report-board"
+              url={frameUrl}
+              width={shown.width}
+              height={shown.height}
+              crop={reportCrop}
+              toImage={calibration?.toImage ?? null}
+              darts={marks
+                .map((mark, index) => ({ mark, index }))
+                .filter(({ mark }) => mark !== null)
+                .map(({ mark, index }) => ({
+                  img: mark!.img,
+                  label: `${index + 1} · ${formatHit(mark!.hit)}`,
+                }))}
+              onDartMove={(visibleIndex, point) => {
+                if (!calibration) return;
+                const indices = marks.map((mark, index) => (mark ? index : -1)).filter((index) => index >= 0);
+                const target = indices[visibleIndex];
+                if (target === undefined) return;
+                setMarks((current) =>
+                  current.map((mark, index) => (index === target ? readDart(calibration, point) : mark)),
+                );
+              }}
+              onTap={(point) => {
+                if (!calibration) return;
+                const next = marks.findIndex((mark) => mark === null);
+                if (next < 0) return;
+                setMarks((current) =>
+                  current.map((mark, index) => (index === next ? readDart(calibration, point) : mark)),
+                );
+              }}
+            />
           </div>
         </div>
       )}
