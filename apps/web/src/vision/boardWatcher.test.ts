@@ -95,7 +95,7 @@ describe('settle', () => {
     watcher.holds([at(0, 0)]);
     watcher.settle(photo(), DARTS, ELSEWHERE);
     // Not taken: with a dart in, "before" shows that dart, not an empty board.
-    watcher.dartsOut();
+    watcher.holds([]);
     expect(watcher.settle(photo(), ELSEWHERE, null).kind).toBe('throw');
   });
 
@@ -119,6 +119,29 @@ describe('settle', () => {
     watcher.dartsOut();
     expect(watcher.state().pullingOut).toBe(false);
     expect(watcher.settle(photo(), DARTS, null).kind).toBe('throw');
+  });
+
+  it('starts the pull-out phase once per visit, however often it is told the visit is over', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), EMPTY, null).kind).toBe('emptied');
+    watcher.visitOver();
+    expect(watcher.state().pullingOut).toBe(false);
+    // A dart of the next visit makes it a new visit, which can end in turn.
+    watcher.holds([at(5, 5)]);
+    watcher.visitOver();
+    expect(watcher.state().pullingOut).toBe(true);
+  });
+
+  it('has nothing to end when told the darts are out outside the pull-out phase', async () => {
+    const { watcher, pending } = await readyWatcher();
+    watcher.holds([at(0, 0)]);
+    watcher.dartsOut();
+    void watcher.read(photo());
+    await flush();
+    expect(pending[0]!.args[3]).toEqual([{ board: { x: 0, y: 0 } }]);
   });
 
   it('takes an empty board mid-visit as an early pull: the darts not thrown missed', () => {

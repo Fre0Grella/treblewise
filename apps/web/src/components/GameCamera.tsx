@@ -24,7 +24,7 @@
  */
 
 import { assessBoardView, boardRegion, formatHit, type Hit, type Point } from '@treblewise/core';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GameVisit } from '../game/gameVisit.js';
 import { useGameVisitState } from '../game/useGameVisit.js';
@@ -39,7 +39,6 @@ import {
 import { useMatchStore } from '../store/match.js';
 import { unlockCaller } from '../caller/caller.js';
 import { unlockSounds } from '../caller/sounds.js';
-import type { BoardWatcher } from '../vision/boardWatcher.js';
 import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { squareAround } from '../vision/crop.js';
 import { useCamera } from '../vision/useCamera.js';
@@ -52,8 +51,6 @@ export interface GameCameraProps {
   matchId: string;
   /** The game visit: handed every photograph, and the visit whose darts a report marks. */
   gameVisit: GameVisit;
-  /** The board watcher the game visit drives: here only for its model, switched on with the setting. */
-  watcher: BoardWatcher;
   /** Someone is to throw: the match is on and not won. */
   canThrow: boolean;
   /** The photograph the game visit's report is open on, or null: the game decides when one opens. */
@@ -74,7 +71,6 @@ function newId(): string {
 export function GameCamera({
   matchId,
   gameVisit,
-  watcher,
   canThrow,
   report,
   onReport,
@@ -90,7 +86,8 @@ export function GameCamera({
   const remoteStream = useMatchStore((s) => s.remoteStream);
   const pairing = useMatchStore((s) => s.pairing);
 
-  const { visit } = useGameVisitState(gameVisit);
+  const visitState = useGameVisitState(gameVisit);
+  const { visit } = visitState;
   const darts = visit?.darts ?? [];
   const visitComplete = visit?.complete === true;
 
@@ -116,21 +113,20 @@ export function GameCamera({
   // model on and off with the setting, and says what it is doing.
   const autoscore = useMatchStore((s) => s.settings.autoscoreGames);
   const setAutoscore = useMatchStore((s) => s.setAutoscoreGames);
-  const watched = useSyncExternalStore(watcher.subscribe, watcher.state);
-  const modelInfo = watched.model.manifest;
-  const modelReady = watched.model.status === 'ready';
+  const modelInfo = visitState.model.manifest;
+  const modelReady = visitState.model.status === 'ready';
 
   useEffect(() => {
-    if (keepFrames) void watcher.findModel();
-  }, [watcher, keepFrames]);
+    if (keepFrames) void gameVisit.findModel();
+  }, [gameVisit, keepFrames]);
   // Only with frames kept: the camera is off otherwise, and the runtime is
   // not worth fetching for nothing.
   useEffect(() => {
-    void watcher.switchModel(keepFrames && autoscore);
-  }, [watcher, keepFrames, autoscore]);
+    void gameVisit.switchModel(keepFrames && autoscore);
+  }, [gameVisit, keepFrames, autoscore]);
   useEffect(() => {
-    if (watched.model.status === 'unavailable') setAutoscore(false); // it cannot run here: say so by switching back off
-  }, [watched.model.status, setAutoscore]);
+    if (visitState.model.status === 'unavailable') setAutoscore(false); // it cannot run here: say so by switching back off
+  }, [visitState.model.status, setAutoscore]);
 
   const onSettle = (frame: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) => {
     setLatest(frame);
@@ -360,7 +356,7 @@ export function GameCamera({
       )}
       {keepFrames && calibration && modelInfo && autoscore && (
         <p className="hint">
-          {watched.pullingOut ? t.report.autoscorePullOut : watched.reading ? t.report.autoscoreReading : t.report.autoscoreHelp}{' '}
+          {visitState.pullingOut ? t.report.autoscorePullOut : visitState.reading ? t.report.autoscoreReading : t.report.autoscoreHelp}{' '}
           {fill(t.capture.modelName, { name: modelInfo.name })} {t.report.autoscoreUnchecked}
           {modelInfo.deepdarts && ` ${t.capture.deepdartsCredit}`}
           {modelInfo.dartscribe && ` ${t.capture.dartscribeCredit}`}

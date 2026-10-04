@@ -22,7 +22,7 @@ import { MISS, type Hit, type MatchSnapshot, type Visit } from '@treblewise/core
 
 import type { Calibration } from '../storage/types.js';
 import { useMatchStore, type ThrowOptions } from '../store/match.js';
-import type { BoardDart, BoardWatcher } from '../vision/boardWatcher.js';
+import type { BoardDart, BoardWatcher, BoardWatcherState } from '../vision/boardWatcher.js';
 import type { GrabbedFrame } from '../vision/camera.js';
 
 /**
@@ -51,6 +51,12 @@ export interface GameVisitState {
   position: VisitPosition;
   /** A report can be opened on it: it has darts, and the latest photograph fits the calibration. */
   reportable: boolean;
+  /** The board watcher's pull-out phase: nothing is read until the darts are out. */
+  pullingOut: boolean;
+  /** The board watcher is reading a photograph. */
+  reading: boolean;
+  /** The model the site ships, and whether it is in use (the board watcher's). */
+  model: BoardWatcherState['model'];
   /**
    * The photograph a report on it opens on: the visit photo, not the newest,
    * which by the time someone reports a dart is often a hand pulling the darts
@@ -81,6 +87,10 @@ export interface GameVisit {
   photographed(photo: GrabbedFrame): void;
   /** "Darts out" pressed: the visit just thrown is closed, and the turn passes. */
   dartsOut(): void;
+  /** Finds out which model the site ships, without loading it. */
+  findModel(): Promise<void>;
+  /** Switches the autoscorer's model on or off; it is loaded the first time. */
+  switchModel(on: boolean): Promise<void>;
   state(): GameVisitState;
   subscribe(listener: () => void): () => void;
   /** Hears each signal as it happens. */
@@ -114,16 +124,24 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
   let photographedFor: { first: string | undefined; count: number } = { first: undefined, count: 0 };
 
   /**
-   * What the watcher was last told, so it is told again only on a change: a
-   * win ends a visit without its darts coming out, so the pull-out phase it
-   * starts is never ended by "darts out", only by the board or the next dart.
+   * Whether the visit was closed at the last sync, so "darts out" is said only
+   * when it closes: a win ends a visit without its darts coming out, so the
+   * pull-out phase it starts is never ended by "darts out", only by the board
+   * or the next dart.
    */
-  let over = false;
   let shut = true;
   /** How many visits were finished at the last snapshot; undefined before the first. */
   let visitsDone: number | undefined;
 
-  let current: GameVisitState = { visit: null, position: 'closed', reportable: false, photo: null };
+  let current: GameVisitState = {
+    visit: null,
+    position: 'closed',
+    reportable: false,
+    pullingOut: false,
+    reading: false,
+    model: watcher.state().model,
+    photo: null,
+  };
   const listeners = new Set<() => void>();
   const signals = new Set<(signal: GameVisitSignal) => void>();
   const signal = (what: GameVisitSignal) => signals.forEach((listener) => listener(what));
@@ -150,16 +168,23 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
   function publish() {
     const visit = visitOf(snapshot);
     const photo = fits(visitPhoto, calibration) ? visitPhoto : latest;
+    const watching = watcher.state();
     const next: GameVisitState = {
       visit,
       position: positionOf(visit),
       reportable: visit !== null && visit.darts.length > 0 && fits(latest, calibration),
+      pullingOut: watching.pullingOut,
+      reading: watching.reading,
+      model: watching.model,
       photo,
     };
     if (
       next.visit === current.visit &&
       next.position === current.position &&
       next.reportable === current.reportable &&
+      next.pullingOut === current.pullingOut &&
+      next.reading === current.reading &&
+      next.model === current.model &&
       next.photo === current.photo
     ) {
       return;
@@ -190,13 +215,9 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     // A finished visit leaves its darts in the board until someone pulls them,
     // unless they were seen coming out before it ended; a dart of the next
     // visit means they are out, which the watcher sees in the darts it holds.
-    const nowOver = visit !== null && visit.complete && darts.length > 0 && position !== 'throwing';
-    if (nowOver && !over) watcher.visitOver();
-    over = nowOver;
-    // Only during the pull-out phase: a visit closed by the next one's first
-    // dart already holds that dart, which "darts out" would forget.
+    if (visit !== null && visit.complete && darts.length > 0 && position !== 'throwing') watcher.visitOver();
     const nowShut = position !== 'open' && position !== 'held';
-    if (nowShut && !shut && watcher.state().pullingOut) watcher.dartsOut();
+    if (nowShut && !shut) watcher.dartsOut();
     shut = nowShut;
 
     publish();
@@ -208,6 +229,10 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     sync();
     signal('turn-passed');
   }
+
+  // What the watcher shows (its pull-out phase, a reading, the model) is part
+  // of the game visit's state: the camera talks to the game visit alone.
+  watcher.subscribe(publish);
 
   async function read(photo: GrabbedFrame) {
     const reading = await watcher.read(photo);
@@ -277,6 +302,9 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     },
 
     dartsOut: turnPassed,
+
+    findModel: () => watcher.findModel(),
+    switchModel: (on) => watcher.switchModel(on),
 
     state: () => current,
 

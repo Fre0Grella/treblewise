@@ -533,6 +533,10 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
     },
 
     boardCleared() {
+      // Before the third dart too, when there is no pull-out phase to end: the
+      // watcher forgets the darts either way.
+      watcher.holds([]);
+      watcher.setVisitPhoto(null);
       watcher.dartsOut();
       inBoard = [];
       startVisit();

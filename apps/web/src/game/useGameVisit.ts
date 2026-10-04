@@ -9,7 +9,6 @@ import type { MatchSnapshot } from '@treblewise/core';
 import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
 
 import type { Calibration } from '../storage/types.js';
-import type { BoardWatcher } from '../vision/boardWatcher.js';
 import { useBoardWatcher } from '../vision/useBoardWatcher.js';
 import { createGameVisit, type GameVisit, type GameVisitDeps, type GameVisitState } from './gameVisit.js';
 
@@ -23,7 +22,7 @@ export interface GameVisitInputs {
 export function useGameVisit(
   { snapshot, autoscoring, calibration }: GameVisitInputs,
   deps?: GameVisitDeps,
-): { gameVisit: GameVisit; state: GameVisitState; watcher: BoardWatcher } {
+): { gameVisit: GameVisit; state: GameVisitState } {
   const { watcher } = useBoardWatcher();
   const [gameVisit] = useState(() => createGameVisit(watcher, deps));
 
@@ -41,7 +40,7 @@ export function useGameVisit(
   }, [gameVisit, snapshot]);
 
   const state = useSyncExternalStore(gameVisit.subscribe, gameVisit.state);
-  return { gameVisit, state, watcher };
+  return { gameVisit, state };
 }
 
 /** The state of a game visit made elsewhere, for a component it is handed to. */

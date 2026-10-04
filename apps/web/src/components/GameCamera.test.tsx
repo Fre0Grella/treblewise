@@ -138,7 +138,7 @@ describe('the autoscorer in a game', () => {
     );
     const autoscoring = useMatchStore((s) => s.settings.keepFrames && s.settings.autoscoreGames);
     const calibration = useMatchStore((s) => s.settings.calibration);
-    const { gameVisit, state, watcher } = useGameVisit(
+    const { gameVisit, state } = useGameVisit(
       { snapshot, autoscoring, calibration },
       { throwDart: (hit, options) => (options.call ? onAutoDart(hit, options.pos!, options.confidence!) : onMissed(hit)) },
     );
@@ -153,7 +153,6 @@ describe('the autoscorer in a game', () => {
       <GameCamera
         matchId="m"
         gameVisit={gameVisit}
-        watcher={watcher}
         canThrow
         report={report}
         onReport={openReport}

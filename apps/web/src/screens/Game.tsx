@@ -35,7 +35,7 @@ export function Game() {
   // Which visit's darts are in the board, and where it stands, is the game
   // visit's (game/gameVisit.ts); so is what the camera sees of it.
   const autoscoring = settings.keepFrames && settings.autoscoreGames;
-  const { gameVisit, state: gameVisitState, watcher } = useGameVisit({
+  const { gameVisit, state: gameVisitState } = useGameVisit({
     snapshot,
     autoscoring,
     calibration: settings.calibration,
@@ -238,7 +238,6 @@ export function Game() {
         <GameCamera
           matchId={match.id}
           gameVisit={gameVisit}
-          watcher={watcher}
           canThrow={current !== null && !finished}
           report={reportOn}
           onReport={openReport}

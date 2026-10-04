@@ -109,12 +109,16 @@ export interface BoardWatcher {
   setVisitPhoto(photo: GrabbedFrame | null): void;
   /**
    * The visit is over: its darts stay in the board until they are pulled, so
-   * the pull-out phase starts, unless they were already seen coming out.
+   * the pull-out phase starts, unless they were already seen coming out. Said
+   * again of the same visit, it changes nothing.
    */
   visitOver(): void;
   /** The visit turns out not to be over after all (a save taken back), or was abandoned: no pull-out phase. */
   visitResumed(): void;
-  /** A person says the darts are out, or a new visit makes it so. */
+  /**
+   * A person says the darts are out: the pull-out phase ends, and the darts in
+   * the board are forgotten. Outside the pull-out phase there is nothing to end.
+   */
   dartsOut(): void;
   /**
    * What a settled photograph shows, judged now. `thumbnail` is its board-region
@@ -148,6 +152,8 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
   let board = 0;
   /** The darts of this visit were seen coming out before it was over. */
   let pulledEarly = false;
+  /** The owner said this visit is over: said again, it is the same visit. */
+  let ended = false;
 
   let detector: Detector | null = null;
   let wanted = false;
@@ -228,6 +234,7 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
     holds(next) {
       if (next.length > darts.length) {
         pulledEarly = false;
+        ended = false;
         if (current.pullingOut) update({ pullingOut: false });
       }
       if (next.length !== darts.length) board += 1;
@@ -239,16 +246,20 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
     },
 
     visitOver() {
+      if (ended) return;
+      ended = true;
       const pulled = pulledEarly;
       pulledEarly = false;
       if (!pulled) update({ pullingOut: true });
     },
 
     visitResumed() {
+      ended = false;
       update({ pullingOut: false });
     },
 
     dartsOut() {
+      if (!current.pullingOut) return;
       clearBoard();
       update({ pullingOut: false });
     },
