@@ -62,6 +62,7 @@ export const en = {
   app: {
     name: 'treblewise',
     tagline: 'Darts scoring, calling and statistics.',
+    back: 'Back',
   },
   setup: {
     title: 'New match',
@@ -101,6 +102,7 @@ export const en = {
     history: 'Past matches',
   },
   game: {
+    multiplier: 'Multiplier',
     darts: 'Darts',
     visit: 'This visit',
     average: 'Avg',
@@ -234,6 +236,8 @@ export const en = {
   },
   review: {
     title: 'Review photographs',
+    filterLabel: 'Show',
+    missing: 'This photograph is not on this device. Photographs are kept only where they were taken.',
     subtitle: '{n} labelled photographs, {reviewed} checked. Open one to see its marks, fix them, or throw it away.',
     detailHelp:
       'Every dart in the picture needs a mark on its tip — where it enters the board, not the flight. Drag a mark to move it, tap the picture to add one, tap a chip below to remove one.',
@@ -303,6 +307,7 @@ export const en = {
     },
   },
   pair: {
+    answerHow: "How the phone's answer gets here",
     title: 'Pair your phone',
     subtitle: 'No accounts, no internet: the phone and this computer introduce themselves by showing each other a code — a picture if this computer has a camera, written-out text if it has not.',
     steps: [
@@ -393,7 +398,7 @@ export const en = {
     tapTheDart: 'Got it. Tap the dart in the picture',
     tapTheNewDart:
       'Got it. The {n} already in the board are marked in grey — drag any that moved, then tap the new one and press Save',
-    markedSoFar: '{total} marked: {carried} already in the board, {fresh} new. Every dart you can see needs a mark — then press Save',
+    markedSoFar: '{total} marked: {inBoard} already in the board, {fresh} new. Every dart you can see needs a mark — then press Save',
     markEveryDart: 'Every dart you can see needs a mark, old and new.',
     savedNote: 'Saved: {n} darts ({hits}).',
     saveProposal: 'Right — save it',
@@ -515,6 +520,8 @@ export const en = {
     empty: 'Play a leg and this fills up. Every dart you enter is counted, and every one you place on the board is measured.',
     nothingInRange: 'Nothing thrown in this period.',
     back: 'Back',
+    player: 'Player',
+    period: 'Period',
     ranges: {
       session: 'Today',
       month: 'Last 30 days',
@@ -585,6 +592,8 @@ export const en = {
     delete: 'Delete',
     finished: 'finished',
     inProgress: 'in progress',
+    backToList: 'All matches',
+    missing: 'This match is not on this device. Matches are kept only where they were played.',
   },
 } as const;
 

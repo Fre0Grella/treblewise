@@ -69,6 +69,8 @@
   --lens-shadow: rgb(0 0 0 / 55%);
   /* A QR code needs its white quiet zone, whatever the page around it. */
   --qr-paper: #ffffff;
+  /* Exactly black on exactly white: a scanner needs them, whatever the theme. */
+  --qr-ink: #000000;
 
   /* The drawn board. Its beds and rings are the board colours above; these
      are the parts around them, which nothing else in the app uses. */
@@ -87,7 +89,7 @@
   --mark-shade-strong: rgb(1 4 9 / 85%);
   /* A dart's mark on a photograph, by where it came from: carried from an
      earlier photograph, placed on this one, or proposed by the model. */
-  --mark-carried: #9aa4b2;
+  --mark-in-board: #9aa4b2;
   --mark-new: #ffd166;
   --mark-proposed: #5ad1ff;
   /* Calibration over the camera picture: the board's wires as the
@@ -203,6 +205,22 @@ h2 {
 .screen-head p {
   margin: var(--space-1) 0 0;
   color: var(--text-dim);
+}
+
+/* Back sits at the top left, above the title, on every screen that has one. */
+.screen-back {
+  align-self: flex-start;
+  margin: 0 0 var(--space-1) calc(-1 * var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+}
+
+.screen-back:hover,
+.screen-back:focus-visible {
+  color: var(--text);
 }
 
 .panel {

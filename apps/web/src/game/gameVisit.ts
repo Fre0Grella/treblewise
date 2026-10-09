@@ -21,7 +21,7 @@
 import { MISS, type Hit, type MatchSnapshot, type Visit } from '@treblewise/core';
 
 import type { Calibration } from '../storage/types.js';
-import { useMatchStore, type ThrowOptions } from '../store/match.js';
+import type { ThrowOptions } from '../store/matches.js';
 import type { BoardDart, BoardWatcher, BoardWatcherState } from '../vision/boardWatcher.js';
 import type { GrabbedFrame } from '../vision/camera.js';
 
@@ -65,7 +65,7 @@ export interface GameVisitState {
   photo: GrabbedFrame | null;
 }
 
-/** What the game visit reaches outside itself for: the match store by default, fakes in tests. */
+/** What the game visit reaches outside itself for: the match store's actions, fakes in tests. */
 export interface GameVisitDeps {
   throwDart: (hit: Hit, options: ThrowOptions) => void;
 }
@@ -97,14 +97,10 @@ export interface GameVisit {
   listen(listener: (signal: GameVisitSignal) => void): () => void;
 }
 
-const DEFAULT_DEPS: GameVisitDeps = {
-  throwDart: (hit, options) => useMatchStore.getState().throwDart(hit, options),
-};
-
 const fits = (photo: GrabbedFrame | null, calibration: Calibration | null): photo is GrabbedFrame =>
   photo !== null && calibration !== null && photo.width === calibration.width && photo.height === calibration.height;
 
-export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEFAULT_DEPS): GameVisit {
+export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): GameVisit {
   let snapshot: MatchSnapshot | null = null;
   let autoscoring = false;
   let calibration: Calibration | null = null;
@@ -114,12 +110,23 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
   /** The newest photograph, settled or taken. */
   let latest: GrabbedFrame | null = null;
   /**
-   * The visit photo: the photograph taken when the visit's latest dart went
-   * in. A new photograph is compared with it for what changed, not with the
-   * newest settle, which may be a hand reaching in and would hide the dart
-   * that came after it; and a report opens on it, for the same reason.
+   * The photograph taken when the visit's latest dart went in: a report opens
+   * on it, not on the newest, which by the time someone reports a dart is
+   * often a hand pulling the darts out.
    */
   let visitPhoto: GrabbedFrame | null = null;
+  /**
+   * What the change gate compares a new photograph with: the settle before it,
+   * whatever it showed, or the photograph read just before it. This is how the
+   * game played when it was tried on a real board, and it stays that way: the
+   * capture lab compares with its last saved photograph instead, which was
+   * never put to the test in a game.
+   */
+  let gatePhoto: GrabbedFrame | null = null;
+  const compareWith = (photo: GrabbedFrame) => {
+    gatePhoto = photo;
+    watcher.setVisitPhoto(photo);
+  };
   /** The visit the visit photo was last taken for, to tell when a dart went in. */
   let photographedFor: { first: string | undefined; count: number } = { first: undefined, count: 0 };
 
@@ -210,7 +217,6 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     // is over they are still there, but nothing is read beside them: the
     // pull-out phase comes first.
     watcher.holds((position === 'throwing' ? darts : []).map((dart): BoardDart => (dart.pos ? { board: dart.pos } : {})));
-    watcher.setVisitPhoto(visitPhoto);
 
     // A finished visit leaves its darts in the board until someone pulls them,
     // unless they were seen coming out before it ended; a dart of the next
@@ -219,6 +225,9 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     const nowShut = position !== 'open' && position !== 'held';
     if (nowShut && !shut) watcher.dartsOut();
     shut = nowShut;
+    // The darts coming out does not change what the next photograph is
+    // compared with: the settle before it.
+    watcher.setVisitPhoto(gatePhoto);
 
     publish();
   }
@@ -235,7 +244,9 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
   watcher.subscribe(publish);
 
   async function read(photo: GrabbedFrame) {
-    const reading = await watcher.read(photo);
+    // Read, it becomes what the next one is compared with: before a photograph
+    // that waited behind it is read.
+    const reading = await watcher.read(photo, { afterRead: () => compareWith(photo) });
     if (reading.kind !== 'proposal') return;
     // A reading takes a while. A dart entered by hand meanwhile makes it stale
     // (the watcher says so); the autoscorer switched off, or the match won, is
@@ -276,9 +287,15 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     settle(photo, thumbnail, before) {
       latest = photo;
       publish();
-      if (!autoscoring || watcher.state().model.status !== 'ready' || !canThrow()) return;
+      if (!autoscoring || watcher.state().model.status !== 'ready' || !canThrow()) {
+        compareWith(photo);
+        return;
+      }
 
       const seen = watcher.settle(photo, thumbnail, before);
+      // Not read: the next photograph is compared with this one. One that is
+      // read becomes it once read (see `read`).
+      if (seen.kind !== 'throw') compareWith(photo);
       if (seen.kind === 'emptied') {
         turnPassed();
       } else if (seen.kind === 'early-pull') {
@@ -297,7 +314,6 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps = DEF
     photographed(photo) {
       latest = photo;
       visitPhoto = photo;
-      watcher.setVisitPhoto(photo);
       publish();
     },
 

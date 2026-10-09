@@ -128,9 +128,11 @@ export interface BoardWatcher {
   /**
    * Reads a photograph for a new dart beside the darts in the board. One runs
    * at a time; of those asked for meanwhile, only the newest waits, and it is
-   * read against the board as it is when its turn comes.
+   * read against the board as it is when its turn comes. `afterRead` runs the
+   * moment this photograph's reading ends, before a waiting one starts: the
+   * owner can then make it the visit photo the waiting one is compared with.
    */
-  read(photo: GrabbedFrame): Promise<Reading>;
+  read(photo: GrabbedFrame, options?: { afterRead?: () => void }): Promise<Reading>;
   /** Finds out which model the site ships, without loading it. */
   findModel(): Promise<void>;
   /** The model is loaded the first time it is switched on; if it cannot run here, it says so. */
@@ -158,7 +160,12 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
   let detector: Detector | null = null;
   let wanted = false;
   let busy = false;
-  let queued: { photo: GrabbedFrame; done: (reading: Reading) => void } | null = null;
+  interface Asked {
+    photo: GrabbedFrame;
+    done: (reading: Reading) => void;
+    afterRead?: () => void;
+  }
+  let queued: Asked | null = null;
 
   let current: BoardWatcherState = { pullingOut: false, reading: false, model: { status: 'off', manifest: null } };
   const listeners = new Set<() => void>();
@@ -210,15 +217,16 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
     update({ model: { status: manifest ? current.model.status : 'none', manifest } });
   }
 
-  async function next(photo: GrabbedFrame, done: (reading: Reading) => void): Promise<void> {
+  async function next({ photo, done, afterRead }: Asked): Promise<void> {
     busy = true;
     update({ reading: true });
     const reading = await run(photo);
+    afterRead?.();
     done(reading);
     const waiting = queued;
     queued = null;
     if (waiting) {
-      void next(waiting.photo, waiting.done);
+      void next(waiting);
       return;
     }
     busy = false;
@@ -292,14 +300,15 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
       return { kind: 'throw' };
     },
 
-    read(photo) {
+    read(photo, options = {}) {
       return new Promise((done) => {
+        const asked: Asked = { photo, done, ...(options.afterRead ? { afterRead: options.afterRead } : {}) };
         if (!busy) {
-          void next(photo, done);
+          void next(asked);
           return;
         }
         queued?.done({ kind: 'dropped', reason: 'superseded' });
-        queued = { photo, done };
+        queued = asked;
       });
     },
 

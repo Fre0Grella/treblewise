@@ -44,7 +44,7 @@ _Avoid_: capture, trigger
 A settle whose board looks like a reference photograph with no darts in it: the empty board seen just before this visit's first dart, or the one taken at calibration.
 
 **Visit photo**:
-The latest photograph showing exactly the **darts in the board**: what the change gate compares a new photograph against, and what a report opens on.
+The latest photograph showing exactly the **darts in the board**: what a report opens on, and, in the **capture lab**, what the change gate compares a new photograph against. In a game the change gate compares with the settle before, as the game was played and proven on a real board.
 _Avoid_: previous frame, last frame
 
 **Board watcher**:
@@ -93,9 +93,9 @@ _Avoid_: session on its own (a **marking session** is something else), pairing (
 > **Domain expert:** "No: the pull-out phase only follows a visit that is over. Two darts and an empty board is an early pull: the third dart missed."
 
 > **Dev:** "Should the change gate compare against the last settle?"
-> **Domain expert:** "Against the visit photo. The last settle may be a hand reaching in; the visit photo is the board with exactly the darts we know about."
+> **Domain expert:** "In a game, yes: that is how it plays well on a real board. In the capture lab it compares against the visit photo, the last photograph saved with its darts marked."
 
 ## Flagged ambiguities
 
-- "previous photo" meant the last settle in a game and the last saved photograph in the capture lab. Resolved: both use the **visit photo**.
+- "previous photo" means the last settle in a game and the **visit photo** in the capture lab. Unifying them on the visit photo was tried and undone before release: the game's rule had been proven in play.
 - "carried darts" (capture lab) and "the visit's darts" (game) are the same thing. Resolved: **darts in the board**.
