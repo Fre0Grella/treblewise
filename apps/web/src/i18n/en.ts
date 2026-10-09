@@ -375,6 +375,17 @@ export const en = {
     washedOut: 'Very bright — the board is washing out.',
     glare: 'A reflection on the board. Move the light or the camera a little.',
     blurry: 'Blurry. Steady the camera and wipe the lens.',
+    /** What each picture warning measured, against the limit, and what fixes it. */
+    details: {
+      glare:
+        "{n}% of the board is pure white, too bright to see a dart in (fine under {limit}%): usually a lamp or a window reflecting in it. Marked in yellow on the preview. Tilt the lamp, or move the camera a little to one side, until the yellow goes.",
+      moved:
+        '{n}% of the board looks different from the photo taken when you found it (fine under {limit}%). A knocked camera does this, and so can a big change in the light. The parts that changed are marked in red on the preview. If the camera is where you want it, find the board again: that takes a fresh photo.',
+      dark: 'Brightness {n} out of 255 (needs {limit} or more). Light the board, not the room: a lamp pointed at it from the front.',
+      washedOut: 'Brightness {n} out of 255 (fine up to {limit}). Turn the lamp down, or point it away from the board.',
+      blurry: 'Detail {n} (needs {limit} or more): the wires look soft. Keep the camera still, let it focus on the board, and wipe the lens.',
+    },
+    showWhere: 'Show where',
     directions: {
       left: 'left.',
       right: 'right.',

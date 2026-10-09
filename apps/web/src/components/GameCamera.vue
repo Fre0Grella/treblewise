@@ -29,6 +29,7 @@ import { squareAround } from '../vision/crop.js';
 import BoardOverlay from './BoardOverlay.vue';
 import PhoneBattery from './PhoneBattery.vue';
 import PhotoStage from './PhotoStage.vue';
+import QualityMarks from './QualityMarks.vue';
 import SetupCoach from './SetupCoach.vue';
 import Toggle from './ui/Toggle.vue';
 
@@ -294,7 +295,13 @@ const attachVideo = (element: unknown) => {
 
     <PhoneBattery v-if="keepFrames" />
 
-    <SetupCoach v-if="keepFrames && camera.ready.value" :calibrated="calibration !== null" :view="view" :quality="camera.quality.value" />
+    <SetupCoach
+      v-if="keepFrames && camera.ready.value"
+      :calibrated="calibration !== null"
+      :view="view"
+      :quality="camera.quality.value"
+      :on-show-where="() => (showPreview = true)"
+    />
 
     <div
       v-if="keepFrames"
@@ -308,6 +315,12 @@ const attachVideo = (element: unknown) => {
     >
       <video :ref="attachVideo" class="stage-video" playsinline muted />
       <BoardOverlay :width="size.width" :height="size.height" :to-image="previewToImage" />
+      <QualityMarks
+        :width="size.width"
+        :height="size.height"
+        :region="region ?? { x: 0, y: 0, width: size.width, height: size.height }"
+        :quality="camera.quality.value"
+      />
       <div class="stage-badge">
         {{ camera.moving.value ? t.capture.moving : t.capture.waiting }}{{ latest ? ` · ${t.capture.captured}` : '' }}
       </div>

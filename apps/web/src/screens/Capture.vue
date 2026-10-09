@@ -26,6 +26,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { unlockCaller } from '../caller/caller.js';
 import BoardOverlay, { type OverlayHandle } from '../components/BoardOverlay.vue';
 import PhoneBattery from '../components/PhoneBattery.vue';
+import QualityMarks from '../components/QualityMarks.vue';
 import SetupCoach from '../components/SetupCoach.vue';
 import Fold from '../components/ui/Fold.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
@@ -327,6 +328,18 @@ const attachVideo = (element: unknown) => {
   camera.video.value = element as HTMLVideoElement | null;
 };
 const supported = cameraSupported();
+
+// Setting up, the picture only has to show the camera is pointed right: kept
+// short enough that the steps and the buttons fit without scrolling, which a
+// phone filming upright otherwise made impossible. Calibrating and marking keep
+// the big picture, for dragging markers onto the board.
+const stageStyle = computed(() => {
+  const { width, height } = frameSize.value;
+  return {
+    aspectRatio: crop.value ? '1 / 1' : `${width} / ${height}`,
+    ...(mode.value === 'setup' ? { maxWidth: `calc(45vh * ${(width / height).toFixed(4)})`, alignSelf: 'center' } : {}),
+  };
+});
 const storageLine = computed(() => {
   const { bytes } = stats.value;
   const size = bytes < 1_000_000 ? `${Math.round(bytes / 1000)} kB` : fill(t.capture.storage, { mb: (bytes / 1_000_000).toFixed(1) });
@@ -376,6 +389,15 @@ const storageLine = computed(() => {
           <span class="coach-dot" aria-hidden="true" />
           <span class="coach-message">{{ coachMessage }}</span>
         </div>
+        <!-- The picture's own problems matter while marking too: a photograph
+             taken through a moved camera is labelled against the wrong board. -->
+        <SetupCoach
+          v-if="mode === 'try' && (cameraOn || paired)"
+          image-only
+          :calibrated="calibration !== null"
+          :view="null"
+          :quality="camera.quality.value"
+        />
 
         <p v-if="mode === 'try' && (cameraOn || paired)" class="capture-status">
           {{ camera.moving.value ? t.capture.moving : t.capture.waiting }} · {{ camera.motion.value.toFixed(1) }} /
@@ -455,9 +477,16 @@ const storageLine = computed(() => {
         </div>
       </div>
 
-      <div class="stage" :style="{ aspectRatio: crop ? '1 / 1' : `${frameSize.width} / ${frameSize.height}` }">
+      <div class="stage" :style="stageStyle">
         <div class="stage-frame" :style="cropFrameStyle(crop, frameSize)">
           <video :ref="attachVideo" class="stage-video" playsinline muted />
+          <QualityMarks
+            v-if="mode !== 'calibrate'"
+            :width="frameSize.width"
+            :height="frameSize.height"
+            :region="region ?? { x: 0, y: 0, width: frameSize.width, height: frameSize.height }"
+            :quality="camera.quality.value"
+          />
           <img v-if="mode === 'calibrate' && frozen" class="stage-frozen" :src="frozen.url" alt="" />
           <img v-if="mode === 'try' && photo" class="stage-frozen" :src="photo.url" alt="" />
 

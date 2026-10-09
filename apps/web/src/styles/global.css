@@ -96,6 +96,9 @@
      calibration projects them, and the landmarks being dragged. */
   --overlay-wire: #3ddc84;
   --overlay-handle: #ffd166;
+  /* Where a setup warning points: the reflection, and what changed since calibration. */
+  --quality-glare: #ffd166;
+  --quality-changed: var(--danger);
   --overlay-handle-fill: rgb(255 209 102 / 25%);
 
   /* The statistics' board map: its wireframe and sector numbers, and the
@@ -747,6 +750,15 @@ input {
   inset: 0;
 }
 
+/* Where a setup warning points: drawn over the picture, never in the way of a tap. */
+.quality-marks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* The capture lab: one tree, two layouts. On a phone everything stacks with
    the board right under the coach and the buttons under the board; the side
    column dissolves so its children can be ordered around the stage. */
@@ -1072,6 +1084,13 @@ input {
 .coach-message {
   flex: 1;
   min-width: 12ch;
+}
+
+.coach-detail {
+  width: 100%;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
 }
 
 .coach-numbers {

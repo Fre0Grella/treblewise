@@ -112,3 +112,32 @@ describe('boardLooksEmpty', () => {
     expect(boardLooksEmpty(wires(), new Uint8Array(16), W, H)).toBe(false);
   });
 });
+
+describe('where a warning points', () => {
+  it('marks the blown-out patch of a reflection, and nothing else', () => {
+    // A 16×16 pixel reflection in the top-left corner of the board: 6% of it.
+    const board = wires().map((value, index) => (index % W < 16 && Math.floor(index / W) < 16 ? 255 : value));
+    const quality = assessImage(board, W, H);
+    expect(quality.issues).toContain('glare');
+    expect(quality.glareSpots.length).toBeGreaterThan(0);
+    for (const spot of quality.glareSpots) {
+      expect(spot.x + spot.width).toBeLessThanOrEqual(16 / W + 1e-9);
+      expect(spot.y + spot.height).toBeLessThanOrEqual(16 / H + 1e-9);
+    }
+  });
+
+  it('points at nothing while there is no warning to explain', () => {
+    const quality = assessImage(wires(), W, H, wires());
+    expect(quality.glareSpots).toEqual([]);
+    expect(quality.changedSpots).toEqual([]);
+  });
+
+  it('marks the parts of the board that differ from the calibration photograph', () => {
+    // The left half changed a lot: past the "moved" threshold.
+    const now = wires().map((value, index) => (index % W < 32 ? value + 60 : value));
+    const quality = assessImage(now, W, H, wires());
+    expect(quality.issues).toContain('moved');
+    expect(quality.changedSpots.every((spot) => spot.x < 0.5)).toBe(true);
+    expect(quality.changedSpots.length).toBe(32); // half of the 8×8 blocks
+  });
+});
