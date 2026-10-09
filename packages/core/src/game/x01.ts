@@ -17,6 +17,9 @@ import type { Hit, Point } from '../board/geometry.js';
 import { canCheckout, checkoutRoute, isFinishableWithOneDart } from './checkout.js';
 import { minimumFinish, satisfiesRule, type InOutRule } from './rules.js';
 
+/** A visit is three darts, fewer when a bust or a checkout ends it. */
+export const DARTS_PER_VISIT = 3;
+
 export type DartSource = 'manual' | 'voice' | 'auto';
 
 export interface PlayerConfig {
@@ -273,7 +276,7 @@ export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): M
       if (satisfiesRule(reading.hit, config.inRule)) {
         leg.open[playerId] = true;
       } else {
-        visit.complete = visit.darts.length === 3;
+        visit.complete = visit.darts.length === DARTS_PER_VISIT;
         continue;
       }
     }
@@ -316,7 +319,7 @@ export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): M
       continue;
     }
 
-    visit.complete = visit.darts.length === 3;
+    visit.complete = visit.darts.length === DARTS_PER_VISIT;
   }
 
   return {

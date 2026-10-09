@@ -59,13 +59,99 @@
   --tint-danger: rgb(192 24 47 / 16%);
   --scrim: rgb(11 10 8 / 78%);
   --scrim-badge: rgb(11 10 8 / 72%);
+  /* The lobby's entries, over its picture: the raised surface, see-through. */
+  --scrim-menu: rgb(31 28 23 / 82%);
 
-  --radius: 12px;
-  --gap: 12px;
+  /* Behind a camera picture or a photograph: plain black, so the bars around
+     a picture that does not fill its box read as no picture, not as a
+     surface. */
+  --photo-bg: #000;
+  --lens-shadow: rgb(0 0 0 / 55%);
+  /* A QR code needs its white quiet zone, whatever the page around it. */
+  --qr-paper: #ffffff;
+  /* Exactly black on exactly white: a scanner needs them, whatever the theme. */
+  --qr-ink: #000000;
+
+  /* The drawn board. Its beds and rings are the board colours above; these
+     are the parts around them, which nothing else in the app uses. */
+  --board-backdrop: #0a0a0a;
+  --board-surround: #141414;
+  --board-wire: #9aa0a6;
+  --board-number: #f2f2f2;
+  --dart-marker: #0b0b0b;
+
+  /* Marks drawn over a board or a photograph: white ink with a dark shade
+     under it, so a mark reads on a black bed, a cream one and any picture.
+     The shade is darker where the ink is smaller. */
+  --mark-ink: #ffffff;
+  --mark-shade-soft: rgb(1 4 9 / 70%);
+  --mark-shade: rgb(1 4 9 / 80%);
+  --mark-shade-strong: rgb(1 4 9 / 85%);
+  /* A dart's mark on a photograph, by where it came from: carried from an
+     earlier photograph, placed on this one, or proposed by the model. */
+  --mark-in-board: #9aa4b2;
+  --mark-new: #ffd166;
+  --mark-proposed: #5ad1ff;
+  /* Calibration over the camera picture: the board's wires as the
+     calibration projects them, and the landmarks being dragged. */
+  --overlay-wire: #3ddc84;
+  --overlay-handle: #ffd166;
+  --overlay-handle-fill: rgb(255 209 102 / 25%);
+
+  /* The statistics' board map: its wireframe and sector numbers, and the
+     heat ramp, dark to light. The map paints the ramp into a canvas, which
+     reads these values, so they stay plain hex. */
+  --map-wire: #ffffff;
+  --map-number: #e6edf3;
+  --heat-1: #3a2f12;
+  --heat-2: #6b5418;
+  --heat-3: #a8811f;
+  --heat-4: #d9a72e;
+  --heat-5: #ffd166;
+
+  /* One spacing scale, so neighbouring blocks line up instead of differing by
+     two pixels nobody chose. Margins, paddings, gaps and offsets come from
+     here; the sizes of particular things (the board, the numerals, a touch
+     target) are not spacing and stay where they are. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  /* The gap between the blocks of a screen: a role, not a step. */
+  --gap: var(--space-3);
+
+  /* Three corners and two shapes. Large is a card or a panel, medium a
+     control or a tile inside one, small a bar; a chip is a pill and a dot is
+     round. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  /* Six text sizes, small print to a tile's number. In rem, so the whole
+     scale follows the browser's own font-size setting. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.85rem;
+  --text-base: 1rem;
+  --text-md: 1.15rem;
+  --text-lg: 1.4rem;
+  --text-xl: 1.9rem;
+  /* Off the scale on purpose: the score read from the oche, the landing
+     page's name and the lobby's title grow with the screen. */
+  --text-display-score: clamp(2.6rem, 14vw, 4.2rem);
+  --text-display-mark: clamp(3rem, 18vw, 5.5rem);
+  --text-display-title: clamp(2.6rem, 5vw, 4.5rem);
+  /* The written pairing code shrinks on a narrow phone rather than scroll
+     sideways, since it is read off one screen and typed into another. */
+  --text-code: clamp(0.8rem, 3.6vw, 1.05rem);
 
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 16px;
+  font-size: var(--text-base);
 }
 
 * {
@@ -93,12 +179,12 @@ h2 {
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: var(--text-lg);
   letter-spacing: 0.02em;
 }
 
 h2 {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -109,29 +195,47 @@ h2 {
   flex-direction: column;
   gap: var(--gap);
   min-height: 100%;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  padding:
+    max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
+    max(var(--space-4), env(safe-area-inset-bottom));
   max-width: 760px;
   margin: 0 auto;
 }
 
 .screen-head p {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--text-dim);
+}
+
+/* Back sits at the top left, above the title, on every screen that has one. */
+.screen-back {
+  align-self: flex-start;
+  margin: 0 0 var(--space-1) calc(-1 * var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+}
+
+.screen-back:hover,
+.screen-back:focus-visible {
+  color: var(--text);
 }
 
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .screen-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   margin-top: auto;
 }
@@ -144,8 +248,8 @@ button {
   cursor: pointer;
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
   min-height: 44px;
 }
 
@@ -197,7 +301,7 @@ a:hover {
   color: var(--action-ink);
   border-color: transparent;
   box-shadow: inset 5px 0 0 var(--ring-a), inset 10px 0 0 var(--ring-b);
-  padding-left: 26px;
+  padding-left: var(--space-5);
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -216,10 +320,10 @@ a:hover {
 }
 
 .chip {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   min-height: 40px;
-  border-radius: 999px;
-  font-size: 0.9rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
 }
 
 .chip-on,
@@ -233,7 +337,7 @@ a:hover {
 .chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 input {
@@ -241,8 +345,8 @@ input {
   color: inherit;
   background: var(--bg-sunken);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
   min-height: 44px;
   width: 100%;
 }
@@ -256,8 +360,8 @@ input {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 0.85rem;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
   color: var(--text-dim);
 }
 
@@ -267,12 +371,12 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .player-list li {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -281,14 +385,14 @@ input {
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .player {
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   min-width: 0;
 }
 
@@ -301,8 +405,8 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
-  font-size: 0.85rem;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
 }
 
 .player-name {
@@ -314,14 +418,14 @@ input {
 
 .player-counts {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .player-remaining {
-  font-size: clamp(2.6rem, 14vw, 4.2rem);
+  font-size: var(--text-display-score);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -337,9 +441,9 @@ input {
 .player-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 4px;
-  font-size: 0.75rem;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -349,8 +453,8 @@ input {
 }
 
 .player-visit {
-  margin-top: 4px;
-  font-size: 0.85rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -361,16 +465,16 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .throw-who {
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 /* A finished visit whose darts are still in the board: it wraps, so the big
@@ -388,7 +492,7 @@ input {
 
 .held-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-basis: 100%;
 }
 
@@ -396,7 +500,7 @@ input {
   flex: 1;
   min-width: 0;
   min-height: 56px;
-  font-size: 1.1rem;
+  font-size: var(--text-md);
 }
 
 .held-mark {
@@ -406,21 +510,21 @@ input {
 
 .throw-darts {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .dart-chip {
   min-width: 52px;
   min-height: 36px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-sunken);
   border: 1px solid var(--line);
   font-variant-numeric: tabular-nums;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 
 .dart-chip-empty {
@@ -449,8 +553,8 @@ input {
   aspect-ratio: 1;
   touch-action: none;
   user-select: none;
-  border-radius: 50%;
-  background: #0a0a0a;
+  border-radius: var(--radius-round);
+  background: var(--board-backdrop);
   /* The magnifying lens stays above the finger even when the finger is at the
      top of the board, which means it has to be allowed to float past the edge
      rather than move out of the way. */
@@ -470,25 +574,25 @@ input {
 .keypad {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
 }
 
 .keypad-multipliers,
 .keypad-specials {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .keypad-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .key {
-  padding: 14px 0;
-  font-size: 1.1rem;
+  padding: var(--space-3) 0;
+  font-size: var(--text-md);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -522,7 +626,7 @@ input {
 
 .controls {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -530,7 +634,7 @@ input {
 .hint {
   margin: 0;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -542,17 +646,17 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .match-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .match-title {
@@ -560,13 +664,13 @@ input {
 }
 
 .match-meta {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
 .match-actions {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -578,18 +682,18 @@ input {
   display: grid;
   place-items: center;
   background: var(--scrim);
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .overlay-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 24px;
+  padding: var(--space-5);
   background: var(--bg-raised);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   text-align: center;
 }
 
@@ -600,9 +704,9 @@ input {
   position: relative;
   width: 100%;
   overflow: hidden;
-  background: #000;
+  background: var(--photo-bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .game-camera-preview {
@@ -672,12 +776,12 @@ input {
 .fold > summary {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   width: fit-content;
-  padding: 2px 0;
+  padding: var(--space-1) 0;
   list-style: none;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -706,18 +810,18 @@ input {
 }
 
 .fold > :not(summary) {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .phone-battery {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
 .capture-status {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -733,7 +837,7 @@ input {
   .capture-work-split {
     display: grid;
     grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
-    gap: 24px;
+    gap: var(--space-5);
     align-items: start;
   }
 
@@ -742,14 +846,14 @@ input {
     flex-direction: column;
     gap: var(--gap);
     position: sticky;
-    top: 16px;
+    top: var(--space-4);
     max-height: calc(100dvh - 32px);
     overflow-y: auto;
   }
 
   .capture-work-split > .stage {
     position: sticky;
-    top: 16px;
+    top: var(--space-4);
     width: min(100%, calc(100dvh - 32px));
     justify-self: center;
   }
@@ -770,25 +874,25 @@ input {
 
 .stage-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
   background: var(--scrim-badge);
   border: 1px solid var(--line);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
 .warning {
   margin: 0;
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   color: var(--danger);
   background: var(--tint-danger);
   border: 1px solid var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .landmark-list {
@@ -797,8 +901,8 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -811,7 +915,7 @@ input {
 .game-camera {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .overlay-card-wide {
@@ -834,10 +938,10 @@ input {
   position: absolute;
   z-index: 2;
   overflow: hidden;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   border: 2px solid var(--accent);
-  background: #000;
-  box-shadow: 0 6px 24px rgb(0 0 0 / 55%);
+  background: var(--photo-bg);
+  box-shadow: 0 6px 24px var(--lens-shadow);
   pointer-events: none;
 }
 
@@ -876,10 +980,10 @@ input {
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 16px;
+  padding: var(--space-4);
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .report-side {
@@ -899,7 +1003,7 @@ input {
     display: grid;
     grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
     align-items: start;
-    gap: 24px;
+    gap: var(--space-5);
   }
 
   .report-board {
@@ -919,13 +1023,13 @@ input {
 .coach {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
-  padding: 10px 12px;
-  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--bg-raised);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.35;
 }
 
@@ -933,7 +1037,7 @@ input {
   width: 12px;
   height: 12px;
   flex: none;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--text-dim);
 }
 
@@ -973,7 +1077,7 @@ input {
 .coach-numbers {
   width: 100%;
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -982,8 +1086,8 @@ input {
   padding-left: 1.2em;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 0.85rem;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
   color: var(--text-dim);
 }
 
@@ -1039,7 +1143,7 @@ input {
 }
 
 .screen-landing {
-  gap: 20px;
+  gap: var(--space-4);
 }
 
 .landing-hero {
@@ -1047,15 +1151,15 @@ input {
 }
 
 .landing-mark {
-  font-size: clamp(3rem, 18vw, 5.5rem);
+  font-size: var(--text-display-mark);
   line-height: 0.95;
   letter-spacing: -0.03em;
   font-weight: 700;
 }
 
 .landing-lede {
-  margin: 12px 0 0;
-  font-size: 1.05rem;
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-base);
   line-height: 1.5;
   color: var(--text-dim);
   max-width: 46ch;
@@ -1063,14 +1167,14 @@ input {
 
 .landing-cta {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .landing-cta .primary {
   flex: 1;
   min-width: 200px;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   min-height: 52px;
 }
 
@@ -1080,32 +1184,32 @@ input {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .landing-points li {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--bg-raised);
 }
 
 .landing-points b {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 
 .landing-points span {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.45;
 }
 
 .landing-honest p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.5;
 }
@@ -1113,11 +1217,11 @@ input {
 .landing-foot {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
   margin-top: auto;
-  padding-top: 8px;
-  font-size: 0.8rem;
+  padding-top: var(--space-2);
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -1130,17 +1234,17 @@ input {
 .mode-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .mode-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: stretch;
   text-align: left;
-  padding: 14px;
-  border-radius: var(--radius);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   min-height: 44px;
@@ -1152,7 +1256,7 @@ input {
 }
 
 .mode-card h2 {
-  font-size: 1.15rem;
+  font-size: var(--text-md);
   text-transform: none;
   letter-spacing: 0;
   color: var(--text);
@@ -1160,7 +1264,7 @@ input {
 
 .mode-card p {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.45;
 }
@@ -1168,11 +1272,11 @@ input {
 .mode-card ul {
   margin: 0;
   padding-left: 1.1em;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .mode-card ul li::marker {
@@ -1180,10 +1284,10 @@ input {
 }
 
 .mode-go {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: var(--accent);
   font-weight: 650;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .mode-art {
@@ -1191,8 +1295,8 @@ input {
   height: auto;
   color: var(--text);
   background: var(--bg-sunken);
-  border-radius: 10px;
-  padding: 6px;
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
 }
 
 .mode-waves .wave {
@@ -1238,15 +1342,15 @@ input {
   aspect-ratio: 1;
   margin: 0 auto;
   display: block;
-  border-radius: 8px;
-  background: #ffffff;
+  border-radius: var(--radius-md);
+  background: var(--qr-paper);
   padding: 0;
 }
 
 .pair-instruction {
   margin: 0;
   text-align: center;
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--text);
 }
 
@@ -1254,8 +1358,8 @@ input {
 
 .pair-fallback {
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-sunken);
 }
 
@@ -1266,19 +1370,19 @@ input {
 }
 
 .pair-fallback[open] > summary {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--text);
 }
 
 .pair-code {
-  margin: 8px 0;
-  padding: 10px;
-  border-radius: var(--radius);
+  margin: var(--space-2) 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
   background: var(--bg);
   border: 1px solid var(--line);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   /* Big enough to read off one screen and type into another. */
-  font-size: clamp(0.8rem, 3.6vw, 1.05rem);
+  font-size: var(--text-code);
   letter-spacing: 0.08em;
   line-height: 1.7;
   text-align: center;
@@ -1289,13 +1393,13 @@ input {
 
 .pair-code-input {
   width: 100%;
-  padding: 12px;
-  border-radius: var(--radius);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--bg-sunken);
   color: var(--text);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--text-base);
   letter-spacing: 0.08em;
   line-height: 1.7;
   text-transform: uppercase;
@@ -1310,7 +1414,7 @@ input {
 .scanner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .scanner-frame {
@@ -1318,9 +1422,9 @@ input {
   width: min(100%, 460px);
   margin: 0 auto;
   aspect-ratio: 4 / 3;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: #000;
+  background: var(--photo-bg);
   border: 1px solid var(--line);
 }
 
@@ -1338,14 +1442,14 @@ input {
   position: absolute;
   inset: 12%;
   border: 2px dashed var(--accent);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   opacity: 0.8;
 }
 
 .camera-live {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .camera-live-hidden {
@@ -1355,9 +1459,9 @@ input {
 .camera-role-preview {
   width: min(100%, 320px);
   margin: 0 auto;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--line);
-  background: #000;
+  background: var(--photo-bg);
 }
 
 /* A phone acting as a camera should be as dark as the room allows. */
@@ -1368,45 +1472,45 @@ input {
 /* ---------- statistics ---------- */
 
 .screen-stats .panel {
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .tile {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   background: var(--bg-sunken);
   border: 1px solid var(--line);
 }
 
 .tile-label {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
 }
 
 .tile-value {
-  font-size: 1.9rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
 }
 
 .tile-small .tile-value {
-  font-size: 1.25rem;
+  font-size: var(--text-md);
 }
 
 .tile-note {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -1422,6 +1526,8 @@ input {
   stroke-width: 1;
 }
 
+/* The chart's text sizes are off the type scale on purpose: inside the SVG a
+   px is a unit of its viewBox, and the text scales with the chart. */
 .chart-grid text,
 .chart-axis-label {
   fill: var(--text-dim);
@@ -1454,25 +1560,25 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .bars li {
   display: grid;
   grid-template-columns: 3.2em 1fr 4.4em;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .bars-label {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
 .bars-track {
   height: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--bg-sunken);
   overflow: hidden;
 }
@@ -1480,7 +1586,7 @@ input {
 .bars-fill {
   display: block;
   height: 100%;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--text-dim);
   min-width: 2px;
 }
@@ -1491,13 +1597,13 @@ input {
 
 .bars-value {
   text-align: right;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
 .bars-value small {
   display: block;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -1506,15 +1612,15 @@ input {
   aspect-ratio: 1;
   margin: 0 auto;
   display: block;
-  border-radius: 50%;
-  background: #0a0a0a;
+  border-radius: var(--radius-round);
+  background: var(--board-backdrop);
 }
 
 .legend {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.72rem;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
   color: var(--text-dim);
   justify-content: center;
 }
@@ -1523,12 +1629,12 @@ input {
   display: block;
   width: min(60%, 220px);
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .stat-sentence {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
@@ -1540,16 +1646,16 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
   counter-reset: lineup;
 }
 
 .lineup li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 6px;
-  border-radius: 10px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
+  border-radius: var(--radius-md);
   background: var(--bg-sunken);
   border: 1px solid var(--line);
 }
@@ -1560,10 +1666,10 @@ input {
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
@@ -1669,9 +1775,11 @@ input {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 100%;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  padding:
+    max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
+    max(var(--space-4), env(safe-area-inset-bottom));
   max-width: 760px;
   margin: 0 auto;
 }
@@ -1679,12 +1787,12 @@ input {
 .lobby-head {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .lobby-kicker {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1699,7 +1807,7 @@ input {
 
 .lobby-desc {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-dim);
   max-width: 46ch;
@@ -1715,21 +1823,21 @@ input {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .lobby-item {
   width: 100%;
   min-height: 56px;
-  padding: 12px 18px;
+  padding: var(--space-3) var(--space-4);
   text-align: left;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgb(31 28 23 / 82%);
+  background: var(--scrim-menu);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 /* The selected entry: the beige of the accent, with the board's red and
@@ -1740,7 +1848,7 @@ input {
   color: var(--action-ink);
   border-color: transparent;
   box-shadow: inset 5px 0 0 var(--ring-a), inset 10px 0 0 var(--ring-b);
-  padding-left: 26px;
+  padding-left: var(--space-5);
 }
 
 .lobby-item-leave:not(.lobby-item-on) {
@@ -1762,7 +1870,7 @@ input {
     left: auto;
     width: 66%;
     opacity: 0.3;
-    padding: 24px;
+    padding: var(--space-5);
   }
 
   .lobby-art-frame {
@@ -1778,12 +1886,12 @@ input {
     width: 46%;
     min-height: 100vh;
     margin: 0;
-    padding: 56px 0 56px 64px;
-    gap: 24px;
+    padding: var(--space-7) 0 var(--space-7) var(--space-7);
+    gap: var(--space-5);
   }
 
   .lobby-kicker {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
 
   /* The title and the line under it keep the same height whichever entry is
@@ -1799,8 +1907,8 @@ input {
     /* Room below the second line for the tails of g and p, which the clamp
        would otherwise cut off. */
     min-height: calc(2 * 1.08em);
-    margin: 4px 0 0;
-    font-size: clamp(2.6rem, 5vw, 4.5rem);
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-display-title);
     font-weight: 700;
     line-height: 1.08;
     letter-spacing: -0.02em;
@@ -1813,7 +1921,7 @@ input {
     -webkit-line-clamp: 3;
     overflow: hidden;
     min-height: calc(3 * 1.5em);
-    font-size: 1.05rem;
+    font-size: var(--text-base);
     line-height: 1.5;
   }
 
@@ -1842,7 +1950,7 @@ input {
 .review-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -1851,12 +1959,12 @@ input {
 .review-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
-  padding: 6px;
+  padding: var(--space-1);
   background: var(--bg-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -1866,8 +1974,8 @@ input {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: calc(var(--radius) - 4px);
-  background: #000;
+  border-radius: var(--radius-md);
+  background: var(--photo-bg);
 }
 
 .review-card-line {
@@ -1875,6 +1983,6 @@ input {
 }
 
 .review-card-tags {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   opacity: 0.75;
 }

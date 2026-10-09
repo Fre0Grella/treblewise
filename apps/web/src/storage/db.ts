@@ -60,7 +60,12 @@ function hasIndexedDB(): boolean {
 }
 
 async function db(): Promise<IDBPDatabase<TreblewiseDB> | null> {
-  if (!hasIndexedDB()) return null;
+  if (!hasIndexedDB()) {
+    // The stand-in is never opened, so it is migrated on every access instead;
+    // once the flag is set that is one map lookup.
+    migrateMemory();
+    return null;
+  }
   if (!dbPromise) {
     dbPromise = openDB<TreblewiseDB>(DB_NAME, DB_VERSION, {
       upgrade(database, oldVersion) {
@@ -77,6 +82,16 @@ async function db(): Promise<IDBPDatabase<TreblewiseDB> | null> {
           database.createObjectStore('profiles', { keyPath: 'id' });
         }
       },
+    }).then(async (database) => {
+      // Nobody is handed the database until its data is migrated, so the
+      // first reads already see the result.
+      try {
+        await migrateDatabase(database);
+      } catch {
+        // The flag stays unset and the migration runs again at the next open;
+        // a profile list missing old players beats an app that cannot start.
+      }
+      return database;
     });
   }
   try {
@@ -85,6 +100,73 @@ async function db(): Promise<IDBPDatabase<TreblewiseDB> | null> {
     // Blocked or unavailable (private window, cleared site data): fall back.
     return null;
   }
+}
+
+/**
+ * Data migrations change what is stored rather than how, so they cannot go in
+ * `upgrade`, which only runs when the schema version moves. They run when the
+ * database opens instead, each guarded by a flag kept with the settings, and
+ * nothing outside this module knows they exist.
+ *
+ * There is one. Before profiles existed, a player's id was derived from their
+ * name at the start of every match — the same derivation a new profile still
+ * uses. So the matches already on a device name their players, and a returning
+ * player should find their history waiting rather than a list that has
+ * forgotten them. It runs once ever: without the flag, deleting every profile
+ * on purpose would bring them all back on the next load.
+ */
+const PROFILES_SEEDED = 'profilesSeeded' satisfies keyof Settings;
+
+/** The seeding reads the most recent matches only, as it always has: it ran over the first page of the history. */
+const SEED_FROM_MATCHES = 50;
+
+/**
+ * The profiles the matches name that are not profiles yet: guests are left
+ * out, `createdAt` comes from the most recent match a player is in and
+ * `lastPlayedAt` from the latest one. Matches come most recent first.
+ */
+function profilesFromMatches(matches: readonly StoredMatch[], known: readonly Profile[]): Profile[] {
+  const found = new Map<string, Profile>();
+  for (const match of matches) {
+    for (const player of match.config.players) {
+      if (player.temporary || known.some((profile) => profile.id === player.id)) continue;
+      const seen = found.get(player.id);
+      found.set(
+        player.id,
+        seen
+          ? { ...seen, lastPlayedAt: Math.max(seen.lastPlayedAt ?? 0, match.updatedAt) }
+          : { id: player.id, name: player.name, createdAt: match.createdAt, lastPlayedAt: match.updatedAt },
+      );
+    }
+  }
+  return [...found.values()];
+}
+
+async function migrateDatabase(database: IDBPDatabase<TreblewiseDB>): Promise<void> {
+  if ((await database.get('settings', PROFILES_SEEDED)) === true) return;
+  const matches = (await database.getAllFromIndex('matches', 'by-updated')).reverse().slice(0, SEED_FROM_MATCHES);
+  const fresh = profilesFromMatches(matches, await database.getAll('profiles'));
+
+  // One transaction, so the flag is never set without the profiles it stands for.
+  const tx = database.transaction(['profiles', 'settings'], 'readwrite');
+  await Promise.all([
+    ...fresh.map((profile) => tx.objectStore('profiles').put(profile)),
+    tx.objectStore('settings').put(true, PROFILES_SEEDED),
+    tx.done,
+  ]);
+}
+
+function migrateMemory(): void {
+  if (memory.settings.get(PROFILES_SEEDED) === true) return;
+  const matches = recentFirst([...memory.matches.values()]).slice(0, SEED_FROM_MATCHES);
+  for (const profile of profilesFromMatches(matches, [...memory.profiles.values()])) {
+    memory.profiles.set(profile.id, profile);
+  }
+  memory.settings.set(PROFILES_SEEDED, true);
+}
+
+function recentFirst(matches: StoredMatch[]): StoredMatch[] {
+  return matches.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /**
@@ -124,7 +206,7 @@ export async function deleteMatch(id: string): Promise<void> {
 export async function listMatches(limit = 50): Promise<StoredMatch[]> {
   const database = await db();
   if (!database) {
-    return [...memory.matches.values()].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
+    return recentFirst([...memory.matches.values()]).slice(0, limit);
   }
   const all = await database.getAllFromIndex('matches', 'by-updated');
   return all.reverse().slice(0, limit);

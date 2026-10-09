@@ -17,13 +17,18 @@
 
 ```bash
 npm install
-npm test          # packages/core: geometry, X01 rules, checkout routes
+npm test          # both packages: core rules and maths, and the app
 npm run typecheck
 npm run dev       # the app
 ```
 
 `packages/core` is pure TypeScript: no DOM, no I/O, no framework. Anything that
 can live there, should, because that is the part with tests.
+
+Tests live in each package's `tests/` folder, never beside the code: it mirrors
+`src/`, so `src/vision/settle.ts` is tested in `tests/vision/settle.test.ts`.
+Shared fixtures go in `tests/fixtures/`, and the web app's test helpers in
+`tests/support/`. Web tests reach the app as `@/…`.
 
 New rules, board maths or statistics come with tests. Vision work comes with
 measured numbers — see the evaluation gate in
