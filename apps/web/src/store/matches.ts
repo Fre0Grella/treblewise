@@ -20,6 +20,7 @@ import {
 } from '@treblewise/core';
 
 import { announce } from '../caller/announce.js';
+import type { Call } from '../caller/call.js';
 import { strings } from '../i18n/index.js';
 import { deleteMatch, listMatches, putMatch, type StoredMatch } from '../storage/db.js';
 
@@ -46,7 +47,7 @@ export interface ThrowOptions {
 export interface Appended {
   match: StoredMatch;
   snapshot: MatchSnapshot;
-  calls: string[];
+  calls: Call[];
 }
 
 export interface MatchesActions {
@@ -145,7 +146,7 @@ export function createMatches(state: Slice<MatchesState>): MatchesActions {
       };
 
       const next = commit(match, [...match.events, event]);
-      const called = options.call ? [strings().caller.hit(hit)] : [];
+      const called: Call[] = options.call ? [[strings().caller.hit(hit)]] : [];
       return { ...next, calls: [...called, ...announce(snapshot, next.snapshot)] };
     },
 

@@ -9,7 +9,8 @@
 
 let context: AudioContext | null = null;
 
-function audio(): AudioContext | null {
+/** The page's one audio context, shared with the caller's clips (clips.ts). */
+export function audioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Context) return null;
@@ -18,7 +19,7 @@ function audio(): AudioContext | null {
 }
 
 export function unlockSounds(): void {
-  const ctx = audio();
+  const ctx = audioContext();
   if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
 }
 
@@ -35,7 +36,7 @@ function noise(ctx: AudioContext, seconds: number): AudioBuffer {
  * milliseconds) over a short, dull thump (a falling low tone).
  */
 export function playThud(): void {
-  const ctx = audio();
+  const ctx = audioContext();
   if (!ctx || ctx.state !== 'running') return;
   const now = ctx.currentTime;
 
@@ -66,7 +67,7 @@ export function playThud(): void {
 
 /** The turn passing: two soft rising notes, unmistakable and not a dart. */
 export function playTurn(): void {
-  const ctx = audio();
+  const ctx = audioContext();
   if (!ctx || ctx.state !== 'running') return;
   const now = ctx.currentTime;
   [

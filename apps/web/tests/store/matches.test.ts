@@ -57,19 +57,19 @@ describe('the match in play', () => {
     matches.throwDart(hit(20, 'treble'));
 
     const { calls } = matches.throwDart(hit(20, 'treble'))!;
-    expect(calls[0]).toBe(strings().caller.visit(180));
+    expect(calls[0]).toEqual([strings().caller.visit(180)]);
   });
 
   it('calls a dart as it goes in when asked, before the visit', () => {
     const matches = createMatches(held());
     matches.start(config);
     expect(matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true })!.calls).toEqual([
-      strings().caller.hit(hit(20, 'treble')),
+      [strings().caller.hit(hit(20, 'treble'))],
     ]);
 
     matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true });
     const { calls } = matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true })!;
-    expect(calls.slice(0, 2)).toEqual([strings().caller.hit(hit(20, 'treble')), strings().caller.visit(180)]);
+    expect(calls.slice(0, 2)).toEqual([[strings().caller.hit(hit(20, 'treble'))], [strings().caller.visit(180)]]);
   });
 
   it('announces nothing for a correction or an undo, even one that ends a visit', () => {

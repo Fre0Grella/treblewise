@@ -1,5 +1,7 @@
 import type { Hit } from '@treblewise/core';
 
+import type { Call } from '../caller/call.js';
+
 /**
  * English strings, including the caller's vocabulary.
  *
@@ -42,6 +44,36 @@ const TENS = [
   'eighty',
   'ninety',
 ];
+
+/** As far as a leg or set is ever counted out loud; past it, the call leaves the count out. */
+const ORDINALS = [
+  'first',
+  'second',
+  'third',
+  'fourth',
+  'fifth',
+  'sixth',
+  'seventh',
+  'eighth',
+  'ninth',
+  'tenth',
+  'eleventh',
+  'twelfth',
+  'thirteenth',
+  'fourteenth',
+  'fifteenth',
+  'sixteenth',
+  'seventeenth',
+  'eighteenth',
+  'nineteenth',
+  'twentieth',
+];
+
+/** "Yes! Game shot, and the second leg", then the winner's name. */
+function shot(what: 'leg' | 'set', count: number, name: string): Call {
+  const nth = ORDINALS[count - 1];
+  return [nth ? `Yes! Game shot, and the ${nth} ${what}` : 'Yes! Game shot', { name }];
+}
 
 /** 0–180 in the words a caller uses: "one hundred and eighty", not "180". */
 export function numberToWords(value: number): string {
@@ -142,13 +174,14 @@ export const en = {
   caller: {
     noScore: 'No score',
     bust: 'No score',
-    requires: (name: string, remaining: number) =>
-      `${name} requires ${numberToWords(remaining)}`,
+    /** The name is said by the browser, the rest from clips (caller/call.ts). */
+    requires: (name: string, remaining: number): Call => [{ name }, `you require ${numberToWords(remaining)}`],
     visit: (total: number) => (total === 0 ? 'No score' : numberToWords(total)),
-    gameShot: 'Game shot!',
-    setShot: 'Game and the set!',
-    matchShot: 'Game, set and match!',
-    toThrow: (name: string) => `${name} to throw`,
+    /** The leg and set count from 1 within their set and match. */
+    gameShot: (leg: number, name: string): Call => shot('leg', leg, name),
+    setShot: (set: number, name: string): Call => shot('set', set, name),
+    matchShot: (name: string): Call => ['Yes! Game shot, and the match', { name }],
+    toThrow: (name: string): Call => [{ name }, 'to throw'],
     correction: (total: number) => `Correction, ${numberToWords(total)}`,
     /** A single dart, the way a caller names one. */
     hit: (h: Hit): string => {
@@ -193,6 +226,8 @@ export const en = {
       },
     ],
     foot: 'Free and open source.',
+    // Not required by the voice's licence (MIT), but owed all the same (docs/08).
+    voiceCredit: 'Caller voice: Chatterbox by Resemble AI.',
     source: 'Source on GitHub',
   },
   lobby: {
