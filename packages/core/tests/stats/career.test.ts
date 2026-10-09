@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseHit } from '../board/notation.js';
-import { dartEvent, reduceMatch, type MatchEvent, type X01Config } from '../game/x01.js';
-import { allDoubleTargets, careerStats } from './career.js';
+import { parseHit } from '../../src/board/notation.js';
+import { dartEvent, reduceMatch, type MatchEvent, type X01Config } from '../../src/game/x01.js';
+import { allDoubleTargets, careerStats } from '../../src/stats/career.js';
 
 const ann = { id: 'ann', name: 'Ann' };
 const bob = { id: 'bob', name: 'Bob' };

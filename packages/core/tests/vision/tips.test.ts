@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { Hit } from '../board/geometry.js';
-import type { Matrix3 } from './homography.js';
-import { BOARD_TO_RECT, TIP_GRID, decodeTips, imageToRect, prescale, warpToTensor } from './tips.js';
+import type { Hit } from '../../src/board/geometry.js';
+import type { Matrix3 } from '../../src/vision/homography.js';
+import { BOARD_TO_RECT, TIP_GRID, decodeTips, imageToRect, prescale, warpToTensor } from '../../src/vision/tips.js';
 
 /** Written by `python -m treblewise_ml.parity_fixture`; see that file. */
 interface ParityFixture {
@@ -28,7 +28,7 @@ interface ParityFixture {
 }
 
 const fixture = JSON.parse(
-  readFileSync(new URL('./__fixtures__/tips-parity.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../fixtures/tips-parity.json', import.meta.url), 'utf8'),
 ) as ParityFixture;
 
 describe('the tip model pipeline matches the Python that trained it', () => {

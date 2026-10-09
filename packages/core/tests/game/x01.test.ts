@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseHit } from '../board/notation.js';
-import { formatRoute } from './checkout.js';
+import { parseHit } from '../../src/board/notation.js';
+import { formatRoute } from '../../src/game/checkout.js';
 import {
   dartEvent,
   reduceMatch,
   type DartCorrectedEvent,
   type MatchEvent,
   type X01Config,
-} from './x01.js';
+} from '../../src/game/x01.js';
 
 const ann = { id: 'ann', name: 'Ann' };
 const bob = { id: 'bob', name: 'Bob' };

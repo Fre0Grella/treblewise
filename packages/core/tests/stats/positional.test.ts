@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BOARD, hit, scoreAt, targetPoint, type Point } from '../board/geometry.js';
+import { BOARD, hit, scoreAt, targetPoint, type Point } from '../../src/board/geometry.js';
 import {
   biasFrom,
   classifyDoubleAttempt,
@@ -9,7 +9,7 @@ import {
   grouping,
   sampleGrid,
   sectorSplit,
-} from './positional.js';
+} from '../../src/stats/positional.js';
 
 const T20 = targetPoint(hit(20, 'treble'));
 

@@ -9,7 +9,7 @@ drifts from Python, a model that passed evaluation here reads different tips in
 the app. The fixture is synthetic — a made-up camera, made-up tips, a gradient
 image — because it is committed to a public repository.
 
-Output: packages/core/src/vision/__fixtures__/tips-parity.json
+Output: packages/core/tests/fixtures/tips-parity.json
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from .board import RECT_SIZE, board_to_rect, image_to_rect, solve_homography
 from .dataset import encode_targets
 from .decode import decode
 
-OUT = Path(__file__).resolve().parents[2] / "packages" / "core" / "src" / "vision" / "__fixtures__" / "tips-parity.json"
+OUT = Path(__file__).resolve().parents[2] / "packages" / "core" / "tests" / "fixtures" / "tips-parity.json"
 
 TO_IMAGE = np.array([[0.9, -0.2, 360.0], [0.05, -1.1, 640.0], [1e-4, -3e-4, 1.0]])
 CALIBRATION_BOARD = np.array([[0, 170], [170, 0], [0, -170], [-170, 0]], dtype=np.float64)

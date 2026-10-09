@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatHit } from '../board/notation.js';
+import { formatHit } from '../../src/board/notation.js';
 import {
   BOGEY_SCORES,
   CHECKOUT_CHART,
@@ -9,8 +9,8 @@ import {
   finishingDart,
   formatRoute,
   isFinishableWithOneDart,
-} from './checkout.js';
-import { satisfiesRule, type InOutRule } from './rules.js';
+} from '../../src/game/checkout.js';
+import { satisfiesRule, type InOutRule } from '../../src/game/rules.js';
 
 const RULES: InOutRule[] = ['straight', 'double', 'treble', 'master'];
 
