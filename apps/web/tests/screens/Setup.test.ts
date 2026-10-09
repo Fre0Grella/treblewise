@@ -33,6 +33,10 @@ describe('starting a match', () => {
     const players = useMatchesStore().snapshot!.config.players;
     expect(players.map((player) => player.name)).toEqual(['Dave']);
     expect(players[0]!.temporary).toBe(true);
+    // Stored, not only shown: a guest kept as a Vue proxy made IndexedDB
+    // refuse the whole match.
+    const stored = await listMatches(Number.MAX_SAFE_INTEGER);
+    expect(stored.map((match) => match.config.players.map((player) => player.name))).toEqual([['Dave']]);
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/game'));
   });
 

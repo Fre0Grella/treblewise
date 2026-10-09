@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 
 import type { CapturedFrame } from '@/storage/frames.js';
+import { loadSettings } from '@/storage/db.js';
 import { useLobbyStore, useSettingsStore } from '@/store/stores.js';
 import { renderAt } from '../support/renderAt.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
@@ -22,6 +23,8 @@ const hooks = vi.hoisted(() => ({
   fail: false,
   /** How much the photograph changed at each candidate since the last one of the visit (changeGate.ts). */
   change: 50,
+  /** What "take a photograph now" gives back. */
+  capture: null as GrabbedFrame | null,
 }));
 
 vi.mock('@/composables/useCamera.js', async () => {
@@ -41,7 +44,7 @@ vi.mock('@/composables/useCamera.js', async () => {
         change: ref(0),
         photo: shallowRef(null),
         quality: shallowRef(null),
-        capture: async () => null,
+        capture: async () => hooks.capture,
         sampleThumbnail: () => null,
       };
     },
@@ -346,5 +349,29 @@ describe('the capture lab saves only what a person confirmed', () => {
     expect(screen.getByRole('alertdialog')).toBeDefined();
     await press(/throw it away/i);
     expect(hooks.stored).toEqual([]);
+  });
+});
+
+describe('finding the board', () => {
+  // The four landmarks are dragged about in the screen's state. Kept there as
+  // Vue proxies, they went into the calibration, and IndexedDB refused to
+  // store it (DataCloneError): the calibration was lost at every reload, and
+  // every report saved under it failed the same way.
+  it('keeps a calibration that can be stored, and is there after a reload', async () => {
+    URL.createObjectURL = () => 'blob:test';
+    URL.revokeObjectURL = () => undefined;
+    hooks.capture = photo();
+    await renderAt('/camera', () => {
+      useLobbyStore().mode = 'solo';
+    });
+    await press(/start camera/i);
+    await press(/find the board/i);
+    await press(/use this calibration/i);
+
+    const calibration = useSettingsStore().settings.calibration!;
+    expect(calibration.imagePoints).toHaveLength(4);
+    expect(() => structuredClone(calibration)).not.toThrow();
+    expect((await loadSettings()).calibration?.imagePoints).toHaveLength(4);
+    hooks.capture = null;
   });
 });

@@ -55,6 +55,14 @@ const memory = {
   profiles: new Map<string, Profile>(),
 };
 
+/**
+ * What IndexedDB keeps of a value: a structured clone. The fallback keeps the
+ * same, so a value IndexedDB would refuse (a Vue proxy, say, which throws
+ * DataCloneError) is refused here too, in a private window and in the tests,
+ * instead of only on a real device.
+ */
+const stored = <T>(value: T): T => (typeof structuredClone === 'function' ? structuredClone(value) : value);
+
 function hasIndexedDB(): boolean {
   return typeof indexedDB !== 'undefined';
 }
@@ -181,7 +189,7 @@ export async function framesDb(): Promise<IDBPDatabase<TreblewiseDB> | null> {
 export async function putMatch(match: StoredMatch): Promise<void> {
   const database = await db();
   if (!database) {
-    memory.matches.set(match.id, match);
+    memory.matches.set(match.id, stored(match));
     return;
   }
   await database.put('matches', match);
@@ -231,7 +239,7 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
   const database = await db();
   if (!database) {
-    memory.settings.set(key, value);
+    memory.settings.set(key, stored(value));
     return;
   }
   await database.put('settings', value, key);
@@ -246,7 +254,7 @@ export async function listProfiles(): Promise<Profile[]> {
 export async function putProfile(profile: Profile): Promise<void> {
   const database = await db();
   if (!database) {
-    memory.profiles.set(profile.id, profile);
+    memory.profiles.set(profile.id, stored(profile));
     return;
   }
   await database.put('profiles', profile);

@@ -13,7 +13,7 @@
 -->
 <script setup lang="ts">
 import type { InOutRule, PlayerConfig, X01Config } from '@treblewise/core';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 
 import ScreenShell from '../components/ui/ScreenShell.vue';
@@ -34,7 +34,9 @@ const matches = useMatchesStore();
 const players = usePlayersStore();
 
 /** Who is throwing, in order. Profiles and guests look the same here. */
-const lineup = ref<PlayerConfig[]>([]);
+// Shallow: the players go into the stored match as they are, and a deep ref
+// would make each one a Vue proxy, which IndexedDB refuses to store.
+const lineup = shallowRef<PlayerConfig[]>([]);
 const adding = ref<'profile' | 'guest' | null>(null);
 const draftName = ref('');
 const managing = ref(false);

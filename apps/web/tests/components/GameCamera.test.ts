@@ -71,6 +71,9 @@ const saved = vi.hoisted(() => ({ frames: [] as CapturedFrame[] }));
 vi.mock('@/storage/frames.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/storage/frames.js')>()),
   putFrame: async (frame: CapturedFrame) => {
+    // What IndexedDB does first: a structured clone, which a Vue proxy fails.
+    // (The photograph itself is left out: jsdom's Blob cannot be cloned.)
+    structuredClone({ ...frame, jpeg: null });
     saved.frames.push(frame);
   },
 }));

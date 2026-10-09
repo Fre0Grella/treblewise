@@ -76,7 +76,9 @@ const fromGame = computed(() => route.query.from === 'game');
 
 const cameraOn = ref(false);
 const mode = ref<Mode>('setup');
-const draft = ref<Point[]>([]);
+// Shallow, like everything that ends up stored: a deep ref makes each point a
+// Vue proxy, the calibration carries them, and IndexedDB refuses to store it.
+const draft = shallowRef<Point[]>([]);
 const frozen = shallowRef<{ url: string; width: number; height: number } | null>(null);
 
 /**
