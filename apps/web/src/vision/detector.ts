@@ -61,7 +61,7 @@ let loading: Promise<Detector | null> | null = null;
 
 /** Which model the site ships, if any. Cheap: the manifest alone. */
 export function loadManifest(): Promise<ModelManifest | null> {
-  manifestLoading ??= fetch('./models/manifest.json', { cache: 'no-cache' })
+  manifestLoading ??= fetch(`${import.meta.env.BASE_URL}models/manifest.json`, { cache: 'no-cache' })
     .then((response) => (response.ok ? (response.json() as Promise<ModelManifest>) : null))
     .catch(() => null);
   return manifestLoading;
@@ -85,7 +85,7 @@ async function load(): Promise<Detector | null> {
   const manifest = await loadManifest();
   if (!manifest) return null;
 
-  const bytes = await (await fetch(`./models/${manifest.file}`)).arrayBuffer();
+  const bytes = await (await fetch(`${import.meta.env.BASE_URL}models/${manifest.file}`)).arrayBuffer();
   const actual = await sha256(bytes);
   if (actual !== manifest.sha256) throw new Error(`${manifest.file}: SHA-256 ${actual}, manifest says ${manifest.sha256}`);
 

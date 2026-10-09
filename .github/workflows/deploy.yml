@@ -23,6 +23,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # The base path and the landing page's canonical address come from it.
+          SITE_URL: https://fre0grella.github.io/treblewise/
       # The newest published model release goes into the site itself: the app
       # loads it from its own origin (release downloads send no CORS headers,
       # so a browser could not fetch them directly anyway). The file name
