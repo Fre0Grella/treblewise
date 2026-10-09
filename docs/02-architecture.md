@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ apps/web  (React + Vite, PWA)                               │
+│ apps/web  (Vue + Vite, PWA)                                 │
 │                                                             │
 │  UI ── scoreboard · board input · stats · capture lab       │
 │   │                                                         │
@@ -110,11 +110,21 @@ later is one file rather than a refactor.
 
 ## Rendering and state
 
-- React 19 + Vite 7, TypeScript strict.
-- `zustand` for the game store: it holds the event list and a memoised snapshot.
-  Its logic lives in four framework-free modules beside it (`src/store/`): the
-  match, the players, the settings and the lobby session. Appending to the match
-  returns what to announce; `caller/hookup.ts` speaks it when the caller is on.
+- Vue 3 (`<script setup>`) + Vite 7, TypeScript strict, checked with `vue-tsc`.
+- Pinia for state: one store per module in `src/store/` (the match, the
+  players, the settings and the lobby session). The stores hold the state; the
+  logic lives in the modules, which have no framework and take a slice of their
+  store's state. Appending to the match returns what to announce;
+  `caller/hookup.ts` speaks it when the caller is on.
+- Vue Router with real paths, one route per screen, every screen loaded when
+  first opened (`src/router/`). GitHub Pages has no rewrites, so the build
+  writes a copy of `index.html` for every address without a parameter, and a
+  `404.html` that still loads the app for `/history/:id` and `/review/:id`.
+  Only the landing page can be indexed. The base path comes from `SITE_URL`,
+  which the deploy sets; old `#/` bookmarks are turned into their paths on load.
+- The flows that outlive a render are plain modules with a `state()` and a
+  `subscribe()`, wrapped by a small composable each (`src/composables/`): the
+  board watcher, the game visit and the marking session (see CONTEXT.md).
 - No component library. The scoreboard is read at 2–3 metres in bad light: huge
   numerals, high contrast, dark theme first, large touch targets.
 - i18n from day one, as one small module per locale (`src/i18n/`) rather than a
@@ -127,12 +137,16 @@ later is one file rather than a refactor.
 `apps/web/src/vision/` is written so the game never imports it directly:
 
 ```
-camera.ts    getUserMedia, device list, thumbnails, JPEG grabs      (built)
-settle.ts    the motion gate: idle → moving → settled, per throw    (built, tested)
-useCamera.ts the two joined together as a hook                      (built)
-detect/      ONNX session (in a Worker), tip heatmaps → coordinates (to come)
-session/     idle → motion → settle → propose → confirm             (to come)
+camera.ts        getUserMedia, device list, thumbnails, JPEG grabs
+settle.ts        the motion gate: idle → moving → settled, per throw
+detector.ts      the tip model (ONNX Runtime, loaded on first use)
+autoscore.ts     a photograph's new darts: detect, claim, change gate
+boardWatcher.ts  between settles: empty board, pull-out phase, readings
 ```
+
+`composables/useCamera.ts` joins the camera and the motion gate for a screen.
+The game visit (`game/gameVisit.ts`) and the marking session
+(`capture/markingSession.ts`) each drive a board watcher.
 
 The board geometry half already lives in `packages/core/src/vision/`:
 `homography.ts` (four-point fit with Hartley normalisation, inversion,
@@ -140,7 +154,7 @@ reprojection error) and `calibration.ts` (the landmarks and the wireframe).
 It is pure maths over points, so it is unit tested against a synthetic camera
 rather than against a photograph.
 
-`session/` emits proposals. The game store decides what to do with them. This
+The board watcher proposes; the game visit or the marking session decides what to do with a proposal. This
 means autoscoring can be turned off, replaced, or run in "shadow mode" (it
 proposes, you score manually, and we measure how often it agreed) without
 touching game logic. Shadow mode is how the model gets validated on real play.
@@ -150,8 +164,9 @@ touching game logic. Shadow mode is how the model gets validated on real play.
 - `packages/core`: vitest, including a table-driven check of every board
   coordinate → score mapping against known values, X01 bust/finish cases, and
   the checkout generator against a published checkout table.
-- `apps/web`: vitest + Testing Library for the scoring flows; the vision session
-  state machine is tested headless with synthetic detection sequences.
+- `apps/web`: vitest + Testing Library (Vue) for the screens; the board
+  watcher, the game visit and the marking session are tested without a
+  framework, with synthetic thumbnails and a fake model.
 - Scoring accuracy of the model is *not* a unit test. It is a separate
   evaluation run over held-out photographs, reported as numbers in
   [03 – Autoscorer](03-autoscorer.md).
