@@ -1297,16 +1297,15 @@ input {
 
 /* Each card is a picture of its point over the words (issue #23): the
    picture on the sunken black, like the lobby's, the words below. */
-/* Each card leads with its words (issue #23); its picture sits small and
-   faint in the corner behind them, the way a watermark would. */
+/* Each card leads with its words (issue #23); its picture sits faint in the
+   corner behind them, the way a watermark would. */
 .landing-points li {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-height: 12rem;
-  /* Room at the foot for the picture, so it sits below the words, not under them. */
-  padding: var(--space-4) var(--space-4) 4.5rem;
+  /* No room kept for the picture: it sits behind the words. */
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--bg-raised);
