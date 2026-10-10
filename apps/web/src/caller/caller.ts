@@ -101,8 +101,10 @@ export class ClipCaller implements CallerVoice {
           spoken = false;
           continue;
         }
-        // A short breath between a name and its words; a pause is its own gap.
-        if (spoken) await this.wait(PART_GAP_MS);
+        // A short breath between a name and its words. None before a name: the
+        // browser's voice takes its own breath before it speaks. A pause is
+        // its own gap.
+        if (spoken && typeof part === 'string') await this.wait(PART_GAP_MS);
         if (run !== this.run) return;
         if (typeof part !== 'string') await this.speech.say(part.name, 'name');
         else if (!(await this.clips.play(part))) await this.speech.say(part, 'words');

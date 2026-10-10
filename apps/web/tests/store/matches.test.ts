@@ -90,7 +90,10 @@ describe('the match in play', () => {
     matches.throwDart(hit(20, 'treble'));
     matches.throwDart(hit(20, 'treble'));
     names = false;
-    expect(matches.throwDart(hit(10, 'single'))!.calls).toEqual([['one hundred and thirty'], ['you require forty']]);
+    expect(matches.throwDart(hit(10, 'single'))!.calls).toEqual([
+      ['one hundred and thirty'],
+      ['you require one hundred and seventy'],
+    ]);
   });
 
   it('announces nothing for a correction or an undo, even one that ends a visit', () => {

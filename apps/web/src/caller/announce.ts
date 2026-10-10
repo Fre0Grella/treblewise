@@ -17,6 +17,9 @@ import type { Call } from './call.js';
  */
 const BUST_BEAT_MS = 250;
 
+/** The highest score "you require" is recorded for: 170, the highest double-out finish (phrases.ts). */
+const MOST_REQUIRED = 170;
+
 export interface AnnounceOptions {
   /**
    * Whether calls name the players (a setting). Without names, "you require
@@ -74,16 +77,15 @@ export function announce(before: MatchSnapshot | null, after: MatchSnapshot, opt
   const total = visit.darts.reduce((sum, dart) => sum + dart.scored, 0);
   const calls: Call[] = [visit.busted ? [{ pause: BUST_BEAT_MS }, t.caller.bust] : [t.caller.visit(total)]];
 
-  // Then what the player who just threw is left on — them, not the next player.
-  // Hearing "you require thirty-two" while walking back from the board is the
-  // whole point of the caller; hearing the opponent's remaining is noise.
-  if (visit.scoreAfter <= 170) {
-    calls.push(named(t.caller.requires(playerName(after, visit.playerId), visit.scoreAfter)));
-  } else if (names) {
-    const next = after.current;
-    if (next !== null && next.playerId !== visit.playerId) {
-      calls.push(t.caller.toThrow(playerName(after, next.playerId)));
-    }
+  // Then the player stepping up, the way a caller hands over: what they
+  // require when they are on a finish ("Sofi, you require one hundred"), and
+  // otherwise just that they are to throw. Alone at the board, a player hears
+  // what they require before each visit, and nothing more.
+  const next = after.current;
+  if (next !== null) {
+    const finish = next.checkout !== null && next.remaining <= MOST_REQUIRED;
+    if (finish) calls.push(named(t.caller.requires(playerName(after, next.playerId), next.remaining)));
+    else if (names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(playerName(after, next.playerId)));
   }
 
   return calls;

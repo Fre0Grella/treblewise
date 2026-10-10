@@ -7,7 +7,9 @@ Two separate features that happen to both involve speech.
 The point is that nobody looks at the screen. What gets spoken:
 
 - The visit total, in caller style: "One hundred and eighty!", "Sixty".
-- The remaining score: "You require thirty-two".
+- Then the player stepping up: what they require, if they are on a finish,
+  at the start of their visit ("Sofi, you require one hundred"), and otherwise
+  that they are to throw ("Sofi, to throw").
 - The checkout, when asked for or when the route is non-obvious.
 - Leg and set results, and whose throw it is.
 - Corrections, so an autoscorer fix is audible: "Correction, forty-one".

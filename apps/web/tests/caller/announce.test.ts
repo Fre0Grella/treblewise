@@ -47,9 +47,22 @@ describe('announce', () => {
     expect(say(['MISS', 'MISS', 'MISS'])).toEqual([['No score'], [{ name: 'Bob' }, 'to throw']]);
   });
 
-  it('tells the player who threw what they are left on, not the opponent', () => {
+  it('tells the player stepping up what they require when they are on a finish', () => {
     const cfg = { ...config, startScore: 170 };
-    expect(say(['T20', 'T20', 'S10'], cfg)).toEqual([['one hundred and thirty'], [{ name: 'Ann' }, 'you require forty']]);
+    // Ann leaves herself 40, but it is Bob, on 170, who steps up.
+    expect(say(['T20', 'T20', 'S10'], cfg)).toEqual([
+      ['one hundred and thirty'],
+      [{ name: 'Bob' }, 'you require one hundred and seventy'],
+    ]);
+    // 169 cannot be finished in three darts: Bob is just to throw.
+    expect(say(['S1', 'MISS', 'MISS'], { ...config, startScore: 169 })).toEqual([['one'], [{ name: 'Bob' }, 'to throw']]);
+  });
+
+  it('tells a player alone at the board what they require before each visit', () => {
+    const solo = { ...config, startScore: 100, players: [{ id: 'ann', name: 'Ann' }] };
+    expect(say(['S20', 'S20', 'S20'], solo)).toEqual([['sixty'], [{ name: 'Ann' }, 'you require forty']]);
+    const far = { ...solo, startScore: 501 };
+    expect(say(['S20', 'S20', 'S20'], far)).toEqual([['sixty']]);
   });
 
   it('calls game shot with the leg, the set or the match, and who won it', () => {
@@ -67,9 +80,9 @@ describe('announce', () => {
   });
 
   // The beat lets the glass of the bust land first (sounds.ts).
-  it('calls no score a beat after a bust and repeats what the thrower still needs', () => {
+  it('calls no score a beat after a bust, then hands over', () => {
     const cfg = { ...config, startScore: 20 };
-    expect(say(['S19'], cfg)).toEqual([[{ pause: 250 }, 'No score'], [{ name: 'Ann' }, 'you require twenty']]);
+    expect(say(['S19'], cfg)).toEqual([[{ pause: 250 }, 'No score'], [{ name: 'Bob' }, 'you require twenty']]);
   });
 
   it('knows a bust from the dart that made it, and only that dart', () => {
@@ -85,7 +98,7 @@ describe('announce', () => {
     expect(say(['T20', 'T20', 'T20'], config, quiet)).toEqual([['one hundred and eighty']]);
     expect(say(['T20', 'T20', 'S10'], { ...config, startScore: 170 }, quiet)).toEqual([
       ['one hundred and thirty'],
-      ['you require forty'],
+      ['you require one hundred and seventy'],
     ]);
     expect(say(['D20'], { ...config, startScore: 40 }, quiet)).toEqual([['Yes! Game shot, and the match']]);
   });
