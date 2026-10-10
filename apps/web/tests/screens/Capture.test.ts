@@ -134,7 +134,11 @@ describe('the capture lab saves only what a person confirmed', () => {
     await renderAt('/camera', () => {
       useLobbyStore().mode = 'solo';
       const settings = useSettingsStore();
-      settings.settings = { ...settings.settings, calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY) } };
+      settings.settings = {
+        ...settings.settings,
+        keepPhotos: true,
+        calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY) },
+      };
     });
     await press(/start camera/i);
     await press(/try it/i);
@@ -159,6 +163,27 @@ describe('the capture lab saves only what a person confirmed', () => {
     await settle();
     expect(hooks.stored).toEqual([]);
     expect(screen.getByText(/a newer photo is waiting/i)).toBeDefined();
+  });
+
+  it('asks before its first save while keeping photos is off, and saves once it is on', async () => {
+    useSettingsStore().settings = { ...useSettingsStore().settings, keepPhotos: false };
+    await settle();
+    await press(/right — save it/i);
+    expect(hooks.stored).toEqual([]);
+    expect(screen.getByRole('alertdialog', { name: /saves photographs on this device/i })).toBeDefined();
+
+    await press(/not now/i);
+    expect(screen.queryByRole('alertdialog', { name: /saves photographs/i })).toBeNull();
+    expect(hooks.stored).toEqual([]);
+    expect(useSettingsStore().settings.keepPhotos).toBe(false);
+
+    await press(/right — save it/i);
+    await press(/turn it on and save/i);
+    expect(hooks.stored).toHaveLength(1);
+    expect(useSettingsStore().settings.keepPhotos).toBe(true);
+    expect((await loadSettings()).keepPhotos).toBe(true);
+    // Once on, a save does not ask.
+    expect(screen.queryByRole('alertdialog', { name: /saves photographs/i })).toBeNull();
   });
 
   it('throws an unconfirmed proposal away when the photo is skipped', async () => {

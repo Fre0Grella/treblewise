@@ -244,10 +244,31 @@ watch(
 const refreshIf = (wrote: boolean) => {
   if (wrote) void refreshStats();
 };
-const save = () => void session.save().then(refreshIf);
-const noNewDart = () => void session.noNewDart().then(refreshIf);
+
+// Keeping photographs is off for players until they say otherwise (issue #32).
+// Saving is what this lab is for, so a save while it is off asks first, and
+// goes ahead once it is on.
+const keepPhotos = computed({
+  get: () => settings.settings.keepPhotos,
+  set: (on: boolean) => settings.setKeepPhotos(on),
+});
+const askingKeep = shallowRef<(() => void) | null>(null);
+function whenKept(write: () => void) {
+  if (keepPhotos.value) write();
+  else askingKeep.value = write;
+}
+function keepAndSave() {
+  const write = askingKeep.value;
+  askingKeep.value = null;
+  keepPhotos.value = true;
+  write?.();
+}
+
+const save = () => whenKept(() => void session.save().then(refreshIf));
+const noNewDart = () => whenKept(() => void session.noNewDart().then(refreshIf));
 const undo = () => void session.undo().then(refreshIf);
-const answer = (choice: 'save' | 'discard') => void session.answer(choice).then(refreshIf);
+const answer = (choice: 'save' | 'discard') =>
+  choice === 'save' ? whenKept(() => void session.answer(choice).then(refreshIf)) : void session.answer(choice).then(refreshIf);
 
 async function captureNow() {
   const grabbed = await camera.capture();
@@ -430,6 +451,14 @@ const storageLine = computed(() => {
             <button type="button" class="chip" @click="session.leave('done')">{{ t.capture.doneTrying }}</button>
           </div>
 
+          <div v-if="askingKeep" class="panel" role="alertdialog" :aria-label="t.capture.askKeep">
+            <p>{{ t.capture.askKeep }}</p>
+            <div class="controls">
+              <button type="button" class="primary" @click="keepAndSave">{{ t.capture.askKeepYes }}</button>
+              <button type="button" class="chip" @click="askingKeep = null">{{ t.capture.askKeepNo }}</button>
+            </div>
+          </div>
+
           <div v-if="marking.leaving?.asking" class="panel" role="alertdialog" :aria-label="t.capture.unsavedTitle">
             <p>{{ t.capture.unsavedTitle }}</p>
             <div class="controls">
@@ -544,6 +573,10 @@ const storageLine = computed(() => {
       <h2>{{ t.capture.frames }}</h2>
       <p><b>{{ stats.labelled }}</b> {{ t.capture.labelled }} · {{ storageLine }}</p>
       <p class="hint">{{ t.capture.privacy }}</p>
+      <div class="controls">
+        <Toggle v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
+      </div>
+      <p v-if="!keepPhotos" class="hint">{{ t.capture.keepPhotosOffHelp }}</p>
       <div class="controls">
         <button type="button" class="chip" :disabled="busy || stats.total === 0" @click="exportAll">
           {{ stats.total === 0 ? t.capture.exportEmpty : t.capture.export }}

@@ -112,6 +112,13 @@ export interface Settings {
   /** Keep camera frames during a game, so a wrong score can be reported. */
   keepFrames: boolean;
   /**
+   * Whether labelled photographs are saved at all (issue #32): a report in a
+   * game, a save in the capture lab. Off for players, who should not fill
+   * their device with them; a report still corrects the score. On for anyone
+   * who already had photographs when it arrived (storage/db.ts).
+   */
+  keepPhotos: boolean;
+  /**
    * In a game, the autoscorer enters every dart it reads (source 'auto'),
    * and the player corrects what it gets wrong. Off until someone turns it
    * on: no model has passed the accuracy gate for games yet (docs/03).
@@ -135,6 +142,7 @@ export const DEFAULT_SETTINGS: Settings = {
   entryMode: 'board',
   locale: 'en',
   keepFrames: false,
+  keepPhotos: false,
   autoscoreGames: false,
   calibration: null,
   profilesSeeded: false,

@@ -70,6 +70,10 @@ const keepFrames = computed({
   get: () => settings.settings.keepFrames,
   set: (on: boolean) => settings.setKeepFrames(on),
 });
+const keepPhotos = computed({
+  get: () => settings.settings.keepPhotos,
+  set: (on: boolean) => settings.setKeepPhotos(on),
+});
 const autoscore = computed(() => settings.settings.autoscoreGames);
 const modelInfo = computed(() => visitState.value.model.manifest);
 const modelReady = computed(() => visitState.value.model.status === 'ready');
@@ -191,17 +195,19 @@ async function save() {
     id: newId(),
     ts: Date.now(),
   });
-  if (result.frame) await putFrame(result.frame);
+  // With keeping photos off, a report corrects the score and writes nothing (issue #32).
+  const keep = settings.settings.keepPhotos;
+  if (result.frame && keep) await putFrame(result.frame);
   for (const correction of result.corrections) emit('correct', correction.dartId, correction.hit, correction.pos);
 
   const labelled = marks.marks.filter((mark) => mark !== null);
   saved.value = [
     result.corrections.length > 0
       ? fill(t.report.scoreChanged, { score: labelled.map((mark) => formatHit(mark!.hit)).join(' ') })
-      : result.frame
+      : result.frame && keep
         ? t.report.saved
         : '',
-    result.frame ? '' : t.report.notKept,
+    !keep ? t.report.photosOff : result.frame ? '' : t.report.notKept,
   ]
     .filter(Boolean)
     .join(' ');
@@ -271,6 +277,7 @@ const attachVideo = (element: unknown) => {
         {{ calibration ? t.report.cameraSetup : t.capture.calibrate }}
       </button>
       <Toggle v-if="keepFrames && calibration" v-model="showPreview" :label="t.report.preview" />
+      <Toggle v-if="keepFrames" v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
     </div>
 
     <div v-if="keepFrames && calibration && modelInfo" class="controls">
@@ -333,7 +340,7 @@ const attachVideo = (element: unknown) => {
       <div class="report">
         <div class="report-side">
           <h2>{{ t.report.title }}</h2>
-          <p class="hint">{{ t.report.help }}</p>
+          <p class="hint">{{ keepPhotos ? t.report.help : t.report.helpNotKept }}</p>
 
           <div class="chip-row">
             <button v-for="(dart, index) in darts" :key="dart.id" type="button" class="chip" @click="setMark(index, null)">

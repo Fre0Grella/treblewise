@@ -176,7 +176,7 @@ describe('the autoscorer in a game', () => {
   });
 
   /** Renders, and waits for the model to load. */
-  async function start(initial: TestDart[] = [], { autoscore = true } = {}) {
+  async function start(initial: TestDart[] = [], { autoscore = true, keepPhotos = true } = {}) {
     darts.value = initial;
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -192,6 +192,7 @@ describe('the autoscorer in a game', () => {
     settings.settings = {
       ...settings.settings,
       keepFrames: true,
+      keepPhotos,
       autoscoreGames: autoscore,
       calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY) },
     };
@@ -357,6 +358,25 @@ describe('the autoscorer in a game', () => {
     expect(saved.frames[0]!.model).toBe('test-model');
     // The autoscorer's marks, let stand by a person: accepted already.
     expect(saved.frames[0]!.reviewed).toBe(true);
+  });
+
+  it('corrects the score but keeps no photograph while keeping photos is off', async () => {
+    fakeUrls();
+    saved.frames = [];
+    const read = [
+      { id: 'a', hit: T20, pos: { x: 0, y: 103 }, source: 'auto' as const },
+      { id: 'b', hit: T20, pos: { x: 5, y: 103 }, source: 'auto' as const },
+    ];
+    await start(read, { autoscore: false, keepPhotos: false });
+    await settle();
+    expect(screen.getByRole('button', { name: /keep photos.*: off/i })).toBeDefined();
+
+    await fireEvent.click(screen.getByRole('button', { name: /report/i }));
+    expect(screen.getByText(/the score follows the marker\.$/i)).toBeDefined();
+    await fireEvent.click(screen.getByRole('button', { name: /save report/i }));
+    await tick();
+    expect(saved.frames).toHaveLength(0);
+    expect(screen.getByText(/keeping photos is off/i)).toBeDefined();
   });
 
   it('keeps a dart tapped on the drawn board for Review to confirm, when its mark is left where it was', async () => {

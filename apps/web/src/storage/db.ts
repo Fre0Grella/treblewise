@@ -116,12 +116,14 @@ async function db(): Promise<IDBPDatabase<TreblewiseDB> | null> {
  * database opens instead, each guarded by a flag kept with the settings, and
  * nothing outside this module knows they exist.
  *
- * There is one. Before profiles existed, a player's id was derived from their
+ * There are two. Before profiles existed, a player's id was derived from their
  * name at the start of every match — the same derivation a new profile still
  * uses. So the matches already on a device name their players, and a returning
  * player should find their history waiting rather than a list that has
  * forgotten them. It runs once ever: without the flag, deleting every profile
  * on purpose would bring them all back on the next load.
+ *
+ * The second is in `keepPhotosIfAny`.
  */
 const PROFILES_SEEDED = 'profilesSeeded' satisfies keyof Settings;
 
@@ -151,6 +153,29 @@ function profilesFromMatches(matches: readonly StoredMatch[], known: readonly Pr
 }
 
 async function migrateDatabase(database: IDBPDatabase<TreblewiseDB>): Promise<void> {
+  await keepPhotosIfAny(database);
+  await seedProfiles(database);
+}
+
+const KEEP_PHOTOS = 'keepPhotos' satisfies keyof Settings;
+
+/**
+ * Keeping photographs is off for a new player (issue #32), but someone who
+ * already has photographs on the device was keeping them before the setting
+ * existed: for them it starts on, so nothing they rely on stops silently. The
+ * setting's own absence is the flag: once written, either way, this never
+ * looks again, so the photographs taken later do not turn it back on.
+ * Exported for its test only: the tests run without IndexedDB.
+ */
+export async function keepPhotosIfAny(
+  database: Pick<IDBPDatabase<TreblewiseDB>, 'get' | 'count' | 'put'>,
+): Promise<void> {
+  if ((await database.get('settings', KEEP_PHOTOS)) !== undefined) return;
+  const any = (await database.count('frames')) > 0;
+  await database.put('settings', any, KEEP_PHOTOS);
+}
+
+async function seedProfiles(database: IDBPDatabase<TreblewiseDB>): Promise<void> {
   if ((await database.get('settings', PROFILES_SEEDED)) === true) return;
   const matches = (await database.getAllFromIndex('matches', 'by-updated')).reverse().slice(0, SEED_FROM_MATCHES);
   const fresh = profilesFromMatches(matches, await database.getAll('profiles'));

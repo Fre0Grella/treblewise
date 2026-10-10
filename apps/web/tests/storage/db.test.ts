@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   deleteMatch,
   deleteProfile,
+  keepPhotosIfAny,
   listMatches,
   listProfiles,
   loadSettings,
@@ -82,5 +83,45 @@ describe('seeding profiles from matches played before profiles existed', () => {
     await saveSetting('profilesSeeded', false);
 
     expect((await listProfiles()).map((profile) => profile.id)).toEqual(['marco']);
+  });
+});
+
+describe('keeping photographs', () => {
+  /** Just enough of a database: the settings and a number of photographs. */
+  function device(frames: number, settings: Record<string, unknown> = {}) {
+    return {
+      settings,
+      get: async (_store: string, key: string) => settings[key],
+      count: async () => frames,
+      put: async (_store: string, value: unknown, key: string) => {
+        settings[key] = value;
+        return key;
+      },
+    } as unknown as Parameters<typeof keepPhotosIfAny>[0] & { settings: Record<string, unknown> };
+  }
+
+  it('is off for a new player', async () => {
+    const fresh = device(0);
+    await keepPhotosIfAny(fresh);
+    expect(fresh.settings.keepPhotos).toBe(false);
+  });
+
+  it('starts on for someone who already has photographs', async () => {
+    const collector = device(12);
+    await keepPhotosIfAny(collector);
+    expect(collector.settings.keepPhotos).toBe(true);
+  });
+
+  it('never changes a choice once made', async () => {
+    const turnedOff = device(12, { keepPhotos: false });
+    await keepPhotosIfAny(turnedOff);
+    expect(turnedOff.settings.keepPhotos).toBe(false);
+  });
+
+  it('survives a reload', async () => {
+    expect((await loadSettings()).keepPhotos).toBe(false);
+    await saveSetting('keepPhotos', true);
+    expect((await loadSettings()).keepPhotos).toBe(true);
+    await saveSetting('keepPhotos', false);
   });
 });

@@ -39,6 +39,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setEntryMode: (mode: Settings['entryMode']) => settings.change('entryMode', mode),
     saveCalibration: (calibration: Settings['calibration']) => settings.change('calibration', calibration),
     setKeepFrames: (on: boolean) => settings.change('keepFrames', on),
+    setKeepPhotos: (on: boolean) => settings.change('keepPhotos', on),
     setAutoscoreGames: (on: boolean) => settings.change('autoscoreGames', on),
   };
 });
