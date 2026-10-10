@@ -1297,6 +1297,14 @@ input {
 
 /* Each card is a picture of its point over the words (issue #23): the
    picture on the sunken black, like the lobby's, the words below. */
+/* Stacked on a phone, every card as tall as the tallest, so the column is
+   even. (Side by side, the rows already line up.) */
+@media (max-width: 559px) {
+  .landing-points {
+    grid-auto-rows: 1fr;
+  }
+}
+
 /* Each card leads with its words (issue #23); its picture sits faint in the
    corner behind them, the way a watermark would. */
 .landing-points li {
