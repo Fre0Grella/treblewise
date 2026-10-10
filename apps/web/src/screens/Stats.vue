@@ -184,12 +184,6 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
     <p v-if="career.dartsThrown === 0" class="hint">{{ t.stats.nothingInRange }}</p>
     <template v-else>
       <section class="panel">
-        <h2>{{ t.stats.trendTitle }}</h2>
-        <LegTrend v-if="legPoints.length >= 2" :points="legPoints" :reference="career.average" />
-        <p v-else class="hint">{{ t.stats.trendNeedsMore }}</p>
-      </section>
-
-      <section class="panel">
         <h2>{{ t.stats.scoring }}</h2>
         <div class="tiles">
           <StatTile
@@ -226,6 +220,12 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
           <StatTile small :label="t.stats.bestVisit" :value="`${career.bestVisit}`" />
           <StatTile small :label="t.stats.busts" :value="`${career.busts}`" />
         </div>
+      </section>
+
+      <section class="panel">
+        <h2>{{ t.stats.trendTitle }}</h2>
+        <LegTrend v-if="legPoints.length >= 2" :points="legPoints" :reference="career.average" />
+        <p v-else class="hint">{{ t.stats.trendNeedsMore }}</p>
       </section>
 
       <section class="panel">

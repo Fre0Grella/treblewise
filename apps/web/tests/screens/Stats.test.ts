@@ -70,7 +70,7 @@ describe('the statistics page', () => {
     expect(average).toBeGreaterThan(60);
   });
 
-  it('charts every leg above the other numbers, once there are two', async () => {
+  it('charts every leg under the scoring numbers, once there are two', async () => {
     throwDarts(6);
     throwDarts(9);
     await renderStats();
@@ -78,9 +78,9 @@ describe('the statistics page', () => {
     const chart = await screen.findByRole('slider', { name: 'Leg' });
     expect(screen.getByText(/from 2 legs/i)).toBeDefined();
     expect((chart as HTMLInputElement).value).toBe('1');
-    // Above the scoring numbers, which are still there.
+    // Under the scoring numbers, which are still there.
     const scoring = screen.getByRole('heading', { name: 'Scoring' });
-    expect(chart.compareDocumentPosition(scoring) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chart.compareDocumentPosition(scoring) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     expect(screen.getByText(/3-dart average/i)).toBeDefined();
   });
 
