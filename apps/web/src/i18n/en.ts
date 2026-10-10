@@ -723,9 +723,6 @@ export const en = {
     trendReadout: '{date}: average {average}, checkout {checkout}',
     trendOpen: 'Open this match',
     trendNeedsMore: 'The chart needs at least two matches in this period.',
-    form: 'Form',
-    careerAverage: 'average',
-    formNote: 'One point per session, oldest first. {n} sessions so far.',
 
     shape: 'Shape of your scoring',
 

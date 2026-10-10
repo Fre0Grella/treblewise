@@ -33,7 +33,6 @@ import BoardMap from '../components/charts/BoardMap.vue';
 import MatchTrend, { type MatchPoint } from '../components/charts/MatchTrend.vue';
 import { rampStops } from '../components/charts/heatRamp.js';
 import StatTile from '../components/charts/StatTile.vue';
-import TrendChart from '../components/charts/TrendChart.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
 import { fill, useStrings } from '../i18n/index.js';
@@ -222,15 +221,6 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
           <StatTile small :label="t.stats.bestVisit" :value="`${career.bestVisit}`" />
           <StatTile small :label="t.stats.busts" :value="`${career.busts}`" />
         </div>
-      </section>
-
-      <section v-if="career.sessions.length >= 2" class="panel">
-        <h2>{{ t.stats.form }}</h2>
-        <TrendChart
-          :points="career.sessions.map((session) => ({ label: session.day.slice(5), value: session.average }))"
-          :reference="{ value: career.average, label: t.stats.careerAverage }"
-        />
-        <p class="hint">{{ fill(t.stats.formNote, { n: career.sessions.length }) }}</p>
       </section>
 
       <section class="panel">
