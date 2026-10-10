@@ -226,6 +226,54 @@ h2 {
   color: var(--text);
 }
 
+/* Back on the left, fullscreen on the right: one row above the title. */
+.screen-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.screen-top .screen-back {
+  margin-bottom: 0;
+}
+
+/* A button that is only an icon: its own size, a 44px target, and a label
+   for the screen reader instead of words. */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+}
+
+.icon-btn > svg {
+  display: block;
+}
+
+/* Bare, like Back: at the top of a screen it stays out of the way. */
+.screen-icon {
+  margin-left: auto;
+  margin-right: calc(-1 * var(--space-2));
+  padding: var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+}
+
+.screen-icon:hover:not(:disabled),
+.screen-icon:focus-visible {
+  background: none;
+  color: var(--text);
+}
+
+/* On the landing page, which has no header row: in the top right corner,
+   over the board behind the page. */
+.corner-icon {
+  position: absolute;
+  top: max(var(--space-2), env(safe-area-inset-top));
+  right: max(var(--space-4), env(safe-area-inset-right));
+  z-index: 2;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -1945,6 +1993,15 @@ input {
 
   .lobby-kicker {
     font-size: var(--text-sm);
+  }
+
+  /* The menu's column is under half the screen: fullscreen goes to the
+     screen's own top right corner, over the picture. */
+  .lobby-fullscreen {
+    position: fixed;
+    top: var(--space-5);
+    right: var(--space-5);
+    z-index: 2;
   }
 
   /* The title and the line under it keep the same height whichever entry is

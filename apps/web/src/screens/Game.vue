@@ -19,6 +19,7 @@ import GameCamera from '../components/GameCamera.vue';
 import Keypad from '../components/Keypad.vue';
 import Scoreboard from '../components/Scoreboard.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
+import FullscreenButton from '../components/ui/FullscreenButton.vue';
 import Toggle from '../components/ui/Toggle.vue';
 import { useGameVisit } from '../composables/useGameVisit.js';
 import { fill, useStrings } from '../i18n/index.js';
@@ -215,6 +216,7 @@ function markVisit() {
       <Toggle v-model="callerOn" :label="callerOn ? t.game.callerOn : t.game.callerOff" />
       <Toggle v-if="callerOn" v-model="namesOn" :label="namesOn ? t.game.namesOn : t.game.namesOff" />
       <Toggle v-model="soundsOn" :label="soundsOn ? t.game.soundsOn : t.game.soundsOff" />
+      <FullscreenButton class="chip" />
       <button
         type="button"
         class="chip"

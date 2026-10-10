@@ -95,6 +95,8 @@ export const en = {
     name: 'treblewise',
     tagline: 'Darts scoring, calling and statistics.',
     back: 'Back',
+    fullscreenOn: 'Fullscreen',
+    fullscreenOff: 'Leave fullscreen',
   },
   setup: {
     title: 'New match',

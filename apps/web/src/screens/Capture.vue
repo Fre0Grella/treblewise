@@ -29,6 +29,7 @@ import PhoneBattery from '../components/PhoneBattery.vue';
 import QualityMarks from '../components/QualityMarks.vue';
 import SetupCoach from '../components/SetupCoach.vue';
 import Fold from '../components/ui/Fold.vue';
+import FullscreenButton from '../components/ui/FullscreenButton.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
 import Toggle from '../components/ui/Toggle.vue';
 import { useCamera } from '../composables/useCamera.js';
@@ -357,9 +358,12 @@ const storageLine = computed(() => {
       <div class="capture-side">
         <header class="screen-head">
           <!-- Back asks first when there are marks nobody saved (the marking session's leave). -->
-          <button type="button" class="screen-back" @click="session.leave('back')">
-            <span aria-hidden="true">‹</span> {{ fromGame ? t.capture.backToMatch : t.capture.back }}
-          </button>
+          <div class="screen-top">
+            <button type="button" class="screen-back" @click="session.leave('back')">
+              <span aria-hidden="true">‹</span> {{ fromGame ? t.capture.backToMatch : t.capture.back }}
+            </button>
+            <FullscreenButton class="screen-icon" />
+          </div>
           <h1>{{ t.capture.title }}</h1>
           <Fold id="capture-about" :summary="t.capture.foldAbout">
             <p>{{ mode === 'try' ? t.capture.trySubtitle : t.capture.subtitle }}</p>

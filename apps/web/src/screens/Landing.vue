@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 
 import AppFooter from '../components/AppFooter.vue';
 import Dartboard from '../components/Dartboard.vue';
+import FullscreenButton from '../components/ui/FullscreenButton.vue';
 import { useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore } from '../store/stores.js';
@@ -22,6 +23,7 @@ const lobby = useLobbyStore();
         <Dartboard decorative />
       </div>
     </div>
+    <FullscreenButton class="screen-icon corner-icon" />
     <div class="screen screen-landing">
       <header class="landing-hero">
         <h1 class="landing-mark">{{ t.app.name }}</h1>

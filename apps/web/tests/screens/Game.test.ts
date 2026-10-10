@@ -3,6 +3,7 @@ import { hit } from '@treblewise/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useMatchesStore, useSettingsStore } from '@/store/stores.js';
+import { fakeFullscreen } from '../support/fullscreen.js';
 import { renderAt } from '../support/renderAt.js';
 
 // No camera here: the game screen alone.
@@ -85,5 +86,18 @@ describe('the game screen', () => {
     const won = (await screen.findByRole('heading', { name: /wins the match/i })).closest('.overlay-card') as HTMLElement;
     await fireEvent.click(within(won).getByRole('button', { name: /new match/i }));
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/setup'));
+  });
+
+  it('has fullscreen beside the caller and the sounds, and no footer', async () => {
+    const { restore } = fakeFullscreen();
+    try {
+      await renderAt('/game', startMatch);
+      const button = screen.getByRole('button', { name: 'Fullscreen' });
+      expect(button.closest('.controls')).toBe(screen.getByRole('button', { name: 'Caller off' }).closest('.controls'));
+      // Every pixel goes to the board.
+      expect(screen.queryByRole('contentinfo')).toBeNull();
+    } finally {
+      restore();
+    }
   });
 });

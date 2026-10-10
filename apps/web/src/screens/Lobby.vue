@@ -23,6 +23,7 @@ import { useRouter } from 'vue-router';
 import AppFooter from '../components/AppFooter.vue';
 import LobbyArt, { type LobbyArtKind } from '../components/art/LobbyArt.vue';
 import { shownBattery } from '../components/batteryLevel.js';
+import FullscreenButton from '../components/ui/FullscreenButton.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
@@ -148,7 +149,10 @@ const keep = (index: number) => (element: unknown) => {
 
     <div class="lobby-content">
       <header class="lobby-head">
-        <h1 class="lobby-kicker">{{ t.lobby.title }} · {{ paired ? t.lobby.pairedShort : t.lobby.soloShort }}</h1>
+        <div class="screen-top">
+          <h1 class="lobby-kicker">{{ t.lobby.title }} · {{ paired ? t.lobby.pairedShort : t.lobby.soloShort }}</h1>
+          <FullscreenButton class="screen-icon lobby-fullscreen" />
+        </div>
 
         <div v-if="paired" :class="`coach ${phoneLive ? 'coach-ready' : 'coach-warn'}`" role="status">
           <span class="coach-dot" aria-hidden="true" />

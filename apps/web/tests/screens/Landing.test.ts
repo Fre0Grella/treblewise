@@ -1,7 +1,8 @@
 import { fireEvent, screen, within } from '@testing-library/vue';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useLobbyStore, useMatchesStore } from '@/store/stores.js';
+import { fakeFullscreen } from '../support/fullscreen.js';
 import { renderAt } from '../support/renderAt.js';
 
 describe('the landing page', () => {
@@ -66,6 +67,21 @@ describe('the landing page', () => {
     expect(footer.textContent).toContain(`© ${new Date().getFullYear()} treblewise`);
     // The voice's credit stays on the page (docs/08).
     expect(screen.getByText(/chatterbox by resemble ai/i)).toBeDefined();
+  });
+});
+
+describe('the fullscreen button', () => {
+  let restore: () => void = () => {};
+  afterEach(() => restore());
+
+  it('is on the landing page and at the top of every screen with a header', async () => {
+    restore = fakeFullscreen().restore;
+    const { router } = await renderAt('/');
+    expect(screen.getByRole('button', { name: 'Fullscreen' })).toBeDefined();
+
+    await router.push('/start');
+    const button = await screen.findByRole('button', { name: 'Fullscreen' });
+    expect(button.closest('header')).not.toBeNull();
   });
 });
 
