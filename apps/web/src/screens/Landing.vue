@@ -3,6 +3,7 @@
 import { useRouter } from 'vue-router';
 
 import Dartboard from '../components/Dartboard.vue';
+import Wordmark from '../components/Wordmark.vue';
 import { useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore } from '../store/stores.js';
@@ -23,7 +24,7 @@ const lobby = useLobbyStore();
     </div>
     <div class="screen screen-landing">
       <header class="landing-hero">
-        <h1 class="landing-mark">{{ t.app.name }}</h1>
+        <h1 class="landing-mark"><Wordmark /></h1>
         <p class="landing-lede">{{ t.landing.lede }}</p>
       </header>
 

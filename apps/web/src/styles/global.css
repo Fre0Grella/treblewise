@@ -1243,8 +1243,26 @@ input {
 .landing-mark {
   font-size: var(--text-display-mark);
   line-height: 0.95;
-  letter-spacing: -0.03em;
-  font-weight: 700;
+}
+
+/* Sized by width, so it never runs past a narrow screen: 4.8em puts its
+   x-height where the old set title's was. */
+.landing-mark .wordmark {
+  display: block;
+  width: min(100%, 4.8em);
+  height: auto;
+}
+
+.wordmark-ink {
+  fill: currentColor;
+}
+
+.wordmark-red {
+  fill: var(--board-red);
+}
+
+.wordmark-green {
+  fill: var(--board-green);
 }
 
 .landing-lede {

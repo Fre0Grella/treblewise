@@ -5,6 +5,12 @@ import { useLobbyStore, useMatchesStore } from '@/store/stores.js';
 import { renderAt } from '../support/renderAt.js';
 
 describe('the landing page', () => {
+  it('is titled with the wordmark, which still reads as the name', async () => {
+    await renderAt('/');
+    const title = screen.getByRole('heading', { level: 1, name: 'treblewise' });
+    expect(title.querySelector('svg.wordmark')).not.toBeNull();
+  });
+
   it('puts the board behind the page as decoration, not as something to use', async () => {
     const { container } = await renderAt('/');
     const backdrop = container.querySelector('.landing-backdrop')!;
