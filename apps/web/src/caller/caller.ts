@@ -11,7 +11,7 @@
 
 import { strings } from '../i18n/index.js';
 
-import { callText, type Call } from './call.js';
+import { callText, leadingPause, type Call } from './call.js';
 import { loadClips, type Clips } from './clips.js';
 import { audioContext, unlockSounds } from './sounds.js';
 
@@ -85,16 +85,28 @@ export class ClipCaller implements CallerVoice {
       if (index > 0) await this.wait(CALL_GAP_MS);
       if (run !== this.run) return;
       if (!this.clips) {
+        const pause = leadingPause(call);
+        if (pause > 0) await this.wait(pause);
+        if (run !== this.run) return;
         await this.speech.say(callText(call), 'words');
         continue;
       }
       // Decoded while the name before them is said, so they follow it at once.
       for (const part of call) if (typeof part === 'string') this.clips.prepare(part);
-      for (const [at, part] of call.entries()) {
-        if (at > 0) await this.wait(PART_GAP_MS);
+      let spoken = false;
+      for (const part of call) {
+        if (typeof part !== 'string' && 'pause' in part) {
+          await this.wait(part.pause);
+          if (run !== this.run) return;
+          spoken = false;
+          continue;
+        }
+        // A short breath between a name and its words; a pause is its own gap.
+        if (spoken) await this.wait(PART_GAP_MS);
         if (run !== this.run) return;
         if (typeof part !== 'string') await this.speech.say(part.name, 'name');
         else if (!(await this.clips.play(part))) await this.speech.say(part, 'words');
+        spoken = true;
       }
     }
   }

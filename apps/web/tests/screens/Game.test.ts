@@ -51,6 +51,16 @@ describe('the game screen', () => {
     expect(screen.queryByText(/ann, just thrown/i)).toBeNull();
   });
 
+  it('lets the names be left out of the calls, while the caller is on', async () => {
+    await renderAt('/game', startMatch);
+    expect(screen.queryByRole('button', { name: /names/i })).toBeNull();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Caller off' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Names on' }));
+    expect(useSettingsStore().settings.callNames).toBe(false);
+    expect(screen.getByRole('button', { name: 'Names off' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('scores a visit from the keypad and passes the throw', async () => {
     await renderAt('/game', startMatch);
     for (let n = 0; n < 3; n += 1) {

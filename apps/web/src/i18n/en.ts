@@ -155,6 +155,8 @@ export const en = {
     caller: 'Caller',
     callerOn: 'Caller on',
     callerOff: 'Caller off',
+    namesOn: 'Names on',
+    namesOff: 'Names off',
     lastVisit: '{name}, just thrown:',
     pullOut: '{name}: pull the darts out',
     dartsOut: 'Darts out: {name} to throw',

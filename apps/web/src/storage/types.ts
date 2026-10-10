@@ -99,6 +99,12 @@ export interface Profile {
 
 export interface Settings {
   callerEnabled: boolean;
+  /**
+   * Whether the caller says the players' names. A name is said by the
+   * browser's own voice, not the caller's (caller/caller.ts), and some would
+   * rather not hear the change.
+   */
+  callNames: boolean;
   /** The dart going in and the turn passing, as sounds (caller/sounds.ts). */
   soundsEnabled: boolean;
   entryMode: 'board' | 'keypad';
@@ -124,6 +130,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   callerEnabled: true,
+  callNames: true,
   soundsEnabled: true,
   entryMode: 'board',
   locale: 'en',

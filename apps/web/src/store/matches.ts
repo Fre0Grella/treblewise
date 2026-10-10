@@ -19,7 +19,7 @@ import {
   type X01Config,
 } from '@treblewise/core';
 
-import { announce } from '../caller/announce.js';
+import { announce, bustedBy } from '../caller/announce.js';
 import type { Call } from '../caller/call.js';
 import { strings } from '../i18n/index.js';
 import { deleteMatch, listMatches, putMatch, type StoredMatch } from '../storage/db.js';
@@ -48,6 +48,13 @@ export interface Appended {
   match: StoredMatch;
   snapshot: MatchSnapshot;
   calls: Call[];
+  /** This dart bust its visit: the game plays the bust (caller/sounds.ts). */
+  busted?: boolean;
+}
+
+export interface MatchesOptions {
+  /** Whether the calls name the players: asked at each dart, as the setting may change. */
+  names?: () => boolean;
 }
 
 export interface MatchesActions {
@@ -82,7 +89,8 @@ export async function loadMatches(): Promise<MatchesState> {
   };
 }
 
-export function createMatches(state: Slice<MatchesState>): MatchesActions {
+export function createMatches(state: Slice<MatchesState>, options: MatchesOptions = {}): MatchesActions {
+  const names = options.names ?? (() => true);
   /** Applies a new event list: folds it and saves it. Nothing to announce yet. */
   const commit = (current: StoredMatch, events: MatchEvent[]): Appended => {
     const snapshot = reduceMatch(current.config, events);
@@ -146,8 +154,11 @@ export function createMatches(state: Slice<MatchesState>): MatchesActions {
       };
 
       const next = commit(match, [...match.events, event]);
-      const called: Call[] = options.call ? [[strings().caller.hit(hit)]] : [];
-      return { ...next, calls: [...called, ...announce(snapshot, next.snapshot)] };
+      const busted = bustedBy(snapshot, next.snapshot);
+      // A dart that busts is heard as the bust, not as its score.
+      const called: Call[] = options.call && !busted ? [[strings().caller.hit(hit)]] : [];
+      const calls = announce(snapshot, next.snapshot, { names: names() });
+      return { ...next, calls: [...called, ...calls], busted };
     },
 
     // A correction and an undo announce nothing.

@@ -35,11 +35,11 @@ export type VisitPosition = 'throwing' | 'open' | 'held' | 'closed';
 
 /**
  * What the game screen hears from the game visit, for the sounds it plays.
- * `dart-read`: the autoscorer entered a dart. `turn-passed`: the next player
- * is up, after a visit ends, or with the autoscorer scoring once its darts
- * are out.
+ * `dart-read`: the autoscorer entered a dart. `dart-bust`: it entered one
+ * that bust the visit. `turn-passed`: the next player is up, after a visit
+ * ends, or with the autoscorer scoring once its darts are out.
  */
-export type GameVisitSignal = 'dart-read' | 'turn-passed';
+export type GameVisitSignal = 'dart-read' | 'dart-bust' | 'turn-passed';
 
 export interface GameVisitState {
   /**
@@ -67,7 +67,8 @@ export interface GameVisitState {
 
 /** What the game visit reaches outside itself for: the match store's actions, fakes in tests. */
 export interface GameVisitDeps {
-  throwDart: (hit: Hit, options: ThrowOptions) => void;
+  /** Enters a dart; says whether it bust the visit, when it knows. */
+  throwDart: (hit: Hit, options: ThrowOptions) => { busted: boolean } | null | void;
 }
 
 export interface GameVisit {
@@ -252,13 +253,13 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): Gam
     // (the watcher says so); the autoscorer switched off, or the match won, is
     // checked here.
     if (!autoscoring || !canThrow()) return;
-    signal('dart-read');
-    deps.throwDart(reading.dart.hit, {
+    const thrown = deps.throwDart(reading.dart.hit, {
       pos: reading.dart.board,
       source: 'auto',
       confidence: reading.dart.confidence,
       call: true,
     });
+    signal(thrown?.busted ? 'dart-bust' : 'dart-read');
   }
 
   return {

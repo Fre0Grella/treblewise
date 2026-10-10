@@ -1,7 +1,7 @@
 import { parseHit, reduceMatch, dartEvent, type MatchEvent, type X01Config } from '@treblewise/core';
 import { describe, expect, it } from 'vitest';
 
-import { announce } from '@/caller/announce.js';
+import { announce, bustedBy, type AnnounceOptions } from '@/caller/announce.js';
 import type { Call } from '@/caller/call.js';
 
 const config: X01Config = {
@@ -23,11 +23,15 @@ function darts(...notation: string[]): MatchEvent[] {
 }
 
 /** Announces the transition caused by the last dart of `notation`. */
-function say(notation: string[], cfg: X01Config = config): Call[] {
+function say(notation: string[], cfg: X01Config = config, options?: AnnounceOptions): Call[] {
+  const { before, after } = move(notation, cfg);
+  return announce(before, after, options);
+}
+
+/** The match before and after the last dart of `notation`. */
+function move(notation: string[], cfg: X01Config = config) {
   const events = darts(...notation);
-  const before = reduceMatch(cfg, events.slice(0, -1));
-  const after = reduceMatch(cfg, events);
-  return announce(before, after);
+  return { before: reduceMatch(cfg, events.slice(0, -1)), after: reduceMatch(cfg, events) };
 }
 
 describe('announce', () => {
@@ -62,8 +66,27 @@ describe('announce', () => {
     expect(say(['D20'], matchCfg)).toEqual([['Yes! Game shot, and the match', { name: 'Ann' }]]);
   });
 
-  it('calls no score for a bust and repeats what the thrower still needs', () => {
+  // The beat lets the glass of the bust land first (sounds.ts).
+  it('calls no score a beat after a bust and repeats what the thrower still needs', () => {
     const cfg = { ...config, startScore: 20 };
-    expect(say(['S19'], cfg)).toEqual([['No score'], [{ name: 'Ann' }, 'you require twenty']]);
+    expect(say(['S19'], cfg)).toEqual([[{ pause: 250 }, 'No score'], [{ name: 'Ann' }, 'you require twenty']]);
+  });
+
+  it('knows a bust from the dart that made it, and only that dart', () => {
+    const cfg = { ...config, startScore: 20 };
+    const bust = move(['S19'], cfg);
+    expect(bustedBy(bust.before, bust.after)).toBe(true);
+    const visit = move(['T20', 'T20', 'T20']);
+    expect(bustedBy(visit.before, visit.after)).toBe(false);
+  });
+
+  it('leaves the names out when asked, and does not say "to throw" to nobody', () => {
+    const quiet = { names: false };
+    expect(say(['T20', 'T20', 'T20'], config, quiet)).toEqual([['one hundred and eighty']]);
+    expect(say(['T20', 'T20', 'S10'], { ...config, startScore: 170 }, quiet)).toEqual([
+      ['one hundred and thirty'],
+      ['you require forty'],
+    ]);
+    expect(say(['D20'], { ...config, startScore: 40 }, quiet)).toEqual([['Yes! Game shot, and the match']]);
   });
 });

@@ -43,7 +43,18 @@ score in an Italian voice).
   from its words (`caller/call.ts`: `[{ name: 'Ann' }, 'you require forty']`),
   and the browser's speech says just the name, in any voice the device has.
   Bringing a speech model into the page to say names in the same voice was
-  weighed and rejected: around 75 MB for one word per call.
+  weighed and rejected: around 75 MB for one word per call. The clips play
+  about 12 dB down so a name is as loud as they are, and the words after a
+  name start once the name's measured length has passed, since the Windows
+  voices go on with most of a second of silence before they say they are done.
+  "Names off", beside the caller in a game, leaves them out: "you require
+  forty" alone, and no "to throw".
+- **Sounds.** Under the caller, the game plays a dart going in, a bust, and
+  the turn passing (`caller/sounds.ts`), picked by ear against the caller.
+  The dart and the glass of a bust are short CC0 recordings from Freesound
+  (doc 08); the shards falling after the glass, and the turn, are
+  synthesised. A dart that busts is not called by its score: the glass
+  breaks, and "No score" comes a beat (250 ms) after it.
 - **Fallback.** Without the pack (offline on the first visit), whole calls go to
   the browser's speech, but only in a voice of the app's language. With none,
   the caller stays silent rather than read English in another accent.

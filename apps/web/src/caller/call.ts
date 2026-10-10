@@ -4,17 +4,24 @@
  * Nearly everything a caller says is known in advance (the scores, "you
  * require", "game shot") and is played from recorded clips (clips.ts). A
  * player's name is not, so it is kept apart from the words around it, and only
- * the name goes to the browser's speech.
+ * the name goes to the browser's speech. A pause holds the words back, for a
+ * sound to land first: the glass of a bust before "No score".
  */
 
-export type Spoken = string | { readonly name: string };
+export type Spoken = string | { readonly name: string } | { readonly pause: number };
 
 /** One call, said in one breath: `[{ name: 'Ann' }, 'you require forty']`. */
 export type Call = readonly Spoken[];
 
 /** A call as one sentence, for a voice that can say any text. */
 export function callText(call: Call): string {
-  return call.map((part) => (typeof part === 'string' ? part : part.name)).join(', ');
+  return call.flatMap((part) => (typeof part === 'string' ? [part] : 'name' in part ? [part.name] : [])).join(', ');
+}
+
+/** How long a call waits before its first words. */
+export function leadingPause(call: Call): number {
+  const first = call[0];
+  return first !== undefined && typeof first !== 'string' && 'pause' in first ? first.pause : 0;
 }
 
 /** The words of a call, without the names: what a clip pack has to hold. */

@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { ClipCaller, nameSeconds, type Speech } from '@/caller/caller.js';
 import type { Clips } from '@/caller/clips.js';
 
-function setup(recorded: string[] | null) {
+/** `logWaits`: the pauses go in what is heard, in order, as `wait <ms>`. */
+function setup(recorded: string[] | null, logWaits = false) {
   const heard: string[] = [];
   const prepared: string[] = [];
   // A clip plays until it is stopped, or until the test lets it end.
@@ -25,7 +26,7 @@ function setup(recorded: string[] | null) {
     say: async (text, kind) => void heard.push(`${kind}: ${text}`),
     cancel: () => undefined,
   };
-  const voice = new ClipCaller(async () => clips, speech, true, async () => undefined);
+  const voice = new ClipCaller(async () => clips, speech, true, async (ms) => void (logWaits && heard.push(`wait ${ms}`)));
   const settled = () => new Promise((done) => setTimeout(done, 0));
   const end = async () => {
     ending?.();
@@ -41,6 +42,20 @@ describe('the clip caller', () => {
     await end();
     await end();
     expect(heard).toEqual(['clip: sixty', 'name: Ann', 'clip: you require forty']);
+  });
+
+  it('holds the words back for a pause, without a breath added to it', async () => {
+    const { heard, voice, end } = setup(['no score'], true);
+    voice.say([{ pause: 250 }, 'no score']);
+    await end();
+    expect(heard).toEqual(['wait 250', 'clip: no score']);
+  });
+
+  it('keeps the pause before the words when there are no clips', async () => {
+    const { heard, voice, settled } = setup(null, true);
+    voice.say([{ pause: 250 }, 'No score']);
+    await settled();
+    expect(heard).toEqual(['wait 250', 'words: No score']);
   });
 
   it('gets the words of a call ready before saying the name in front of them', async () => {
