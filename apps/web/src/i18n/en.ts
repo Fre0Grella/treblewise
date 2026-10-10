@@ -214,8 +214,8 @@ export const en = {
     roadmap: [
       {
         when: 'Now',
-        title: 'Scoring, the caller and statistics',
-        body: 'All working today. The camera does not score yet: it photographs your throws and you mark where the darts landed, which is how it learns.',
+        title: 'Scoring, the caller, statistics and the camera',
+        body: 'All working today. The camera already scores a match with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong.',
       },
       {
         when: 'Next',
@@ -229,14 +229,14 @@ export const en = {
       },
       {
         when: 'Later',
-        title: 'The camera keeps score',
-        body: 'Once it is accurate enough on real boards, it scores every dart and you only correct it.',
+        title: 'The autoscorer, out of experimental',
+        body: 'Once it has proved accurate on real boards, the camera scores by default and the switch goes away.',
       },
     ],
     points: [
       {
         title: 'You throw, it counts',
-        body: 'Tap where each dart landed, or its number, and the sums are done: X01 from 301 to 1001, any in and out, legs and sets, up to eight players. Every dart can be undone.',
+        body: 'Tap where each dart landed, tap its number, or let the camera read it, and the sums are done: X01 from 301 to 1001, any in and out, legs and sets, up to eight players. Every dart can be undone.',
       },
       {
         title: 'A caller in the room',
