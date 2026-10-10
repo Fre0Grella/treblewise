@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 
+import AppFooter from '../components/AppFooter.vue';
 import Dartboard from '../components/Dartboard.vue';
 import { useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
@@ -51,11 +52,8 @@ const lobby = useLobbyStore();
         <p>{{ t.landing.status }}</p>
       </section>
 
-      <footer class="landing-foot">
-        <span>{{ t.landing.foot }}</span>
-        <a href="https://github.com/Fre0Grella/treblewise" target="_blank" rel="noreferrer">{{ t.landing.source }}</a>
-        <span class="landing-credit">{{ t.landing.voiceCredit }}</span>
-      </footer>
+      <p class="landing-credit">{{ t.landing.voiceCredit }}</p>
+      <AppFooter />
     </div>
   </div>
 </template>

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/vue';
+import { fireEvent, screen, within } from '@testing-library/vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useLobbyStore, useMatchesStore } from '@/store/stores.js';
@@ -55,6 +55,17 @@ describe('the landing page', () => {
     await renderAt('/', () => useLobbyStore().enter('solo'));
     expect(screen.getByRole('button', { name: /back to the lobby/i }).className).toContain('board-btn');
     expect(screen.getByRole('button', { name: /play darts/i }).className).not.toContain('board-btn');
+  });
+
+  it('ends with the footer: the source one click away, and the donation link', async () => {
+    await renderAt('/');
+    const footer = screen.getByRole('contentinfo');
+    const source = within(footer).getByRole('link', { name: /source code/i });
+    expect(source.getAttribute('href')).toBe('https://github.com/Fre0Grella/treblewise');
+    expect(within(footer).getByRole('link', { name: /donate/i }).getAttribute('href')).toBe('https://ko-fi.com/freogrella');
+    expect(footer.textContent).toContain(`© ${new Date().getFullYear()} treblewise`);
+    // The voice's credit stays on the page (docs/08).
+    expect(screen.getByText(/chatterbox by resemble ai/i)).toBeDefined();
   });
 });
 

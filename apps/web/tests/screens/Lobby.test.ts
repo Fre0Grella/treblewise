@@ -121,4 +121,11 @@ describe('the lobby', () => {
     await fireEvent.click(screen.getByRole('button', { name: /choose how to play/i }));
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/start'));
   });
+
+  it('ends with the footer, under the menu', async () => {
+    await renderAt('/lobby', () => useLobbyStore().enter('solo'));
+    const footer = screen.getByRole('contentinfo');
+    expect(footer.closest('.lobby-content')).not.toBeNull();
+    expect(screen.getByRole('link', { name: /source code/i }).getAttribute('href')).toBe('https://github.com/Fre0Grella/treblewise');
+  });
 });

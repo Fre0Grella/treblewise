@@ -227,10 +227,16 @@ export const en = {
         body: 'It runs in the browser, works offline, and keeps everything on your phone or laptop.',
       },
     ],
-    foot: 'Free and open source.',
     // Not required by the voice's licence (MIT), but owed all the same (docs/08).
     voiceCredit: 'Caller voice: Chatterbox by Resemble AI.',
-    source: 'Source on GitHub',
+  },
+  footer: {
+    // AGPL: the source is one click away wherever the footer is.
+    source: 'Source code',
+    madeBy: 'Made with ❤️ by FreoGrella',
+    github: 'GitHub',
+    linkedin: 'LinkedIn',
+    donate: '☕ Donate',
   },
   lobby: {
     title: 'Lobby',

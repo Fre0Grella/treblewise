@@ -20,6 +20,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import AppFooter from '../components/AppFooter.vue';
 import LobbyArt, { type LobbyArtKind } from '../components/art/LobbyArt.vue';
 import { shownBattery } from '../components/batteryLevel.js';
 import ScreenShell from '../components/ui/ScreenShell.vue';
@@ -202,6 +203,7 @@ const keep = (index: number) => (element: unknown) => {
           </li>
         </ul>
       </nav>
+      <AppFooter />
     </div>
   </div>
 </template>
