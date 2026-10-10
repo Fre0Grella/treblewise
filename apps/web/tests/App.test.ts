@@ -1,8 +1,9 @@
 import { fireEvent, screen } from '@testing-library/vue';
 import { hit } from '@treblewise/core';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useLobbyStore, useMatchesStore, usePlayersStore, useSettingsStore } from '@/store/stores.js';
+import { fakeFullscreen } from './support/fullscreen.js';
 import { renderAt } from './support/renderAt.js';
 
 // No camera in this walk through the app.
@@ -72,5 +73,28 @@ describe('the app', () => {
     const { router } = await renderAt('/stats');
     expect(router.currentRoute.value.path).toBe('/stats');
     expect(await screen.findByRole('heading', { name: /statistics/i })).toBeDefined();
+  });
+});
+
+describe('around every page', () => {
+  let restore: () => void = () => {};
+  afterEach(() => restore());
+
+  it('has fullscreen in the top right corner and the footer at the foot', async () => {
+    restore = fakeFullscreen().restore;
+    const { router, container } = await renderAt('/');
+    for (const path of ['/', '/start', '/setup', '/history', '/stats']) {
+      await router.push(path);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const app = container.querySelector('.app')!;
+      // Outside the page, so it is in the same place whichever page is open.
+      const buttons = screen.getAllByRole('button', { name: 'Fullscreen' });
+      expect(buttons, path).toHaveLength(1);
+      expect(buttons[0]!.parentElement, path).toBe(app);
+      const footer = screen.getByRole('contentinfo');
+      expect(footer.parentElement, path).toBe(app);
+      expect(app.lastElementChild, path).toBe(footer);
+      expect(screen.getByRole('link', { name: /source code/i }).getAttribute('href')).toBe('https://github.com/Fre0Grella/treblewise');
+    }
   });
 });

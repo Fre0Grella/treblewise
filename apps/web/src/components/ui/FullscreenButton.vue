@@ -1,6 +1,7 @@
 <!--
-  Fullscreen on and off, from any screen (issue #35): the address bar and the
-  tabs take room on a laptop or tablet read from across the room.
+  Fullscreen on and off, in the top right corner of every page (issue #35):
+  the address bar and the tabs take room on a laptop or tablet read from
+  across the room.
 
   The browser owns the state, not the button: Esc, or the browser itself, can
   leave fullscreen at any time, so the button follows `fullscreenchange`.

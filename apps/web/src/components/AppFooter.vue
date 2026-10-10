@@ -1,8 +1,7 @@
 <!--
-  The thin bar at the foot of the landing page and the lobby (issue #25), as on
-  BottleCount: the name and the source on the left, who made it and a way to
-  support it on the right. Not in a match or the camera setup, where every
-  pixel goes to the board.
+  The thin bar at the foot of every page (issue #25), as on BottleCount: the
+  name and the source on the left, who made it and a way to support it on the
+  right. Its line runs the whole width of the window.
 -->
 <script setup lang="ts">
 import { useStrings } from '../i18n/index.js';

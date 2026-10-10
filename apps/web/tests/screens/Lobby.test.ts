@@ -122,10 +122,11 @@ describe('the lobby', () => {
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/start'));
   });
 
-  it('ends with the footer, under the menu', async () => {
-    await renderAt('/lobby', () => useLobbyStore().enter('solo'));
+  it('fills the screen, with the footer under it', async () => {
+    const { container } = await renderAt('/lobby', () => useLobbyStore().enter('solo'));
     const footer = screen.getByRole('contentinfo');
-    expect(footer.closest('.lobby-content')).not.toBeNull();
+    expect(footer.closest('.lobby')).toBeNull();
+    expect(container.querySelector('.lobby')!.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('link', { name: /source code/i }).getAttribute('href')).toBe('https://github.com/Fre0Grella/treblewise');
   });
 });

@@ -226,15 +226,26 @@ h2 {
   color: var(--text);
 }
 
-/* Back on the left, fullscreen on the right: one row above the title. */
-.screen-top {
+/* ---------- the app ---------- */
+
+/* Every page, then the footer: a page fills the window above it, so a short
+   page puts the footer at the bottom and a long one pushes it further down. */
+.app {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  min-height: 100%;
 }
 
-.screen-top .screen-back {
-  margin-bottom: 0;
+.app-page {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-page > * {
+  flex: 1 0 auto;
+  width: 100%;
 }
 
 /* A button that is only an icon: its own size, a 44px target, and a label
@@ -249,29 +260,25 @@ h2 {
   display: block;
 }
 
-/* Bare, like Back: at the top of a screen it stays out of the way. */
-.screen-icon {
-  margin-left: auto;
-  margin-right: calc(-1 * var(--space-2));
+/* Fullscreen, in the top right corner of every page, level with Back. Bare,
+   like Back, so it stays out of the way. The pages keep that corner clear
+   while it is there (the scoreboard, the camera setup's picture, the lobby's
+   first line); where the browser cannot go fullscreen it is not. */
+.app-fullscreen {
+  position: absolute;
+  top: max(var(--space-4), env(safe-area-inset-top));
+  right: max(var(--space-2), env(safe-area-inset-right));
+  z-index: 3;
   padding: var(--space-2);
   border: 0;
   background: none;
   color: var(--text-dim);
 }
 
-.screen-icon:hover:not(:disabled),
-.screen-icon:focus-visible {
+.app-fullscreen:hover:not(:disabled),
+.app-fullscreen:focus-visible {
   background: none;
   color: var(--text);
-}
-
-/* On the landing page, which has no header row: in the top right corner,
-   over the board behind the page. */
-.corner-icon {
-  position: absolute;
-  top: max(var(--space-2), env(safe-area-inset-top));
-  right: max(var(--space-4), env(safe-area-inset-right));
-  z-index: 2;
 }
 
 .panel {
@@ -437,6 +444,14 @@ input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-2);
+}
+
+/* Up to where the match's column sits clear of the window's corner, the
+   scoreboard leaves room for fullscreen beside it. */
+@media (max-width: 879px) {
+  .app:has(> .app-fullscreen) .screen-game > .scoreboard {
+    margin-right: 44px;
+  }
 }
 
 .player {
@@ -894,6 +909,11 @@ input {
     max-width: 1440px;
   }
 
+  /* The picture would reach the window's corner: fullscreen keeps it. */
+  .app:has(> .app-fullscreen) .capture-work-split {
+    padding-right: 44px;
+  }
+
   .capture-work-split {
     display: grid;
     grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
@@ -1169,13 +1189,16 @@ input {
    quadrant (and a bit) shows, turning slowly behind the page. */
 .landing-wrap {
   position: relative;
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
 .landing-wrap > .screen {
   position: relative;
   z-index: 1;
+  flex: 1 0 auto;
+  width: 100%;
 }
 
 .landing-backdrop {
@@ -1289,16 +1312,19 @@ input {
 
 /* ---------- footer ---------- */
 
-/* One thin bar under the page, as on BottleCount: small dim text, links that
-   brighten on hover, the donation in the accent. It wraps rather than
-   squeezing, so a phone gets two short rows. */
+/* One thin bar under every page, as on BottleCount: its line runs the whole
+   width of the window, small dim text, links that brighten on hover, the
+   donation in the accent. It wraps rather than squeezing, so a phone gets two
+   short rows. */
 .app-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-  padding-top: var(--space-3);
+  padding:
+    var(--space-3) max(var(--space-4), env(safe-area-inset-right))
+    max(var(--space-3), env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
   border-top: 1px solid var(--line);
   font-size: var(--text-xs);
   color: var(--text-dim);
@@ -1328,6 +1354,12 @@ input {
 .app-footer .app-footer-donate {
   color: var(--accent);
   font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .app-footer {
+    padding-inline: var(--space-7);
+  }
 }
 
 /* ---------- mode chooser ---------- */
@@ -1790,9 +1822,13 @@ input {
    the screen and the picture sits behind it, faint; from 900px wide the menu
    moves to the bottom left, the selected entry is named large in the top left,
    and its picture fills the right. */
+/* The whole window, on a phone too: the menu sits at the bottom of the screen
+   and the footer below it, a scroll away. */
 .lobby {
   position: relative;
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
@@ -1876,8 +1912,9 @@ input {
   z-index: 1;
   display: flex;
   flex-direction: column;
+  flex: 1 0 auto;
+  width: 100%;
   gap: var(--space-4);
-  min-height: 100%;
   padding:
     max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
     max(var(--space-4), env(safe-area-inset-bottom));
@@ -1898,6 +1935,15 @@ input {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
+}
+
+/* On a phone the first line shares its row with fullscreen: as tall as the
+   button, and clear of it, so the phone's status starts below both. */
+.app:has(> .app-fullscreen) .lobby-kicker {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-right: 44px;
 }
 
 /* The big name of the selected entry: a desktop thing. On a phone the menu
@@ -1995,13 +2041,10 @@ input {
     font-size: var(--text-sm);
   }
 
-  /* The menu's column is under half the screen: fullscreen goes to the
-     screen's own top right corner, over the picture. */
-  .lobby-fullscreen {
-    position: fixed;
-    top: var(--space-5);
-    right: var(--space-5);
-    z-index: 2;
+  /* Here the button is far off, over the picture. */
+  .app:has(> .app-fullscreen) .lobby-kicker {
+    min-height: 0;
+    padding-right: 0;
   }
 
   /* The title and the line under it keep the same height whichever entry is

@@ -88,14 +88,16 @@ describe('the game screen', () => {
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/setup'));
   });
 
-  it('has fullscreen beside the caller and the sounds, and no footer', async () => {
+  it('has fullscreen in the corner, not among the controls, and the footer under the match', async () => {
     const { restore } = fakeFullscreen();
     try {
       await renderAt('/game', startMatch);
       const button = screen.getByRole('button', { name: 'Fullscreen' });
-      expect(button.closest('.controls')).toBe(screen.getByRole('button', { name: 'Caller off' }).closest('.controls'));
-      // Every pixel goes to the board.
-      expect(screen.queryByRole('contentinfo')).toBeNull();
+      expect(button.classList).toContain('app-fullscreen');
+      expect(button.closest('.screen-game')).toBeNull();
+      const footer = screen.getByRole('contentinfo');
+      const controls = screen.getByRole('button', { name: 'Caller off' }).closest('.controls')!;
+      expect(controls.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     } finally {
       restore();
     }

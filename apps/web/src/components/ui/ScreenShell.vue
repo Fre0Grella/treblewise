@@ -1,6 +1,6 @@
 <!--
-  The frame every screen shares: Back at the top left, fullscreen at the top
-  right, the title and its lead line, the content, and the screen's own actions at the bottom.
+  The frame every screen shares: Back at the top left, the title and its lead
+  line, the content, and the screen's own actions at the bottom.
 
   Back goes where the router's rule says (router/back.ts). A screen that has to
   ask before leaving (unsaved marks, say) handles `back` itself.
@@ -8,7 +8,6 @@
 <script setup lang="ts">
 import { useStrings } from '../../i18n/index.js';
 import { useBack } from '../../router/back.js';
-import FullscreenButton from './FullscreenButton.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -35,12 +34,9 @@ const pressBack = () => (props.onBack ? props.onBack() : goBack());
 <template>
   <div class="screen" :class="name ? `screen-${name}` : undefined">
     <header class="screen-head">
-      <div class="screen-top">
-        <button v-if="back" type="button" class="screen-back" :disabled="backDisabled" @click="pressBack">
-          <span aria-hidden="true">‹</span> {{ backLabel ?? t.app.back }}
-        </button>
-        <FullscreenButton class="screen-icon" />
-      </div>
+      <button v-if="back" type="button" class="screen-back" :disabled="backDisabled" @click="pressBack">
+        <span aria-hidden="true">‹</span> {{ backLabel ?? t.app.back }}
+      </button>
       <h1>{{ title }}</h1>
       <p v-if="lead">{{ lead }}</p>
       <slot name="head" />
