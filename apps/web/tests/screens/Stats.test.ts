@@ -70,6 +70,27 @@ describe('the statistics page', () => {
     expect(average).toBeGreaterThan(60);
   });
 
+  it('charts every match above the other numbers, once there are two', async () => {
+    throwDarts(6);
+    throwDarts(9);
+    await renderStats();
+
+    const chart = await screen.findByRole('slider', { name: 'Match' });
+    expect(screen.getByText(/from 2 matches/i)).toBeDefined();
+    expect((chart as HTMLInputElement).value).toBe('1');
+    // Above the scoring numbers, which are still there.
+    const scoring = screen.getByRole('heading', { name: 'Scoring' });
+    expect(chart.compareDocumentPosition(scoring) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(/3-dart average/i)).toBeDefined();
+  });
+
+  it('says the chart needs more matches when there is one', async () => {
+    throwDarts(6);
+    await renderStats();
+    expect(await screen.findByText(/needs at least two matches/i)).toBeDefined();
+    expect(screen.queryByRole('slider', { name: 'Match' })).toBeNull();
+  });
+
   it('holds the aiming map back until there are enough darts to estimate a spread', async () => {
     throwDarts(12);
     const thrown = dartsRecorded();
