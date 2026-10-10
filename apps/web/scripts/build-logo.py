@@ -58,7 +58,9 @@ def num(v):
 
 
 def rect(x, y, w, h):
-    return f"M{num(x)} {num(y)}H{num(x + w)}V{num(y + h)}H{num(x)}Z"
+    # Wound the way the font's outlines are once flipped, so a rectangle
+    # laid over a letter in the same path adds to it instead of cutting it.
+    return f"M{num(x)} {num(y)}V{num(y + h)}H{num(x + w)}V{num(y)}Z"
 
 
 def transformed(d, t):
