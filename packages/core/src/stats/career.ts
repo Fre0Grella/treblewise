@@ -10,18 +10,6 @@ import { finishingDart, isFinishableWithOneDart } from '../game/checkout.js';
 import type { Dart, MatchSnapshot, Visit } from '../game/x01.js';
 import { matchStats, visitTotal, type PlayerStats } from './match.js';
 
-export interface SessionStat {
-  /** Local calendar day, `YYYY-MM-DD`, from the first dart of the session. */
-  day: string;
-  at: number;
-  darts: number;
-  points: number;
-  average: number;
-  legsWon: number;
-  checkoutAttempts: number;
-  checkoutHits: number;
-}
-
 export interface DoubleStat {
   /** The double's number, or 25 for the bull. */
   target: number;
@@ -41,7 +29,6 @@ export interface VisitBand {
 export interface CareerStats extends PlayerStats {
   matches: number;
   legs: number;
-  sessions: SessionStat[];
   doubles: DoubleStat[];
   bands: VisitBand[];
   /** Best three-dart visit average over a single leg won. */
@@ -59,12 +46,6 @@ const BANDS: { from: number; to: number; label: string }[] = [
   { from: 1, to: 25, label: '1–25' },
   { from: 0, to: 0, label: 'No score' },
 ];
-
-function dayOf(ts: number): string {
-  const date = new Date(ts);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
 
 function playerVisits(snapshot: MatchSnapshot, playerId: string): Visit[] {
   return snapshot.legs.flatMap((leg) => leg.visits).filter((visit) => visit.playerId === playerId);
@@ -112,7 +93,6 @@ export function careerStats(snapshots: readonly MatchSnapshot[], playerId: strin
     bestLegDarts: null,
   };
 
-  const sessions = new Map<string, SessionStat>();
   const doubles = new Map<number, DoubleStat>();
   const bands = BANDS.map((band) => ({ ...band, count: 0 }));
 
@@ -177,24 +157,6 @@ export function careerStats(snapshots: readonly MatchSnapshot[], playerId: strin
       if (band) band.count += 1;
 
       for (const dart of visit.darts) {
-        const day = dayOf(dart.ts);
-        const session = sessions.get(day) ?? {
-          day,
-          at: dart.ts,
-          darts: 0,
-          points: 0,
-          average: 0,
-          legsWon: 0,
-          checkoutAttempts: 0,
-          checkoutHits: 0,
-        };
-        session.darts += 1;
-        session.points += dart.scored;
-        if (dart.won) session.legsWon += 1;
-        if (dart.atFinish) session.checkoutAttempts += 1;
-        if (dart.won) session.checkoutHits += 1;
-        sessions.set(day, session);
-
         const target = intendedDouble(dart, snapshot.config.outRule);
         if (target !== null) {
           const entry = doubles.get(target) ?? { target, attempts: 0, hits: 0, percent: null };
@@ -212,10 +174,6 @@ export function careerStats(snapshots: readonly MatchSnapshot[], playerId: strin
     totals.checkoutAttempts === 0 ? null : (totals.checkoutHits / totals.checkoutAttempts) * 100;
   totals.dartsPerLegWon = totals.legsWon === 0 ? null : legDartsWon / totals.legsWon;
 
-  for (const session of sessions.values()) {
-    session.average = session.darts === 0 ? 0 : (session.points / session.darts) * 3;
-  }
-
   for (const entry of doubles.values()) {
     entry.percent = entry.attempts === 0 ? null : (entry.hits / entry.attempts) * 100;
   }
@@ -224,7 +182,6 @@ export function careerStats(snapshots: readonly MatchSnapshot[], playerId: strin
     ...totals,
     matches: mine.length,
     legs,
-    sessions: [...sessions.values()].sort((a, b) => a.at - b.at),
     doubles: [...doubles.values()].sort((a, b) => b.attempts - a.attempts),
     bands,
     bestLegAverage,

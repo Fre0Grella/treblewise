@@ -46,21 +46,6 @@ describe('careerStats', () => {
     expect(career.highestCheckout).toBe(141);
   });
 
-  it('splits the record into sessions, oldest first', () => {
-    const career = careerStats(
-      [
-        reduceMatch(solo, darts('2026-09-02', ...NINE_DARTER)),
-        reduceMatch(solo, darts('2026-09-01', ...NINE_DARTER)),
-      ],
-      'ann',
-    );
-
-    expect(career.sessions.map((session) => session.day)).toEqual(['2026-09-01', '2026-09-02']);
-    expect(career.sessions[0]!.darts).toBe(9);
-    expect(career.sessions[0]!.average).toBeCloseTo(167, 6);
-    expect(career.sessions[0]!.legsWon).toBe(1);
-  });
-
   it('counts darts at each double, and which ones went in', () => {
     // 40 left: two misses and a hit, all three thrown at the same double.
     const atDouble20 = reduceMatch(
