@@ -141,3 +141,45 @@ export function matchStats(snapshot: MatchSnapshot): Record<string, PlayerStats>
 
   return stats;
 }
+
+/** One player's numbers for one leg: the statistics page charts them leg by leg. */
+export interface LegStat {
+  setIndex: number;
+  legIndex: number;
+  /** When the player threw their last dart of the leg. */
+  at: number;
+  dartsThrown: number;
+  points: number;
+  /** Points per three darts. */
+  average: number;
+  checkoutAttempts: number;
+  checkoutHits: number;
+  /** 0–100, or null when no double was thrown at in the leg. */
+  checkoutPercent: number | null;
+  won: boolean;
+}
+
+/** Every leg a player threw in, in the order played; legs they threw no dart in are left out. */
+export function legStats(snapshot: MatchSnapshot, playerId: string): LegStat[] {
+  const legs: LegStat[] = [];
+  for (const leg of snapshot.legs) {
+    const darts = leg.visits.filter((visit) => visit.playerId === playerId).flatMap((visit) => visit.darts);
+    if (darts.length === 0) continue;
+    const points = darts.reduce((sum, dart) => sum + dart.scored, 0);
+    const checkoutAttempts = darts.filter((dart) => dart.atFinish).length;
+    const checkoutHits = darts.filter((dart) => dart.won).length;
+    legs.push({
+      setIndex: leg.setIndex,
+      legIndex: leg.legIndex,
+      at: Math.max(...darts.map((dart) => dart.ts)),
+      dartsThrown: darts.length,
+      points,
+      average: (points / darts.length) * 3,
+      checkoutAttempts,
+      checkoutHits,
+      checkoutPercent: checkoutAttempts === 0 ? null : (checkoutHits / checkoutAttempts) * 100,
+      won: leg.winnerId === playerId,
+    });
+  }
+  return legs;
+}

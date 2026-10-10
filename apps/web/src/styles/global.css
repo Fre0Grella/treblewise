@@ -1682,19 +1682,20 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- match by match ---------- */
+/* ---------- leg by leg ---------- */
 
 /* Issue #27, after DartsMind's trend: the average as a beige area, the
    checkout percentage as a green one in front of it, the period's average
-   dotted across, and a cursor with the picked match's numbers beside it. */
-.match-trend {
+   dotted across, every other day shaded behind them, and, while the chart is
+   in use, a cursor with the picked leg's numbers beside it. */
+.leg-trend {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   margin: 0;
 }
 
-.match-trend-head {
+.leg-trend-head {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
@@ -1702,12 +1703,12 @@ input {
   color: var(--text-dim);
 }
 
-.match-trend-legend {
+.leg-trend-legend {
   display: flex;
   gap: var(--space-3);
 }
 
-.match-trend-key::before {
+.leg-trend-key::before {
   content: '';
   display: inline-block;
   width: 8px;
@@ -1717,16 +1718,16 @@ input {
   background: currentColor;
 }
 
-.match-trend-key-average {
+.leg-trend-key-average {
   color: var(--accent);
 }
 
-.match-trend-key-checkout {
+.leg-trend-key-checkout {
   color: var(--checkout);
 }
 
 /* Drags across scrub the matches; a drag up or down still scrolls the page. */
-.match-trend-plot {
+.leg-trend-plot {
   position: relative;
   height: clamp(180px, 34vw, 280px);
   overflow: hidden;
@@ -1734,51 +1735,77 @@ input {
   background: var(--bg-sunken);
   touch-action: pan-y;
   cursor: crosshair;
+  user-select: none;
 }
 
-.match-trend-plot > svg {
+.leg-trend-plot > svg {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
 }
 
-.match-trend-area-average {
+/* A day: a band from top to bottom, every other one lighter, its date at
+   the top, over the areas, when it is wide enough to hold it. */
+.leg-trend-day {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.leg-trend-day-shaded {
+  background: var(--bg-raised);
+}
+
+.leg-trend-day-name {
+  position: absolute;
+  top: var(--space-1);
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+  text-shadow: 0 1px 2px var(--bg-sunken);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leg-trend-area-average {
   fill: var(--accent);
   fill-opacity: 0.32;
 }
 
-.match-trend-line-average {
+.leg-trend-line-average {
   fill: none;
   stroke: var(--accent);
   stroke-width: 1.5;
   stroke-linejoin: round;
 }
 
-.match-trend-area-checkout {
+.leg-trend-area-checkout {
   fill: var(--checkout);
   fill-opacity: 0.3;
 }
 
-.match-trend-line-checkout {
+.leg-trend-line-checkout {
   fill: none;
   stroke: var(--checkout);
   stroke-width: 1.5;
   stroke-linejoin: round;
 }
 
-.match-trend-reference {
+.leg-trend-reference {
   stroke: var(--accent);
   stroke-width: 1.5;
   stroke-dasharray: 2 4;
 }
 
-.match-trend-cursor {
+.leg-trend-cursor {
   stroke: var(--text);
   stroke-width: 1.5;
   stroke-dasharray: 2 4;
 }
 
-.match-trend-reference-label {
+.leg-trend-reference-label {
   position: absolute;
   left: var(--space-1);
   transform: translateY(-50%);
@@ -1791,7 +1818,7 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-.match-trend-dot {
+.leg-trend-dot {
   position: absolute;
   width: 9px;
   height: 9px;
@@ -1800,15 +1827,15 @@ input {
   transform: translate(-50%, -50%);
 }
 
-.match-trend-dot-average {
+.leg-trend-dot-average {
   background: var(--accent);
 }
 
-.match-trend-dot-checkout {
+.leg-trend-dot-checkout {
   background: var(--checkout);
 }
 
-.match-trend-tags {
+.leg-trend-tags {
   position: absolute;
   top: var(--space-2);
   display: flex;
@@ -1819,14 +1846,14 @@ input {
   pointer-events: none;
 }
 
-.match-trend-when {
+.leg-trend-when {
   font-size: var(--text-xs);
   line-height: 1.25;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
-.match-trend-tag {
+.leg-trend-tag {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   font-size: var(--text-md);
@@ -1835,29 +1862,29 @@ input {
   text-align: center;
 }
 
-.match-trend-tag-average {
+.leg-trend-tag-average {
   background: var(--accent);
   color: var(--accent-ink);
 }
 
-.match-trend-tag-checkout {
+.leg-trend-tag-checkout {
   background: var(--checkout);
   color: var(--accent-ink);
 }
 
-.match-trend-slider {
+.leg-trend-slider {
   width: 100%;
   margin: 0;
   accent-color: var(--accent);
 }
 
-.match-trend-foot {
+.leg-trend-foot {
   margin: 0;
   text-align: right;
   font-size: var(--text-sm);
 }
 
-.match-trend-foot a {
+.leg-trend-foot a {
   color: var(--accent);
 }
 

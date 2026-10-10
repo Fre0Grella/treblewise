@@ -70,13 +70,13 @@ describe('the statistics page', () => {
     expect(average).toBeGreaterThan(60);
   });
 
-  it('charts every match above the other numbers, once there are two', async () => {
+  it('charts every leg above the other numbers, once there are two', async () => {
     throwDarts(6);
     throwDarts(9);
     await renderStats();
 
-    const chart = await screen.findByRole('slider', { name: 'Match' });
-    expect(screen.getByText(/from 2 matches/i)).toBeDefined();
+    const chart = await screen.findByRole('slider', { name: 'Leg' });
+    expect(screen.getByText(/from 2 legs/i)).toBeDefined();
     expect((chart as HTMLInputElement).value).toBe('1');
     // Above the scoring numbers, which are still there.
     const scoring = screen.getByRole('heading', { name: 'Scoring' });
@@ -84,11 +84,11 @@ describe('the statistics page', () => {
     expect(screen.getByText(/3-dart average/i)).toBeDefined();
   });
 
-  it('says the chart needs more matches when there is one', async () => {
+  it('says the chart needs more legs when there is one', async () => {
     throwDarts(6);
     await renderStats();
-    expect(await screen.findByText(/needs at least two matches/i)).toBeDefined();
-    expect(screen.queryByRole('slider', { name: 'Match' })).toBeNull();
+    expect(await screen.findByText(/needs at least two legs/i)).toBeDefined();
+    expect(screen.queryByRole('slider', { name: 'Leg' })).toBeNull();
   });
 
   it('holds the aiming map back until there are enough darts to estimate a spread', async () => {

@@ -17,7 +17,7 @@ import {
   expectedScoreMap,
   formatHit,
   hit as makeHit,
-  matchStats,
+  legStats,
   positionedDarts,
   reduceMatch,
   scoreAt,
@@ -30,7 +30,7 @@ import { computed, onMounted, ref } from 'vue';
 
 import BandBars from '../components/charts/BandBars.vue';
 import BoardMap from '../components/charts/BoardMap.vue';
-import MatchTrend, { type MatchPoint } from '../components/charts/MatchTrend.vue';
+import LegTrend, { type LegPoint } from '../components/charts/LegTrend.vue';
 import { rampStops } from '../components/charts/heatRamp.js';
 import StatTile from '../components/charts/StatTile.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
@@ -101,14 +101,19 @@ const cutoff = computed(() => {
 });
 const inRange = computed(() => snapshots.value.filter((snapshot) => lastDartAt(snapshot) >= cutoff.value));
 
-/** The chosen player's matches in the period, oldest first: one point each on the chart. */
-const matchPoints = computed<MatchPoint[]>(() =>
+/** The chosen player's legs in the period, oldest first: one point each on the chart. */
+const legPoints = computed<LegPoint[]>(() =>
   matches.history
-    .map((match, index) => ({ id: match.id, snapshot: snapshots.value[index]! }))
-    .map(({ id, snapshot }) => ({ id, at: lastDartAt(snapshot), stats: matchStats(snapshot)[active.value] }))
-    .filter((entry) => entry.at >= cutoff.value && entry.stats !== undefined && entry.stats.dartsThrown > 0)
-    .sort((a, b) => a.at - b.at)
-    .map(({ id, at, stats }) => ({ id, at, average: stats!.average, checkoutPercent: stats!.checkoutPercent })),
+    .flatMap((match, index) =>
+      legStats(snapshots.value[index]!, active.value).map((leg) => ({
+        matchId: match.id,
+        at: leg.at,
+        average: leg.average,
+        checkoutPercent: leg.checkoutPercent,
+      })),
+    )
+    .filter((leg) => leg.at >= cutoff.value)
+    .sort((a, b) => a.at - b.at),
 );
 
 const career = computed(() => (active.value ? careerStats(inRange.value, active.value) : null));
@@ -180,7 +185,7 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
     <template v-else>
       <section class="panel">
         <h2>{{ t.stats.trendTitle }}</h2>
-        <MatchTrend v-if="matchPoints.length >= 2" :points="matchPoints" :reference="career.average" />
+        <LegTrend v-if="legPoints.length >= 2" :points="legPoints" :reference="career.average" />
         <p v-else class="hint">{{ t.stats.trendNeedsMore }}</p>
       </section>
 

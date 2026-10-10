@@ -715,14 +715,14 @@ export const en = {
     bestVisit: 'Best visit',
     busts: 'Busts',
 
-    trendTitle: 'Match by match',
-    trendFrom: 'From {n} matches',
+    trendTitle: 'Leg by leg',
+    trendFrom: 'From {n} legs',
     trendAverage: 'Average',
     trendCheckout: 'Checkout %',
-    trendSlider: 'Match',
+    trendSlider: 'Leg',
     trendReadout: '{date}: average {average}, checkout {checkout}',
-    trendOpen: 'Open this match',
-    trendNeedsMore: 'The chart needs at least two matches in this period.',
+    trendOpen: 'Open the match of {date}',
+    trendNeedsMore: 'The chart needs at least two legs in this period.',
 
     shape: 'Shape of your scoring',
 

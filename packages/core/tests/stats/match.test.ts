@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseHit } from '../../src/board/notation.js';
 import { dartEvent, reduceMatch, type MatchEvent, type X01Config } from '../../src/game/x01.js';
-import { matchStats } from '../../src/stats/match.js';
+import { legStats, matchStats } from '../../src/stats/match.js';
 
 const ann = { id: 'ann', name: 'Ann' };
 
@@ -73,5 +73,43 @@ describe('matchStats', () => {
     expect(s.dartsPerLegWon).toBeNull();
     expect(s.bestLegDarts).toBeNull();
     expect(s.average).toBe(0);
+  });
+});
+
+describe('legStats', () => {
+  const duo: X01Config = { ...solo, startScore: 101, legsPerSet: 3, players: [ann, { id: 'bob', name: 'Bob' }] };
+
+  it('gives each leg its own average and checkout, in the order played', () => {
+    // Leg 1: Ann T20 S1 S1 (the last on 40, a double away: 39 left), Bob 3,
+    // then Ann S1 (38 left), a miss at D19 and D19. Three darts thrown with a
+    // double to finish on, one in.
+    // Leg 2: Bob throws first, then Ann busts with T20 T20 without ever being on a finish.
+    const snapshot = reduceMatch(
+      duo,
+      darts('T20', 'S1', 'S1', 'S1', 'S1', 'S1', 'S1', 'MISS', 'D19', 'S20', 'S20', 'S20', 'T20', 'T20'),
+    );
+    const legs = legStats(snapshot, 'ann');
+
+    expect(legs).toHaveLength(2);
+    const [first, second] = legs;
+    expect(first!.legIndex).toBe(0);
+    expect(first!.dartsThrown).toBe(6);
+    expect(first!.points).toBe(101);
+    expect(first!.average).toBeCloseTo(50.5, 6);
+    expect(first!.checkoutAttempts).toBe(3);
+    expect(first!.checkoutHits).toBe(1);
+    expect(first!.checkoutPercent).toBeCloseTo(100 / 3, 6);
+    expect(first!.won).toBe(true);
+    expect(first!.at).toBe(1_700_000_000_000 + 8 * 1000);
+
+    expect(second!.legIndex).toBe(1);
+    expect(second!.won).toBe(false);
+    expect(second!.checkoutPercent).toBeNull();
+  });
+
+  it('leaves out a player who threw no dart in a leg', () => {
+    const snapshot = reduceMatch(duo, darts('T20'));
+    expect(legStats(snapshot, 'bob')).toEqual([]);
+    expect(legStats(snapshot, 'ann')).toHaveLength(1);
   });
 });
