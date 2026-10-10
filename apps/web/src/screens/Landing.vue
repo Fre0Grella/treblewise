@@ -47,19 +47,28 @@ const POINT_ART: LandingArtKind[] = ['score', 'caller', 'stats', 'device'];
 
       <ul class="landing-points">
         <li v-for="(point, index) in t.landing.points" :key="point.title">
+          <b>{{ point.title }}</b>
+          <span>{{ point.body }}</span>
+          <!-- Small and faint behind the words: the words lead. -->
           <div class="landing-point-art" aria-hidden="true">
             <LandingArt :kind="POINT_ART[index]" />
-          </div>
-          <div class="landing-point-text">
-            <b>{{ point.title }}</b>
-            <span>{{ point.body }}</span>
           </div>
         </li>
       </ul>
 
-      <section class="panel landing-honest">
-        <h2>{{ t.landing.statusTitle }}</h2>
-        <p>{{ t.landing.status }}</p>
+      <section class="landing-roadmap">
+        <h2>{{ t.landing.roadmapTitle }}</h2>
+        <ol>
+          <li
+            v-for="(step, index) in t.landing.roadmap"
+            :key="step.title"
+            :class="{ 'is-now': index === 0, 'is-next': index === 1 }"
+          >
+            <span class="landing-step-when">{{ step.when }}</span>
+            <b>{{ step.title }}</b>
+            <span>{{ step.body }}</span>
+          </li>
+        </ol>
       </section>
 
       <p class="landing-credit">{{ t.landing.voiceCredit }}</p>

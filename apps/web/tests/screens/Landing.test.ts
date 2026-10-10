@@ -23,6 +23,16 @@ describe('the landing page', () => {
     }
   });
 
+  it('ends with what comes next, in order, starting from what works now', async () => {
+    await renderAt('/');
+    const roadmap = screen.getByRole('heading', { name: /what comes next/i }).closest('section')!;
+    const steps = within(roadmap).getAllByRole('listitem');
+    expect(roadmap.querySelector('ol')).not.toBeNull();
+    expect(steps[0].className).toContain('is-now');
+    expect(steps[1].textContent).toMatch(/better interface/i);
+    expect(steps[2].textContent).toMatch(/board calibration/i);
+  });
+
   it('puts the board behind the page as decoration, not as something to use', async () => {
     const { container } = await renderAt('/');
     const backdrop = container.querySelector('.landing-backdrop')!;

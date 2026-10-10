@@ -1297,52 +1297,139 @@ input {
 
 /* Each card is a picture of its point over the words (issue #23): the
    picture on the sunken black, like the lobby's, the words below. */
+/* Each card leads with its words (issue #23); its picture sits small and
+   faint in the corner behind them, the way a watermark would. */
 .landing-points li {
+  position: relative;
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
+  min-height: 12rem;
+  /* Room at the foot for the picture, so it sits below the words, not under them. */
+  padding: var(--space-4) var(--space-4) 4.5rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--bg-raised);
   overflow: hidden;
 }
 
+.landing-points b {
+  position: relative;
+  z-index: 1;
+  font-size: var(--text-lg);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.landing-points span {
+  position: relative;
+  z-index: 1;
+  max-width: 38ch;
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
 .landing-point-art {
-  background: var(--bg-sunken);
-  border-bottom: 1px solid var(--line);
+  position: absolute;
+  right: var(--space-2);
+  bottom: calc(-1 * var(--space-3));
+  width: min(36%, 140px);
   color: var(--text);
-  padding: var(--space-2) var(--space-3);
+  opacity: 0.16;
+  pointer-events: none;
 }
 
 .landing-point-art .lobby-art-svg {
   display: block;
   width: 100%;
-  max-width: 260px;
   height: auto;
-  margin: 0 auto;
 }
 
-.landing-point-text {
+/* The roadmap: steps in order, a line through them, the current one green
+   and the next one in the accent. */
+.landing-roadmap h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.landing-roadmap ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4) var(--space-3);
+}
+
+/* One row on a wide screen, so the line reads as one road; a column on a phone. */
+@media (min-width: 640px) {
+  .landing-roadmap ol {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.landing-roadmap li {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--line);
 }
 
-.landing-points b {
+.landing-roadmap li::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--bg);
+}
+
+.landing-roadmap li.is-now {
+  border-top-color: var(--live);
+}
+
+.landing-roadmap li.is-now::before {
+  border-color: var(--live);
+  background: var(--live);
+}
+
+.landing-roadmap li.is-next::before {
+  border-color: var(--accent);
+}
+
+.landing-step-when {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.is-now .landing-step-when {
+  color: var(--live);
+}
+
+.is-next .landing-step-when {
+  color: var(--accent);
+}
+
+.landing-roadmap b {
   font-size: var(--text-base);
 }
 
-.landing-points span {
+.landing-roadmap li > span:last-child {
   font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.45;
-}
-
-.landing-honest p {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-dim);
-  line-height: 1.5;
 }
 
 .landing-credit {

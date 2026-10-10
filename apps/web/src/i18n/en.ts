@@ -208,21 +208,43 @@ export const en = {
   landing: {
     lede: 'Darts, scored properly. Tap the board or let the camera read it, hear the score called out, and get the statistics that only come from knowing where every dart landed.',
     cta: 'Play darts',
-    statusTitle: 'Where this is up to',
-    status:
-      'Scoring, the caller, checkouts and statistics all work today. The camera autoscorer does not score for you yet: the app photographs your throws and you mark where the darts landed, which is how its training set is being built. Nothing is uploaded.',
+    // What comes next, in order. Plans, not promises: keep it true of the
+    // roadmap (docs/07) and move a step to "Now" only once it has shipped.
+    roadmapTitle: 'What comes next',
+    roadmap: [
+      {
+        when: 'Now',
+        title: 'Scoring, the caller and statistics',
+        body: 'All working today. The camera does not score yet: it photographs your throws and you mark where the darts landed, which is how it learns.',
+      },
+      {
+        when: 'Next',
+        title: 'A better interface',
+        body: 'Screens redesigned for the phone, the laptop and a scoreboard you can read from the oche.',
+      },
+      {
+        when: 'Then',
+        title: 'Automatic board calibration',
+        body: 'The camera finds the board by itself, instead of you tapping four points on it.',
+      },
+      {
+        when: 'Later',
+        title: 'The camera keeps score',
+        body: 'Once it is accurate enough on real boards, it scores every dart and you only correct it.',
+      },
+    ],
     points: [
       {
-        title: 'Score without arithmetic',
-        body: 'X01 from 301 to 1001, straight/double/treble/master in and out, legs and sets, up to eight players. Every dart can be undone.',
+        title: 'You throw, it counts',
+        body: 'Tap where each dart landed, or its number, and the sums are done: X01 from 301 to 1001, any in and out, legs and sets, up to eight players. Every dart can be undone.',
       },
       {
-        title: 'Never look at the screen',
-        body: 'The score is called out loud, and the checkout is on the board in front of you.',
+        title: 'A caller in the room',
+        body: 'Every visit is called out loud, and when you are on a finish it tells you what you require. Your eyes stay on the board.',
       },
       {
-        title: 'Statistics worth having',
-        body: 'Averages, first nine, checkout percentage and darts per leg — plus heatmaps and grouping, because every dart records where it landed.',
+        title: 'Statistics from every dart',
+        body: 'Averages, first nine, checkout percentage and darts per leg. And because each dart records where it landed: heatmaps, how tight you group, and where you should aim.',
       },
       {
         title: 'Your board, your device',
