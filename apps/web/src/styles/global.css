@@ -1295,14 +1295,37 @@ input {
   gap: var(--space-2);
 }
 
+/* Each card is a picture of its point over the words (issue #23): the
+   picture on the sunken black, like the lobby's, the words below. */
 .landing-points li {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+
+.landing-point-art {
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  padding: var(--space-2) var(--space-3);
+}
+
+.landing-point-art .lobby-art-svg {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.landing-point-text {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--bg-raised);
 }
 
 .landing-points b {

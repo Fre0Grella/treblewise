@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 
 import Dartboard from '../components/Dartboard.vue';
 import Wordmark from '../components/Wordmark.vue';
+import LandingArt, { type LandingArtKind } from '../components/art/LandingArt.vue';
 import { useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore } from '../store/stores.js';
@@ -11,6 +12,10 @@ import { useLobbyStore } from '../store/stores.js';
 const t = useStrings();
 const router = useRouter();
 const lobby = useLobbyStore();
+
+// A picture for each of t.landing.points, in the same order: scoring, the
+// caller, statistics, the device.
+const POINT_ART: LandingArtKind[] = ['score', 'caller', 'stats', 'device'];
 </script>
 
 <template>
@@ -41,9 +46,14 @@ const lobby = useLobbyStore();
       </div>
 
       <ul class="landing-points">
-        <li v-for="point in t.landing.points" :key="point.title">
-          <b>{{ point.title }}</b>
-          <span>{{ point.body }}</span>
+        <li v-for="(point, index) in t.landing.points" :key="point.title">
+          <div class="landing-point-art" aria-hidden="true">
+            <LandingArt :kind="POINT_ART[index]" />
+          </div>
+          <div class="landing-point-text">
+            <b>{{ point.title }}</b>
+            <span>{{ point.body }}</span>
+          </div>
         </li>
       </ul>
 

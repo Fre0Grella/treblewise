@@ -11,6 +11,18 @@ describe('the landing page', () => {
     expect(title.querySelector('svg.wordmark')).not.toBeNull();
   });
 
+  it('gives every point a picture, as decoration the words already carry', async () => {
+    const { container } = await renderAt('/');
+    const cards = container.querySelectorAll('.landing-points li');
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      const art = card.querySelector('.landing-point-art')!;
+      expect(art.getAttribute('aria-hidden')).toBe('true');
+      expect(art.querySelector('svg')).not.toBeNull();
+      expect(card.querySelector('b')!.textContent).not.toBe('');
+    }
+  });
+
   it('puts the board behind the page as decoration, not as something to use', async () => {
     const { container } = await renderAt('/');
     const backdrop = container.querySelector('.landing-backdrop')!;
