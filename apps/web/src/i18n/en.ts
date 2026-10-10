@@ -235,10 +235,112 @@ export const en = {
   footer: {
     // AGPL: the source is one click away wherever the footer is.
     source: 'Source code',
+    privacy: 'Privacy',
+    terms: 'Terms',
     madeBy: 'Made with ❤️ by FreoGrella',
     github: 'GitHub',
     linkedin: 'LinkedIn',
     donate: '☕ Donate',
+  },
+  // Plain language, and nothing in them that is not true of the app as built
+  // (issue #31). Change the date when the words change.
+  privacy: {
+    title: 'Privacy',
+    lead: 'What treblewise keeps, where, and how to delete it. In short: everything stays on your device.',
+    updated: 'Last updated 10 October 2026.',
+    sections: [
+      {
+        title: 'What is stored',
+        list: true,
+        body: [
+          'Your matches: every dart, its score and where it landed.',
+          'Player profiles: the names you give them.',
+          'Your settings, including the camera calibration and a small picture of the empty board it was made from.',
+          'Photographs of the board with their dart marks, saved only while "Keep photos to improve the autoscorer" is on. Those saved earlier stay until you delete them.',
+          'Which help sections you folded away, and whether a lobby session is open.',
+          'What the browser caches for any website: the app itself and, once you use the autoscorer, its model.',
+        ],
+      },
+      {
+        title: 'Where',
+        body: [
+          'Only in this browser, on this device. Nothing is sent to the developer or to anyone else: there is no account, no analytics, no advertising and no cookie.',
+          'The app is served by GitHub Pages. Like any web host, GitHub receives the usual details of each request (your IP address, your browser, the file asked for) when the app loads. The developer does not receive them.',
+        ],
+      },
+      {
+        title: 'Pairing a phone and a computer',
+        body: [
+          'The phone sends its video and photographs straight to the computer over your local network. The two connect by showing each other QR codes, or by a short code you type or paste from one to the other: no server is involved, and nothing crosses the internet.',
+        ],
+      },
+      {
+        title: 'The caller',
+        body: [
+          "The score is called with recordings that come with the app. Player names, and any word without a recording, are read by your browser's own voice. On some browsers that voice is an online service run by the browser's maker, which then receives the words it reads.",
+        ],
+      },
+      {
+        title: 'Exporting',
+        body: [
+          'The camera setup can export your photographs as a zip file. It is saved on your device, and where it goes from there is up to you.',
+        ],
+      },
+      {
+        title: 'Deleting it',
+        body: [
+          '"Delete all photos" in the camera setup removes every photograph. A match can be deleted in the match history, and a profile when you start a new match.',
+          "To remove everything at once, clear this site's data in your browser's settings.",
+        ],
+      },
+      {
+        title: 'Contributions',
+        body: [
+          'treblewise collects nothing from its players. If a way to share photographs with the project is ever added, this page will say what is sent, to whom, and how to take it back, before that ships.',
+        ],
+      },
+    ],
+    contactTitle: 'Contact',
+    contact: 'Questions or requests go to the maintainer:',
+    contactLink: 'FreoGrella on GitHub',
+  },
+  terms: {
+    title: 'Terms',
+    lead: 'Short, because there is little to say: the app is free, and it comes with no promises.',
+    updated: 'Last updated 10 October 2026.',
+    sections: [
+      {
+        title: 'Free to use',
+        body: ['treblewise costs nothing. There is no account and nothing to sign up for.'],
+      },
+      {
+        title: 'No warranty',
+        body: [
+          "It is provided as it is, without warranty of any kind. Scores, statistics and the autoscorer's readings can be wrong, and you use it at your own risk. As far as the law allows, nobody who made it is liable for what comes of using it.",
+        ],
+      },
+      {
+        title: 'The code',
+        links: true,
+        body: [
+          'The source code is free software under the GNU Affero General Public License, version 3 or later (AGPL-3.0). You may read it, change it and share it under that licence; whoever runs a changed copy as a service has to offer its source too.',
+        ],
+      },
+      {
+        title: 'The caller and the sounds',
+        body: [
+          "The caller's voice was made with Chatterbox by Resemble AI (MIT licence). The game sounds come from Freesound, by Ultra-Edward and ElevatorFan2020, in the public domain (CC0).",
+        ],
+      },
+    ],
+    changesTitle: 'Changes',
+    changes: 'These terms change when the app does. The date at the top says when they last did.',
+    modelTitle: "The autoscorer's model",
+    modelTrained: 'The model this site ships, {name}, was trained on photographs taken with this app and on:',
+    modelShareAlike: 'Because dartscribe is share-alike, the model file is treated as licensed under CC BY-SA 4.0.',
+    modelNone: 'Whenever this site ships a model, the datasets it was trained on are named here.',
+    licence: 'The licence (AGPL-3.0)',
+    source: 'The source code',
   },
   lobby: {
     title: 'Lobby',

@@ -22,6 +22,8 @@ export const PATHS = {
   pair: '/pair',
   pairLaptop: '/pair/laptop',
   pairPhone: '/pair/phone',
+  privacy: '/privacy',
+  terms: '/terms',
 } as const;
 
 export type RouteName = keyof typeof PATHS;

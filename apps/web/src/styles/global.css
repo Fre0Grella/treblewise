@@ -1362,6 +1362,40 @@ input {
   }
 }
 
+/* ---------- privacy and terms ---------- */
+
+/* Text to read: a comfortable line, plain sections, no panels. */
+.legal-updated {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.legal-section {
+  max-width: 64ch;
+}
+
+.legal-section h2 {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
+}
+
+.legal-section p,
+.legal-section li {
+  margin: 0 0 var(--space-2);
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.legal-section ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.legal-section a {
+  color: var(--accent);
+}
+
 /* ---------- mode chooser ---------- */
 
 .mode-cards {

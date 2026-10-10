@@ -5,7 +5,7 @@
 
 import { render } from '@testing-library/vue';
 import { createPinia, getActivePinia, setActivePinia } from 'pinia';
-import { createMemoryHistory } from 'vue-router';
+import { createMemoryHistory, type RouterHistory } from 'vue-router';
 
 import App from '@/App.vue';
 import { createAppRouter } from '@/router/index.js';
@@ -14,12 +14,18 @@ import { createAppRouter } from '@/router/index.js';
  * `prepare` runs with the stores in place and before anything renders: it
  * sets up what the test needs (a session, a match in progress). With
  * `keepStores`, the stores the test has already filled are used as they are.
+ * `history` replaces the in-memory one, for a test of what only the browser's
+ * history records (the page before this one).
  */
-export async function renderAt(path: string, prepare?: () => void, { keepStores = false } = {}) {
+export async function renderAt(
+  path: string,
+  prepare?: () => void,
+  { keepStores = false, history }: { keepStores?: boolean; history?: RouterHistory } = {},
+) {
   const pinia = (keepStores && getActivePinia()) || createPinia();
   setActivePinia(pinia);
   prepare?.();
-  const router = createAppRouter(createMemoryHistory());
+  const router = createAppRouter(history ?? createMemoryHistory());
   // Every screen loaded up front: in a busy test run, a screen's first lazy
   // load can outlast a test's wait for the navigation it causes.
   await Promise.all(

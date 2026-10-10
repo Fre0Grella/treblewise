@@ -25,6 +25,8 @@ const SCREENS: Record<RouteName, () => Promise<unknown>> = {
   pair: () => import('../screens/pair/PairRole.vue'),
   pairLaptop: () => import('../screens/pair/PairLaptop.vue'),
   pairPhone: () => import('../screens/pair/PairPhone.vue'),
+  privacy: () => import('../screens/Privacy.vue'),
+  terms: () => import('../screens/Terms.vue'),
 };
 
 const routes: RouteRecordRaw[] = (Object.keys(PATHS) as RouteName[]).map((name) => ({

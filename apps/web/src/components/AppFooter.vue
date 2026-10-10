@@ -1,10 +1,12 @@
 <!--
   The thin bar at the foot of every page (issue #25), as on BottleCount: the
-  name and the source on the left, who made it and a way to support it on the
-  right. Its line runs the whole width of the window.
+  name, the source, privacy and terms on the left, who made it and a way to
+  support it on the right. Its line runs the whole width of the window. The
+  privacy page and the terms are linked from here only (issue #31).
 -->
 <script setup lang="ts">
 import { useStrings } from '../i18n/index.js';
+import { PATHS } from '../router/paths.js';
 
 const t = useStrings();
 const year = new Date().getFullYear();
@@ -16,6 +18,10 @@ const year = new Date().getFullYear();
       <span>© {{ year }} {{ t.app.name }}</span>
       <span class="app-footer-sep" aria-hidden="true">·</span>
       <a href="https://github.com/Fre0Grella/treblewise" target="_blank" rel="noreferrer">{{ t.footer.source }}</a>
+      <span class="app-footer-sep" aria-hidden="true">·</span>
+      <RouterLink :to="PATHS.privacy">{{ t.footer.privacy }}</RouterLink>
+      <span class="app-footer-sep" aria-hidden="true">·</span>
+      <RouterLink :to="PATHS.terms">{{ t.footer.terms }}</RouterLink>
     </div>
     <div class="app-footer-group">
       <span>{{ t.footer.madeBy }}</span>

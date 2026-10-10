@@ -18,6 +18,17 @@ export function backTarget(route: Pick<RouteLocationNormalizedLoaded, 'query'>, 
   return inSession ? PATHS.lobby : PATHS.landing;
 }
 
+/**
+ * Back from a page opened from the footer (privacy, terms): to the page it was
+ * opened from, a match included, or by the rule above when it was opened
+ * directly.
+ */
+export function useReturn(): () => void {
+  const router = useRouter();
+  const goBack = useBack();
+  return () => (router.options.history.state.back ? router.back() : goBack());
+}
+
 /** Goes back, by the rule above. */
 export function useBack(): () => void {
   const router = useRouter();
