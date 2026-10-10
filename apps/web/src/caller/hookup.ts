@@ -8,11 +8,12 @@
  * whose score is no longer true, or when the caller is switched off.
  */
 
+import type { Call } from './call.js';
 import { caller, type CallerVoice } from './caller.js';
 
 export interface CallerHookup {
   /** What the match announced, in order: said if the caller is on. */
-  heard(calls: readonly string[]): void;
+  heard(calls: readonly Call[]): void;
   /** Stops whatever is being said. */
   hush(): void;
 }
@@ -21,7 +22,7 @@ export interface CallerHookup {
 export function hookUpCaller(isOn: () => boolean, voice: () => CallerVoice = caller): CallerHookup {
   return {
     heard(calls) {
-      if (calls.length > 0 && isOn()) voice().sequence([...calls]);
+      if (calls.length > 0 && isOn()) voice().sequence(calls);
     },
     hush() {
       voice().cancel();

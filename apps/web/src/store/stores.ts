@@ -30,6 +30,7 @@ export const useSettingsStore = defineStore('settings', () => {
     ...state,
     change: settings.change,
     toggleSounds: () => settings.change('soundsEnabled', !state.settings.value.soundsEnabled),
+    toggleNames: () => settings.change('callNames', !state.settings.value.callNames),
     toggleCaller() {
       const on = !state.settings.value.callerEnabled;
       settings.change('callerEnabled', on);
@@ -50,7 +51,7 @@ export const usePlayersStore = defineStore('players', () => {
 
 export const useMatchesStore = defineStore('matches', () => {
   const state = refsOf<MatchesState>({ match: null, snapshot: null, history: [] });
-  const matches = createMatches(refSlice(state));
+  const matches = createMatches(refSlice(state), { names: () => useSettingsStore().settings.callNames });
   // The match says what to announce; the caller, if it is on, says it.
   const voice = hookUpCaller(() => useSettingsStore().settings.callerEnabled);
 
@@ -63,9 +64,12 @@ export const useMatchesStore = defineStore('matches', () => {
     resume: matches.resume,
     remove: matches.remove,
     refreshHistory: matches.refreshHistory,
-    throwDart(hit: Hit, options?: ThrowOptions) {
+    /** Whether the dart bust its visit, for the game to play the bust; null when there was no throw. */
+    throwDart(hit: Hit, options?: ThrowOptions): { busted: boolean } | null {
       const appended = matches.throwDart(hit, options);
-      if (appended) voice.heard(appended.calls);
+      if (!appended) return null;
+      voice.heard(appended.calls);
+      return { busted: appended.busted ?? false };
     },
     correctDart(dartId: string, hit: Hit, pos?: Point) {
       const appended = matches.correctDart(dartId, hit, pos);

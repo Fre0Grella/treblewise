@@ -50,13 +50,13 @@ describe('the match store', () => {
     useMatchesStore().start(config);
 
     useMatchesStore().throwDart(hit(20, 'treble'), { source: 'auto', call: true });
-    expect(said).toHaveBeenLastCalledWith([strings().caller.hit(hit(20, 'treble'))]);
+    expect(said).toHaveBeenLastCalledWith([[strings().caller.hit(hit(20, 'treble'))]]);
 
     useMatchesStore().throwDart(hit(20, 'treble'), { source: 'auto', call: true });
     useMatchesStore().throwDart(hit(20, 'treble'), { source: 'auto', call: true });
     const last = said.mock.lastCall![0];
-    expect(last[0]).toBe(strings().caller.hit(hit(20, 'treble')));
-    expect(last[1]).toBe(strings().caller.visit(180));
+    expect(last[0]).toEqual([strings().caller.hit(hit(20, 'treble'))]);
+    expect(last[1]).toEqual([strings().caller.visit(180)]);
     said.mockRestore();
   });
 

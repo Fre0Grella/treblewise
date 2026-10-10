@@ -13,11 +13,12 @@ describe('the caller hooked up to the match', () => {
     let on = true;
     const hookup = hookUpCaller(() => on, () => voice);
 
-    hookup.heard(['one hundred and eighty', 'Bob to throw']);
-    expect(voice.sequence).toHaveBeenCalledWith(['one hundred and eighty', 'Bob to throw']);
+    const calls = [['one hundred and eighty'], [{ name: 'Bob' }, 'to throw']];
+    hookup.heard(calls);
+    expect(voice.sequence).toHaveBeenCalledWith(calls);
 
     on = false;
-    hookup.heard(['sixty']);
+    hookup.heard([['sixty']]);
     expect(voice.sequence).toHaveBeenCalledTimes(1);
   });
 

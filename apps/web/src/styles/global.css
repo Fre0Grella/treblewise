@@ -1248,6 +1248,10 @@ input {
   color: var(--accent);
 }
 
+.landing-credit {
+  flex-basis: 100%;
+}
+
 /* ---------- mode chooser ---------- */
 
 .mode-cards {

@@ -215,7 +215,7 @@ export function realDeps(): MarkingSessionDeps {
     deleteFrame: (id) => deleteFrame(id),
     say: (hit) => {
       unlockCaller();
-      caller().say(strings().caller.hit(hit));
+      caller().say([strings().caller.hit(hit)]);
     },
     unlockSpeech: () => unlockCaller(),
     createObjectURL: (blob) => URL.createObjectURL(blob),

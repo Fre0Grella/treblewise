@@ -9,11 +9,11 @@
 -->
 <script setup lang="ts">
 import { formatRoute, type Hit, type Point } from '@treblewise/core';
-import { computed, onScopeDispose, ref, shallowRef } from 'vue';
+import { computed, onMounted, onScopeDispose, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { unlockCaller } from '../caller/caller.js';
-import { playThud, playTurn, unlockSounds } from '../caller/sounds.js';
+import { loadSounds, playBust, playThud, playTurn, unlockSounds } from '../caller/sounds.js';
 import Dartboard, { type BoardDart } from '../components/Dartboard.vue';
 import GameCamera from '../components/GameCamera.vue';
 import Keypad from '../components/Keypad.vue';
@@ -45,12 +45,17 @@ const { gameVisit, state: visitState } = useGameVisit({
 });
 
 // The game visit says when the autoscorer entered a dart and when the turn
-// passes; the sounds are the game's.
+// passes; the sounds are the game's. Decoded now, so the first dart is heard.
+onMounted(() => void loadSounds());
 onScopeDispose(
   gameVisit.listen((signal) => {
     if (!settings.settings.soundsEnabled) return;
-    if (signal === 'dart-read') playThud();
-    else playTurn();
+    if (signal === 'turn-passed') {
+      playTurn();
+      return;
+    }
+    playThud();
+    if (signal === 'dart-bust') playBust();
   }),
 );
 
@@ -104,11 +109,15 @@ function record(hit: Hit, pos?: Point) {
     correcting.value = null;
     return;
   }
-  if (settings.settings.soundsEnabled) playThud();
-  matches.throwDart(hit, pos ? { pos } : {});
+  const thrown = matches.throwDart(hit, pos ? { pos } : {});
+  if (settings.settings.soundsEnabled) {
+    playThud();
+    if (thrown?.busted) playBust();
+  }
 }
 
 const callerOn = computed({ get: () => settings.settings.callerEnabled, set: () => settings.toggleCaller() });
+const namesOn = computed({ get: () => settings.settings.callNames, set: () => settings.toggleNames() });
 const soundsOn = computed({
   get: () => settings.settings.soundsEnabled,
   set: () => {
@@ -204,6 +213,7 @@ function markVisit() {
     <div class="controls">
       <button type="button" class="chip" @click="matches.undo()">{{ t.game.undo }}</button>
       <Toggle v-model="callerOn" :label="callerOn ? t.game.callerOn : t.game.callerOff" />
+      <Toggle v-if="callerOn" v-model="namesOn" :label="namesOn ? t.game.namesOn : t.game.namesOff" />
       <Toggle v-model="soundsOn" :label="soundsOn ? t.game.soundsOn : t.game.soundsOff" />
       <button
         type="button"

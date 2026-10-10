@@ -57,19 +57,43 @@ describe('the match in play', () => {
     matches.throwDart(hit(20, 'treble'));
 
     const { calls } = matches.throwDart(hit(20, 'treble'))!;
-    expect(calls[0]).toBe(strings().caller.visit(180));
+    expect(calls[0]).toEqual([strings().caller.visit(180)]);
   });
 
   it('calls a dart as it goes in when asked, before the visit', () => {
     const matches = createMatches(held());
     matches.start(config);
     expect(matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true })!.calls).toEqual([
-      strings().caller.hit(hit(20, 'treble')),
+      [strings().caller.hit(hit(20, 'treble'))],
     ]);
 
     matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true });
     const { calls } = matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true })!;
-    expect(calls.slice(0, 2)).toEqual([strings().caller.hit(hit(20, 'treble')), strings().caller.visit(180)]);
+    expect(calls.slice(0, 2)).toEqual([[strings().caller.hit(hit(20, 'treble'))], [strings().caller.visit(180)]]);
+  });
+
+  it('says a dart that busts as the bust, not as its score', () => {
+    const matches = createMatches(held());
+    matches.start({ ...config, startScore: 40 });
+    const first = matches.throwDart(hit(20, 'single'), { source: 'auto', call: true })!;
+    expect(first.busted).toBe(false);
+
+    const bust = matches.throwDart(hit(20, 'treble'), { source: 'auto', call: true })!;
+    expect(bust.busted).toBe(true);
+    expect(bust.calls[0]).toEqual([{ pause: 250 }, strings().caller.bust]);
+  });
+
+  it('leaves the names out of the calls while the setting says so', () => {
+    let names = true;
+    const matches = createMatches(held(), { names: () => names });
+    matches.start({ ...config, startScore: 170 });
+    matches.throwDart(hit(20, 'treble'));
+    matches.throwDart(hit(20, 'treble'));
+    names = false;
+    expect(matches.throwDart(hit(10, 'single'))!.calls).toEqual([
+      ['one hundred and thirty'],
+      ['you require one hundred and seventy'],
+    ]);
   });
 
   it('announces nothing for a correction or an undo, even one that ends a visit', () => {

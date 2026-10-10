@@ -54,6 +54,7 @@ const lobby = useLobbyStore();
       <footer class="landing-foot">
         <span>{{ t.landing.foot }}</span>
         <a href="https://github.com/Fre0Grella/treblewise" target="_blank" rel="noreferrer">{{ t.landing.source }}</a>
+        <span class="landing-credit">{{ t.landing.voiceCredit }}</span>
       </footer>
     </div>
   </div>
