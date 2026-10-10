@@ -1243,8 +1243,26 @@ input {
 .landing-mark {
   font-size: var(--text-display-mark);
   line-height: 0.95;
-  letter-spacing: -0.03em;
-  font-weight: 700;
+}
+
+/* Sized by width, so it never runs past a narrow screen: 4.8em puts its
+   x-height where the old set title's was. */
+.landing-mark .wordmark {
+  display: block;
+  width: min(100%, 4.8em);
+  height: auto;
+}
+
+.wordmark-ink {
+  fill: currentColor;
+}
+
+.wordmark-red {
+  fill: var(--board-red);
+}
+
+.wordmark-green {
+  fill: var(--board-green);
 }
 
 .landing-lede {
@@ -1277,31 +1295,148 @@ input {
   gap: var(--space-2);
 }
 
+/* Each card is a picture of its point over the words (issue #23): the
+   picture on the sunken black, like the lobby's, the words below. */
+/* Stacked on a phone, every card as tall as the tallest, so the column is
+   even. (Side by side, the rows already line up.) */
+@media (max-width: 559px) {
+  .landing-points {
+    grid-auto-rows: 1fr;
+  }
+}
+
+/* Each card leads with its words (issue #23); its picture sits faint in the
+   corner behind them, the way a watermark would. */
 .landing-points li {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3);
+  gap: var(--space-2);
+  /* No room kept for the picture: it sits behind the words. */
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--bg-raised);
+  overflow: hidden;
 }
 
 .landing-points b {
-  font-size: var(--text-base);
+  position: relative;
+  z-index: 1;
+  font-size: var(--text-lg);
+  line-height: 1.15;
+  text-wrap: balance;
 }
 
 .landing-points span {
-  font-size: var(--text-sm);
-  color: var(--text-dim);
-  line-height: 1.45;
-}
-
-.landing-honest p {
-  margin: 0;
+  position: relative;
+  z-index: 1;
+  max-width: 38ch;
   font-size: var(--text-sm);
   color: var(--text-dim);
   line-height: 1.5;
+}
+
+.landing-point-art {
+  position: absolute;
+  right: calc(-1 * var(--space-2));
+  bottom: calc(-1 * var(--space-4));
+  width: min(56%, 230px);
+  color: var(--text);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.landing-point-art .lobby-art-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* The roadmap: steps in order, a line through them, the current one green
+   and the next one in the accent. */
+.landing-roadmap h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.landing-roadmap ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4) var(--space-3);
+}
+
+/* One row on a wide screen, so the line reads as one road; a column on a phone. */
+@media (min-width: 640px) {
+  .landing-roadmap ol {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.landing-roadmap li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--line);
+}
+
+.landing-roadmap li::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--bg);
+}
+
+.landing-roadmap li.is-now {
+  border-top-color: var(--live);
+}
+
+.landing-roadmap li.is-now::before {
+  border-color: var(--live);
+  background: var(--live);
+}
+
+.landing-roadmap li.is-next::before {
+  border-color: var(--accent);
+}
+
+.landing-step-when {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.is-now .landing-step-when {
+  color: var(--live);
+}
+
+.is-next .landing-step-when {
+  color: var(--accent);
+}
+
+.landing-roadmap b {
+  font-size: var(--text-base);
+}
+
+.landing-roadmap li > span:last-child {
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+  line-height: 1.45;
 }
 
 .landing-credit {

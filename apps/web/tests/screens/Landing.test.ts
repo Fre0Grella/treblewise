@@ -5,6 +5,34 @@ import { useLobbyStore, useMatchesStore } from '@/store/stores.js';
 import { renderAt } from '../support/renderAt.js';
 
 describe('the landing page', () => {
+  it('is titled with the wordmark, which still reads as the name', async () => {
+    await renderAt('/');
+    const title = screen.getByRole('heading', { level: 1, name: 'treblewise' });
+    expect(title.querySelector('svg.wordmark')).not.toBeNull();
+  });
+
+  it('gives every point a picture, as decoration the words already carry', async () => {
+    const { container } = await renderAt('/');
+    const cards = container.querySelectorAll('.landing-points li');
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      const art = card.querySelector('.landing-point-art')!;
+      expect(art.getAttribute('aria-hidden')).toBe('true');
+      expect(art.querySelector('svg')).not.toBeNull();
+      expect(card.querySelector('b')!.textContent).not.toBe('');
+    }
+  });
+
+  it('ends with what comes next, in order, starting from what works now', async () => {
+    await renderAt('/');
+    const roadmap = screen.getByRole('heading', { name: /what comes next/i }).closest('section')!;
+    const steps = within(roadmap).getAllByRole('listitem');
+    expect(roadmap.querySelector('ol')).not.toBeNull();
+    expect(steps[0].className).toContain('is-now');
+    expect(steps[1].textContent).toMatch(/better interface/i);
+    expect(steps[2].textContent).toMatch(/board calibration/i);
+  });
+
   it('puts the board behind the page as decoration, not as something to use', async () => {
     const { container } = await renderAt('/');
     const backdrop = container.querySelector('.landing-backdrop')!;
