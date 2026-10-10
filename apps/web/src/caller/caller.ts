@@ -39,6 +39,20 @@ export interface Speech {
 const CALL_GAP_MS = 300;
 const PART_GAP_MS = 80;
 
+/** The caller speaks a little slower than conversation. */
+const SPEECH_RATE = 0.95;
+
+/**
+ * How long the browser takes to say a name, from its start: measured on the
+ * Windows voices, which take 0.45 s for "Ann" and 1.45 s for "Maximiliano
+ * Rossi", rounded up. They then go on with most of a second of silence before
+ * saying they have finished, which left a gap before the words after a name;
+ * the words start once this has passed instead.
+ */
+export function nameSeconds(name: string): number {
+  return (0.4 + 0.07 * name.length) / SPEECH_RATE;
+}
+
 export class ClipCaller implements CallerVoice {
   private run = 0;
   private clips: Clips | null = null;
@@ -74,6 +88,8 @@ export class ClipCaller implements CallerVoice {
         await this.speech.say(callText(call), 'words');
         continue;
       }
+      // Decoded while the name before them is said, so they follow it at once.
+      for (const part of call) if (typeof part === 'string') this.clips.prepare(part);
       for (const [at, part] of call.entries()) {
         if (at > 0) await this.wait(PART_GAP_MS);
         if (run !== this.run) return;
@@ -105,10 +121,10 @@ class BrowserSpeech implements Speech {
     if (!this.available || (kind === 'words' && !this.local)) return Promise.resolve();
     return new Promise((done) => {
       const utterance = new SpeechSynthesisUtterance(text);
-      // A caller is loud, clear and slightly slower than conversational speech.
-      utterance.rate = 0.95;
+      utterance.rate = SPEECH_RATE;
       utterance.volume = 1;
       if (this.local) utterance.voice = this.local;
+      if (kind === 'name') utterance.onstart = () => setTimeout(done, nameSeconds(text) * 1000);
       utterance.onend = () => done();
       utterance.onerror = () => done();
       // Some browsers never say they have finished; the call must go on anyway.

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { ClipCaller, type Speech } from '@/caller/caller.js';
+import { ClipCaller, nameSeconds, type Speech } from '@/caller/caller.js';
 import type { Clips } from '@/caller/clips.js';
 
 function setup(recorded: string[] | null) {
   const heard: string[] = [];
+  const prepared: string[] = [];
   // A clip plays until it is stopped, or until the test lets it end.
   let ending: (() => void) | null = null;
   const clips: Clips | null = recorded && {
@@ -17,6 +18,7 @@ function setup(recorded: string[] | null) {
       heard.push('stop');
       ending?.();
     },
+    prepare: (phrase) => void prepared.push(phrase),
   };
   const speech: Speech = {
     available: true,
@@ -29,7 +31,7 @@ function setup(recorded: string[] | null) {
     ending?.();
     await settled();
   };
-  return { heard, voice, settled, end };
+  return { heard, prepared, voice, settled, end };
 }
 
 describe('the clip caller', () => {
@@ -39,6 +41,14 @@ describe('the clip caller', () => {
     await end();
     await end();
     expect(heard).toEqual(['clip: sixty', 'name: Ann', 'clip: you require forty']);
+  });
+
+  it('gets the words of a call ready before saying the name in front of them', async () => {
+    const { heard, prepared, voice, settled } = setup(['you require forty']);
+    voice.say([{ name: 'Ann' }, 'you require forty']);
+    await settled();
+    expect(prepared).toEqual(['you require forty']);
+    expect(heard[0]).toBe('name: Ann');
   });
 
   it('says a phrase without a clip through the browser, as words', async () => {
@@ -66,5 +76,15 @@ describe('the clip caller', () => {
     voice.cancel();
     await settled();
     expect(heard.slice(3)).toEqual(['stop']);
+  });
+});
+
+describe('how long a name takes to say', () => {
+  it('covers the Windows voices, which end their speech with a long silence', () => {
+    // Measured end of the speech, before that silence.
+    for (const [name, seconds] of [['Ann', 0.48], ['Sofi', 0.7], ['Alessandra', 0.92], ['Maximiliano Rossi', 1.52]] as const) {
+      expect(nameSeconds(name)).toBeGreaterThanOrEqual(seconds);
+      expect(nameSeconds(name)).toBeLessThan(seconds + 0.35);
+    }
   });
 });

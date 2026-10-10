@@ -9,6 +9,14 @@
 
 import { clipKey } from './call.js';
 
+/**
+ * How loud the clips play. The pack is mastered loud (about -13 LUFS), and the
+ * browser's voice that says the names cannot be raised: the Windows voices
+ * speak at -22 to -27 LUFS. About -12 dB brings the clips down to them, so a
+ * name does not drop out between two clips.
+ */
+const CLIP_GAIN = 0.25;
+
 export interface ClipIndex {
   voice: string;
   credit: string;
@@ -24,6 +32,8 @@ export interface Clips {
   play(phrase: string): Promise<boolean>;
   /** Stops the clip being played, if any. */
   stop(): void;
+  /** Gets a phrase's clip ready, so it starts at once when it is played. */
+  prepare(phrase: string): void;
 }
 
 /** The pack under `base` (ending in a slash), or null if it cannot be had. */
@@ -43,12 +53,17 @@ export async function loadClips(audio: AudioContext, base: string): Promise<Clip
 class WebAudioClips implements Clips {
   private readonly decoded = new Map<string, Promise<AudioBuffer | null>>();
   private playing: AudioBufferSourceNode | null = null;
+  private readonly output: GainNode;
 
   constructor(
     private readonly audio: AudioContext,
     private readonly index: ClipIndex,
     private readonly pack: ArrayBuffer,
-  ) {}
+  ) {
+    this.output = audio.createGain();
+    this.output.gain.value = CLIP_GAIN;
+    this.output.connect(audio.destination);
+  }
 
   async play(phrase: string): Promise<boolean> {
     const buffer = await this.buffer(clipKey(phrase));
@@ -57,7 +72,7 @@ class WebAudioClips implements Clips {
     return new Promise((resolve) => {
       const source = this.audio.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.audio.destination);
+      source.connect(this.output);
       source.onended = () => {
         if (this.playing === source) this.playing = null;
         resolve(true);
@@ -69,6 +84,10 @@ class WebAudioClips implements Clips {
 
   stop(): void {
     this.playing?.stop();
+  }
+
+  prepare(phrase: string): void {
+    void this.buffer(clipKey(phrase));
   }
 
   private buffer(key: string): Promise<AudioBuffer | null> {

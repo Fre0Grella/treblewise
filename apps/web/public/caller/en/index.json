@@ -2,7 +2,7 @@
  "voice": "chatterbox-default",
  "credit": "Caller voice: Chatterbox by Resemble AI (MIT), in its own voice.",
  "licence": "MIT",
- "file": "clips-6d6b22a62b7b.mp3",
+ "file": "clips-9b8d995c7287.mp3",
  "clips": {
   "no score": [
    0,
@@ -182,1566 +182,1566 @@
   ],
   "two": [
    635104,
-   5636
+   5876
   ],
   "three": [
-   640740,
+   640980,
    6596
   ],
   "four": [
-   647336,
+   647576,
    5396
   ],
   "five": [
-   652732,
+   652972,
    5876
   ],
   "six": [
-   658608,
+   658848,
    5756
   ],
   "seven": [
-   664364,
+   664604,
    6716
   ],
   "eight": [
-   671080,
+   671320,
    5396
   ],
   "nine": [
-   676476,
+   676716,
    6716
   ],
   "ten": [
-   683192,
+   683432,
    6236
   ],
   "eleven": [
-   689428,
+   689668,
    6356
   ],
   "twelve": [
-   695784,
+   696024,
    5996
   ],
   "thirteen": [
-   701780,
+   702020,
    8036
   ],
   "fourteen": [
-   709816,
+   710056,
    7316
   ],
   "fifteen": [
-   717132,
+   717372,
    7076
   ],
   "sixteen": [
-   724208,
+   724448,
    7676
   ],
   "seventeen": [
-   731884,
+   732124,
    8516
   ],
   "eighteen": [
-   740400,
+   740640,
    7676
   ],
   "nineteen": [
-   748076,
+   748316,
    7436
   ],
   "twenty": [
-   755512,
+   755752,
    5396
   ],
   "twenty one": [
-   760908,
+   761148,
    7316
   ],
   "twenty two": [
-   768224,
+   768464,
    7316
   ],
   "twenty three": [
-   775540,
+   775780,
    7196
   ],
   "twenty four": [
-   782736,
+   782976,
    6356
   ],
   "twenty five": [
-   789092,
+   789332,
    7796
   ],
   "twenty six": [
-   796888,
+   797128,
    7196
   ],
   "twenty seven": [
-   804084,
+   804324,
    7196
   ],
   "twenty eight": [
-   811280,
+   811520,
    6596
   ],
   "twenty nine": [
-   817876,
+   818116,
    8156
   ],
   "thirty": [
-   826032,
+   826272,
    6116
   ],
   "thirty one": [
-   832148,
+   832388,
    6596
   ],
   "thirty two": [
-   838744,
+   838984,
    6956
   ],
   "thirty three": [
-   845700,
+   845940,
    6596
   ],
   "thirty four": [
-   852296,
+   852536,
    6836
   ],
   "thirty five": [
-   859132,
+   859372,
    6596
   ],
   "thirty six": [
-   865728,
+   865968,
    6956
   ],
   "thirty seven": [
-   872684,
+   872924,
    8756
   ],
   "thirty eight": [
-   881440,
+   881680,
    6476
   ],
   "thirty nine": [
-   887916,
+   888156,
    7196
   ],
   "forty": [
-   895112,
+   895352,
    6236
   ],
   "forty one": [
-   901348,
+   901588,
    6356
   ],
   "forty two": [
-   907704,
+   907944,
    7796
   ],
   "forty three": [
-   915500,
+   915740,
    7916
   ],
   "forty four": [
-   923416,
+   923656,
    6716
   ],
   "forty five": [
-   930132,
+   930372,
    7076
   ],
   "forty six": [
-   937208,
+   937448,
    6596
   ],
   "forty seven": [
-   943804,
+   944044,
    8156
   ],
   "forty eight": [
-   951960,
+   952200,
    7556
   ],
   "forty nine": [
-   959516,
+   959756,
    7796
   ],
   "fifty": [
-   967312,
+   967552,
    6596
   ],
   "fifty one": [
-   973908,
+   974148,
    7076
   ],
   "fifty two": [
-   980984,
+   981224,
    6596
   ],
   "fifty three": [
-   987580,
-   7916
+   987820,
+   6476
   ],
   "fifty four": [
-   995496,
+   994296,
    6716
   ],
   "fifty five": [
-   1002212,
+   1001012,
    6596
   ],
   "fifty six": [
-   1008808,
+   1007608,
    7076
   ],
   "fifty seven": [
-   1015884,
+   1014684,
    7676
   ],
   "fifty eight": [
-   1023560,
+   1022360,
    6956
   ],
   "fifty nine": [
-   1030516,
+   1029316,
    7556
   ],
   "sixty": [
-   1038072,
+   1036872,
    6956
   ],
   "sixty one": [
-   1045028,
+   1043828,
    6356
   ],
   "sixty two": [
-   1051384,
+   1050184,
    8396
   ],
   "sixty three": [
-   1059780,
+   1058580,
    6476
   ],
   "sixty four": [
-   1066256,
+   1065056,
    7316
   ],
   "sixty five": [
-   1073572,
+   1072372,
    7556
   ],
   "sixty six": [
-   1081128,
+   1079928,
    7796
   ],
   "sixty seven": [
-   1088924,
+   1087724,
    8156
   ],
   "sixty eight": [
-   1097080,
+   1095880,
    7796
   ],
   "sixty nine": [
-   1104876,
+   1103676,
    6476
   ],
   "seventy": [
-   1111352,
+   1110152,
    6956
   ],
   "seventy one": [
-   1118308,
+   1117108,
    7196
   ],
   "seventy two": [
-   1125504,
+   1124304,
    7916
   ],
   "seventy three": [
-   1133420,
+   1132220,
    7676
   ],
   "seventy four": [
-   1141096,
+   1139896,
    8396
   ],
   "seventy five": [
-   1149492,
+   1148292,
    6836
   ],
   "seventy six": [
-   1156328,
+   1155128,
    7556
   ],
   "seventy seven": [
-   1163884,
+   1162684,
    7316
   ],
   "seventy eight": [
-   1171200,
+   1170000,
    7556
   ],
   "seventy nine": [
-   1178756,
+   1177556,
    8396
   ],
   "eighty": [
-   1187152,
+   1185952,
    5876
   ],
   "eighty one": [
-   1193028,
+   1191828,
    6596
   ],
   "eighty two": [
-   1199624,
+   1198424,
    7796
   ],
   "eighty three": [
-   1207420,
-   7436
+   1206220,
+   6476
   ],
   "eighty four": [
-   1214856,
+   1212696,
    7316
   ],
   "eighty five": [
-   1222172,
+   1220012,
    7316
   ],
   "eighty six": [
-   1229488,
+   1227328,
    6476
   ],
   "eighty seven": [
-   1235964,
+   1233804,
    7076
   ],
   "eighty eight": [
-   1243040,
+   1240880,
    6596
   ],
   "eighty nine": [
-   1249636,
+   1247476,
    7316
   ],
   "ninety": [
-   1256952,
+   1254792,
    6116
   ],
   "ninety one": [
-   1263068,
+   1260908,
    7676
   ],
   "ninety two": [
-   1270744,
+   1268584,
    6956
   ],
   "ninety three": [
-   1277700,
+   1275540,
    6356
   ],
   "ninety four": [
-   1284056,
+   1281896,
    7316
   ],
   "ninety five": [
-   1291372,
+   1289212,
    6716
   ],
   "ninety six": [
-   1298088,
+   1295928,
    6476
   ],
   "ninety seven": [
-   1304564,
-   11156
+   1302404,
+   9116
   ],
   "ninety eight": [
-   1315720,
+   1311520,
    7076
   ],
   "ninety nine": [
-   1322796,
+   1318596,
    8636
   ],
   "one hundred": [
-   1331432,
+   1327232,
    8516
   ],
   "one hundred and one": [
-   1339948,
+   1335748,
    8756
   ],
   "one hundred and two": [
-   1348704,
+   1344504,
    8156
   ],
   "one hundred and three": [
-   1356860,
+   1352660,
    10076
   ],
   "one hundred and four": [
-   1366936,
+   1362736,
    7316
   ],
   "one hundred and five": [
-   1374252,
+   1370052,
    9356
   ],
   "one hundred and six": [
-   1383608,
+   1379408,
    7676
   ],
   "one hundred and seven": [
-   1391284,
+   1387084,
    9596
   ],
   "one hundred and eight": [
-   1400880,
+   1396680,
    7436
   ],
   "one hundred and nine": [
-   1408316,
+   1404116,
    8996
   ],
   "one hundred and ten": [
-   1417312,
+   1413112,
    8996
   ],
   "one hundred and eleven": [
-   1426308,
+   1422108,
    9476
   ],
   "one hundred and twelve": [
-   1435784,
+   1431584,
    7916
   ],
   "one hundred and thirteen": [
-   1443700,
+   1439500,
    9476
   ],
   "one hundred and fourteen": [
-   1453176,
+   1448976,
    10076
   ],
   "one hundred and fifteen": [
-   1463252,
+   1459052,
    9476
   ],
   "one hundred and sixteen": [
-   1472728,
+   1468528,
    10436
   ],
   "one hundred and seventeen": [
-   1483164,
+   1478964,
    12116
   ],
   "one hundred and eighteen": [
-   1495280,
+   1491080,
    9116
   ],
   "one hundred and nineteen": [
-   1504396,
+   1500196,
    10916
   ],
   "one hundred and twenty": [
-   1515312,
+   1511112,
    10676
   ],
   "one hundred and twenty one": [
-   1525988,
+   1521788,
    9956
   ],
   "one hundred and twenty two": [
-   1535944,
+   1531744,
    9716
   ],
   "one hundred and twenty three": [
-   1545660,
+   1541460,
    12356
   ],
   "one hundred and twenty four": [
-   1558016,
+   1553816,
    9596
   ],
   "one hundred and twenty five": [
-   1567612,
+   1563412,
    9596
   ],
   "one hundred and twenty six": [
-   1577208,
+   1573008,
    11756
   ],
   "one hundred and twenty seven": [
-   1588964,
+   1584764,
    9476
   ],
   "one hundred and twenty eight": [
-   1598440,
+   1594240,
    8276
   ],
   "one hundred and twenty nine": [
-   1606716,
+   1602516,
    12116
   ],
   "one hundred and thirty": [
-   1618832,
+   1614632,
    9236
   ],
   "one hundred and thirty one": [
-   1628068,
+   1623868,
    9476
   ],
   "one hundred and thirty two": [
-   1637544,
+   1633344,
    12716
   ],
   "one hundred and thirty three": [
-   1650260,
+   1646060,
    9716
   ],
   "one hundred and thirty four": [
-   1659976,
+   1655776,
    10316
   ],
   "one hundred and thirty five": [
-   1670292,
+   1666092,
    9836
   ],
   "one hundred and thirty six": [
-   1680128,
+   1675928,
    9476
   ],
   "one hundred and thirty seven": [
-   1689604,
+   1685404,
    10796
   ],
   "one hundred and thirty eight": [
-   1700400,
+   1696200,
    10076
   ],
   "one hundred and thirty nine": [
-   1710476,
+   1706276,
    12596
   ],
   "one hundred and forty": [
-   1723072,
+   1718872,
    11756
   ],
   "one hundred and forty one": [
-   1734828,
+   1730628,
    11276
   ],
   "one hundred and forty two": [
-   1746104,
+   1741904,
    12236
   ],
   "one hundred and forty three": [
-   1758340,
+   1754140,
    13916
   ],
   "one hundred and forty four": [
-   1772256,
+   1768056,
    9596
   ],
   "one hundred and forty five": [
-   1781852,
+   1777652,
    9356
   ],
   "one hundred and forty six": [
-   1791208,
+   1787008,
    9476
   ],
   "one hundred and forty seven": [
-   1800684,
+   1796484,
    11156
   ],
   "one hundred and forty eight": [
-   1811840,
+   1807640,
    8036
   ],
   "one hundred and forty nine": [
-   1819876,
+   1815676,
    11156
   ],
   "one hundred and fifty": [
-   1831032,
+   1826832,
    9476
   ],
   "one hundred and fifty one": [
-   1840508,
+   1836308,
    11996
   ],
   "one hundred and fifty two": [
-   1852504,
+   1848304,
    9836
   ],
   "one hundred and fifty three": [
-   1862340,
+   1858140,
    12836
   ],
   "one hundred and fifty four": [
-   1875176,
+   1870976,
    11036
   ],
   "one hundred and fifty five": [
-   1886212,
+   1882012,
    13076
   ],
   "one hundred and fifty six": [
-   1899288,
+   1895088,
    8876
   ],
   "one hundred and fifty seven": [
-   1908164,
+   1903964,
    9596
   ],
   "one hundred and fifty eight": [
-   1917760,
+   1913560,
    9956
   ],
   "one hundred and fifty nine": [
-   1927716,
+   1923516,
    10316
   ],
   "one hundred and sixty": [
-   1938032,
+   1933832,
    10796
   ],
   "one hundred and sixty one": [
-   1948828,
+   1944628,
    9716
   ],
   "one hundred and sixty two": [
-   1958544,
+   1954344,
    10436
   ],
   "one hundred and sixty three": [
-   1968980,
+   1964780,
    9956
   ],
   "one hundred and sixty four": [
-   1978936,
+   1974736,
    12236
   ],
   "one hundred and sixty five": [
-   1991172,
+   1986972,
    9956
   ],
   "one hundred and sixty six": [
-   2001128,
+   1996928,
    8876
   ],
   "one hundred and sixty seven": [
-   2010004,
+   2005804,
    10076
   ],
   "one hundred and sixty eight": [
-   2020080,
+   2015880,
    9716
   ],
   "one hundred and sixty nine": [
-   2029796,
+   2025596,
    13196
   ],
   "one hundred and seventy": [
-   2042992,
+   2038792,
    10076
   ],
   "one hundred and seventy one": [
-   2053068,
+   2048868,
    8636
   ],
   "one hundred and seventy two": [
-   2061704,
+   2057504,
    10076
   ],
   "one hundred and seventy three": [
-   2071780,
+   2067580,
    11276
   ],
   "one hundred and seventy four": [
-   2083056,
+   2078856,
    9716
   ],
   "one hundred and seventy five": [
-   2092772,
+   2088572,
    13796
   ],
   "one hundred and seventy six": [
-   2106568,
+   2102368,
    10436
   ],
   "one hundred and seventy seven": [
-   2117004,
+   2112804,
    8876
   ],
   "one hundred and seventy eight": [
-   2125880,
+   2121680,
    9476
   ],
   "one hundred and seventy nine": [
-   2135356,
-   10916
+   2131156,
+   13316
   ],
   "one hundred and eighty": [
-   2146272,
+   2144472,
    15236
   ],
   "you require one": [
-   2161508,
+   2159708,
    7676
   ],
   "you require two": [
-   2169184,
+   2167384,
    8396
   ],
   "you require three": [
-   2177580,
+   2175780,
    7916
   ],
   "you require four": [
-   2185496,
+   2183696,
    8516
   ],
   "you require five": [
-   2194012,
+   2192212,
    8516
   ],
   "you require six": [
-   2202528,
+   2200728,
    9116
   ],
   "you require seven": [
-   2211644,
+   2209844,
    9236
   ],
   "you require eight": [
-   2220880,
+   2219080,
    8516
   ],
   "you require nine": [
-   2229396,
+   2227596,
    8756
   ],
   "you require ten": [
-   2238152,
+   2236352,
    8996
   ],
   "you require eleven": [
-   2247148,
+   2245348,
    10556
   ],
   "you require twelve": [
-   2257704,
+   2255904,
    8516
   ],
   "you require thirteen": [
-   2266220,
+   2264420,
    9836
   ],
   "you require fourteen": [
-   2276056,
+   2274256,
    9116
   ],
   "you require fifteen": [
-   2285172,
+   2283372,
    9476
   ],
   "you require sixteen": [
-   2294648,
+   2292848,
    10556
   ],
   "you require seventeen": [
-   2305204,
+   2303404,
    9956
   ],
   "you require eighteen": [
-   2315160,
+   2313360,
    10556
   ],
   "you require nineteen": [
-   2325716,
+   2323916,
    11276
   ],
   "you require twenty": [
-   2336992,
+   2335192,
    9716
   ],
   "you require twenty one": [
-   2346708,
+   2344908,
    9956
   ],
   "you require twenty two": [
-   2356664,
+   2354864,
    9956
   ],
   "you require twenty three": [
-   2366620,
+   2364820,
    10796
   ],
   "you require twenty four": [
-   2377416,
+   2375616,
    8876
   ],
   "you require twenty five": [
-   2386292,
+   2384492,
    11636
   ],
   "you require twenty six": [
-   2397928,
+   2396128,
    10556
   ],
   "you require twenty seven": [
-   2408484,
+   2406684,
    11396
   ],
   "you require twenty eight": [
-   2419880,
+   2418080,
    10796
   ],
   "you require twenty nine": [
-   2430676,
+   2428876,
    9956
   ],
   "you require thirty": [
-   2440632,
+   2438832,
    8156
   ],
   "you require thirty one": [
-   2448788,
+   2446988,
    10676
   ],
   "you require thirty two": [
-   2459464,
+   2457664,
    9956
   ],
   "you require thirty three": [
-   2469420,
+   2467620,
    14516
   ],
   "you require thirty four": [
-   2483936,
+   2482136,
    9836
   ],
   "you require thirty five": [
-   2493772,
+   2491972,
    10316
   ],
   "you require thirty six": [
-   2504088,
+   2502288,
    10436
   ],
   "you require thirty seven": [
-   2514524,
+   2512724,
    10436
   ],
   "you require thirty eight": [
-   2524960,
+   2523160,
    10916
   ],
   "you require thirty nine": [
-   2535876,
+   2534076,
    10436
   ],
   "you require forty": [
-   2546312,
+   2544512,
    8756
   ],
   "you require forty one": [
-   2555068,
+   2553268,
    10916
   ],
   "you require forty two": [
-   2565984,
+   2564184,
    10316
   ],
   "you require forty three": [
-   2576300,
+   2574500,
    9956
   ],
   "you require forty four": [
-   2586256,
+   2584456,
    10316
   ],
   "you require forty five": [
-   2596572,
+   2594772,
    9716
   ],
   "you require forty six": [
-   2606288,
+   2604488,
    12116
   ],
   "you require forty seven": [
-   2618404,
+   2616604,
    9836
   ],
   "you require forty eight": [
-   2628240,
+   2626440,
    10196
   ],
   "you require forty nine": [
-   2638436,
+   2636636,
    10196
   ],
   "you require fifty": [
-   2648632,
+   2646832,
    9116
   ],
   "you require fifty one": [
-   2657748,
+   2655948,
    9236
   ],
   "you require fifty two": [
-   2666984,
+   2665184,
    9236
   ],
   "you require fifty three": [
-   2676220,
+   2674420,
    8996
   ],
   "you require fifty four": [
-   2685216,
+   2683416,
    9956
   ],
   "you require fifty five": [
-   2695172,
+   2693372,
    9116
   ],
   "you require fifty six": [
-   2704288,
+   2702488,
    11756
   ],
   "you require fifty seven": [
-   2716044,
+   2714244,
    9476
   ],
   "you require fifty eight": [
-   2725520,
+   2723720,
    9356
   ],
   "you require fifty nine": [
-   2734876,
+   2733076,
    10076
   ],
   "you require sixty": [
-   2744952,
+   2743152,
    8876
   ],
   "you require sixty one": [
-   2753828,
+   2752028,
    10436
   ],
   "you require sixty two": [
-   2764264,
+   2762464,
    9476
   ],
   "you require sixty three": [
-   2773740,
+   2771940,
    9956
   ],
   "you require sixty four": [
-   2783696,
+   2781896,
    11036
   ],
   "you require sixty five": [
-   2794732,
+   2792932,
    10196
   ],
   "you require sixty six": [
-   2804928,
+   2803128,
    10076
   ],
   "you require sixty seven": [
-   2815004,
+   2813204,
    11756
   ],
   "you require sixty eight": [
-   2826760,
+   2824960,
    9476
   ],
   "you require sixty nine": [
-   2836236,
+   2834436,
    9716
   ],
   "you require seventy": [
-   2845952,
+   2844152,
    9236
   ],
   "you require seventy one": [
-   2855188,
+   2853388,
    11276
   ],
   "you require seventy two": [
-   2866464,
+   2864664,
    10556
   ],
   "you require seventy three": [
-   2877020,
+   2875220,
    10076
   ],
   "you require seventy four": [
-   2887096,
+   2885296,
    11756
   ],
   "you require seventy five": [
-   2898852,
+   2897052,
    10316
   ],
   "you require seventy six": [
-   2909168,
+   2907368,
    13436
   ],
   "you require seventy seven": [
-   2922604,
+   2920804,
    11396
   ],
   "you require seventy eight": [
-   2934000,
+   2932200,
    10676
   ],
   "you require seventy nine": [
-   2944676,
+   2942876,
    10676
   ],
   "you require eighty": [
-   2955352,
+   2953552,
    9956
   ],
   "you require eighty one": [
-   2965308,
+   2963508,
    9956
   ],
   "you require eighty two": [
-   2975264,
+   2973464,
    10556
   ],
   "you require eighty three": [
-   2985820,
+   2984020,
    9956
   ],
   "you require eighty four": [
-   2995776,
+   2993976,
    9716
   ],
   "you require eighty five": [
-   3005492,
+   3003692,
    10196
   ],
   "you require eighty six": [
-   3015688,
+   3013888,
    10676
   ],
   "you require eighty seven": [
-   3026364,
+   3024564,
    9596
   ],
   "you require eighty eight": [
-   3035960,
+   3034160,
    10076
   ],
   "you require eighty nine": [
-   3046036,
+   3044236,
    10196
   ],
   "you require ninety": [
-   3056232,
+   3054432,
    9236
   ],
   "you require ninety one": [
-   3065468,
+   3063668,
    10556
   ],
   "you require ninety two": [
-   3076024,
+   3074224,
    11156
   ],
   "you require ninety three": [
-   3087180,
+   3085380,
    10316
   ],
   "you require ninety four": [
-   3097496,
+   3095696,
    10076
   ],
   "you require ninety five": [
-   3107572,
+   3105772,
    9356
   ],
   "you require ninety six": [
-   3116928,
+   3115128,
    10196
   ],
   "you require ninety seven": [
-   3127124,
+   3125324,
    10076
   ],
   "you require ninety eight": [
-   3137200,
+   3135400,
    8516
   ],
   "you require ninety nine": [
-   3145716,
+   3143916,
    11636
   ],
   "you require one hundred": [
-   3157352,
+   3155552,
    10556
   ],
   "you require one hundred and one": [
-   3167908,
+   3166108,
    11636
   ],
   "you require one hundred and two": [
-   3179544,
+   3177744,
    11276
   ],
   "you require one hundred and three": [
-   3190820,
+   3189020,
    11876
   ],
   "you require one hundred and four": [
-   3202696,
+   3200896,
    12596
   ],
   "you require one hundred and five": [
-   3215292,
+   3213492,
    10316
   ],
   "you require one hundred and six": [
-   3225608,
+   3223808,
    11636
   ],
   "you require one hundred and seven": [
-   3237244,
+   3235444,
    11996
   ],
   "you require one hundred and eight": [
-   3249240,
+   3247440,
    11516
   ],
   "you require one hundred and nine": [
-   3260756,
+   3258956,
    11156
   ],
   "you require one hundred and ten": [
-   3271912,
+   3270112,
    11036
   ],
   "you require one hundred and eleven": [
-   3282948,
+   3281148,
    14396
   ],
   "you require one hundred and twelve": [
-   3297344,
+   3295544,
    11036
   ],
   "you require one hundred and thirteen": [
-   3308380,
+   3306580,
    14036
   ],
   "you require one hundred and fourteen": [
-   3322416,
+   3320616,
    12596
   ],
   "you require one hundred and fifteen": [
-   3335012,
+   3333212,
    12116
   ],
   "you require one hundred and sixteen": [
-   3347128,
+   3345328,
    12836
   ],
   "you require one hundred and seventeen": [
-   3359964,
+   3358164,
    15596
   ],
   "you require one hundred and eighteen": [
-   3375560,
+   3373760,
    11756
   ],
   "you require one hundred and nineteen": [
-   3387316,
+   3385516,
    11996
   ],
   "you require one hundred and twenty": [
-   3399312,
+   3397512,
    11396
   ],
   "you require one hundred and twenty one": [
-   3410708,
+   3408908,
    13916
   ],
   "you require one hundred and twenty two": [
-   3424624,
+   3422824,
    13556
   ],
   "you require one hundred and twenty three": [
-   3438180,
+   3436380,
    13556
   ],
   "you require one hundred and twenty four": [
-   3451736,
+   3449936,
    12596
   ],
   "you require one hundred and twenty five": [
-   3464332,
+   3462532,
    12236
   ],
   "you require one hundred and twenty six": [
-   3476568,
+   3474768,
    11876
   ],
   "you require one hundred and twenty seven": [
-   3488444,
+   3486644,
    13076
   ],
   "you require one hundred and twenty eight": [
-   3501520,
+   3499720,
    12116
   ],
   "you require one hundred and twenty nine": [
-   3513636,
+   3511836,
    13676
   ],
   "you require one hundred and thirty": [
-   3527312,
+   3525512,
    12716
   ],
   "you require one hundred and thirty one": [
-   3540028,
+   3538228,
    12356
   ],
   "you require one hundred and thirty two": [
-   3552384,
+   3550584,
    12596
   ],
   "you require one hundred and thirty three": [
-   3564980,
+   3563180,
    13316
   ],
   "you require one hundred and thirty four": [
-   3578296,
+   3576496,
    11636
   ],
   "you require one hundred and thirty five": [
-   3589932,
+   3588132,
    12836
   ],
   "you require one hundred and thirty six": [
-   3602768,
+   3600968,
    13916
   ],
   "you require one hundred and thirty seven": [
-   3616684,
+   3614884,
    13676
   ],
   "you require one hundred and thirty eight": [
-   3630360,
+   3628560,
    12956
   ],
   "you require one hundred and thirty nine": [
-   3643316,
+   3641516,
    13556
   ],
   "you require one hundred and forty": [
-   3656872,
+   3655072,
    12956
   ],
   "you require one hundred and forty one": [
-   3669828,
+   3668028,
    13076
   ],
   "you require one hundred and forty two": [
-   3682904,
+   3681104,
    13796
   ],
   "you require one hundred and forty three": [
-   3696700,
+   3694900,
    11156
   ],
   "you require one hundred and forty four": [
-   3707856,
+   3706056,
    13436
   ],
   "you require one hundred and forty five": [
-   3721292,
+   3719492,
    12956
   ],
   "you require one hundred and forty six": [
-   3734248,
+   3732448,
    12956
   ],
   "you require one hundred and forty seven": [
-   3747204,
+   3745404,
    13796
   ],
   "you require one hundred and forty eight": [
-   3761000,
+   3759200,
    10676
   ],
   "you require one hundred and forty nine": [
-   3771676,
+   3769876,
    13916
   ],
   "you require one hundred and fifty": [
-   3785592,
+   3783792,
    13556
   ],
   "you require one hundred and fifty one": [
-   3799148,
+   3797348,
    12236
   ],
   "you require one hundred and fifty two": [
-   3811384,
+   3809584,
    13796
   ],
   "you require one hundred and fifty three": [
-   3825180,
+   3823380,
    13916
   ],
   "you require one hundred and fifty four": [
-   3839096,
+   3837296,
    12356
   ],
   "you require one hundred and fifty five": [
-   3851452,
+   3849652,
    12716
   ],
   "you require one hundred and fifty six": [
-   3864168,
+   3862368,
    11756
   ],
   "you require one hundred and fifty seven": [
-   3875924,
+   3874124,
    14156
   ],
   "you require one hundred and fifty eight": [
-   3890080,
+   3888280,
    12116
   ],
   "you require one hundred and fifty nine": [
-   3902196,
+   3900396,
    12596
   ],
   "you require one hundred and sixty": [
-   3914792,
+   3912992,
    11636
   ],
   "you require one hundred and sixty one": [
-   3926428,
+   3924628,
    12836
   ],
   "you require one hundred and sixty two": [
-   3939264,
+   3937464,
    12716
   ],
   "you require one hundred and sixty three": [
-   3951980,
+   3950180,
    12836
   ],
   "you require one hundred and sixty four": [
-   3964816,
+   3963016,
    12836
   ],
   "you require one hundred and sixty five": [
-   3977652,
+   3975852,
    12236
   ],
   "you require one hundred and sixty six": [
-   3989888,
+   3988088,
    12836
   ],
   "you require one hundred and sixty seven": [
-   4002724,
+   4000924,
    14036
   ],
   "you require one hundred and sixty eight": [
-   4016760,
+   4014960,
    11876
   ],
   "you require one hundred and sixty nine": [
-   4028636,
+   4026836,
    12956
   ],
   "you require one hundred and seventy": [
-   4041592,
+   4039792,
    10076
   ],
   "to throw": [
-   4051668,
+   4049868,
    6116
   ],
   "double one": [
-   4057784,
+   4055984,
    7196
   ],
   "treble one": [
-   4064980,
+   4063180,
    6956
   ],
   "double two": [
-   4071936,
+   4070136,
    7556
   ],
   "treble two": [
-   4079492,
+   4077692,
    7676
   ],
   "double three": [
-   4087168,
+   4085368,
    7436
   ],
   "treble three": [
-   4094604,
+   4092804,
    6476
   ],
   "double four": [
-   4101080,
+   4099280,
    6836
   ],
   "treble four": [
-   4107916,
+   4106116,
    6836
   ],
   "double five": [
-   4114752,
+   4112952,
    6716
   ],
   "treble five": [
-   4121468,
+   4119668,
    6356
   ],
   "double six": [
-   4127824,
+   4126024,
    6476
   ],
   "treble six": [
-   4134300,
+   4132500,
    7196
   ],
   "double seven": [
-   4141496,
+   4139696,
    6956
   ],
   "treble seven": [
-   4148452,
+   4146652,
    6836
   ],
   "double eight": [
-   4155288,
+   4153488,
    6716
   ],
   "treble eight": [
-   4162004,
+   4160204,
    6836
   ],
   "double nine": [
-   4168840,
+   4167040,
    6716
   ],
   "treble nine": [
-   4175556,
+   4173756,
    6956
   ],
   "double ten": [
-   4182512,
+   4180712,
    6596
   ],
   "treble ten": [
-   4189108,
+   4187308,
    7916
   ],
   "double eleven": [
-   4197024,
+   4195224,
    7916
   ],
   "treble eleven": [
-   4204940,
+   4203140,
    8036
   ],
   "double twelve": [
-   4212976,
+   4211176,
    7316
   ],
   "treble twelve": [
-   4220292,
+   4218492,
    6956
   ],
   "double thirteen": [
-   4227248,
+   4225448,
    7556
   ],
   "treble thirteen": [
-   4234804,
+   4233004,
    8396
   ],
   "double fourteen": [
-   4243200,
+   4241400,
    8636
   ],
   "treble fourteen": [
-   4251836,
+   4250036,
    6716
   ],
   "double fifteen": [
-   4258552,
+   4256752,
    8516
   ],
   "treble fifteen": [
-   4267068,
+   4265268,
    7916
   ],
   "double sixteen": [
-   4274984,
+   4273184,
    8396
   ],
   "treble sixteen": [
-   4283380,
+   4281580,
    8036
   ],
   "double seventeen": [
-   4291416,
+   4289616,
    10076
   ],
   "treble seventeen": [
-   4301492,
+   4299692,
    8516
   ],
   "double eighteen": [
-   4310008,
+   4308208,
    8396
   ],
   "treble eighteen": [
-   4318404,
+   4316604,
    9116
   ],
   "double nineteen": [
-   4327520,
+   4325720,
    8516
   ],
   "treble nineteen": [
-   4336036,
+   4334236,
    9476
   ],
   "double twenty": [
-   4345512,
+   4343712,
    7556
   ],
   "treble twenty": [
-   4353068,
+   4351268,
    7316
   ],
   "bullseye": [
-   4360384,
+   4358584,
    5636
   ]
  }
