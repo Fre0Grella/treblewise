@@ -1,7 +1,7 @@
 /*
  * Builds the pictures the README shows, from the app itself: the banner (the
- * wordmark over the landing page's turning board), the landing cards'
- * drawings, and a screenshot of the landing page on a laptop and a phone.
+ * wordmark over the landing page's turning board) and a screenshot of the
+ * landing page on a laptop and a phone.
  *
  *     npm run build && npm run preview      # in one terminal
  *     node apps/web/scripts/build-readme-art.mjs [http://localhost:4173/]
@@ -13,7 +13,6 @@
  *
  * Writes, in docs/assets/:
  *   banner.svg                      the wordmark and the lede on the board
- *   card-score.svg, card-caller.svg, card-stats.svg, card-device.svg
  *   screenshot.png                  the landing page, laptop and phone
  */
 
@@ -32,7 +31,6 @@ try {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const OUT = join(ROOT, 'docs', 'assets');
 const address = process.argv[2] ?? 'http://localhost:4173/';
-const CARDS = ['score', 'caller', 'stats', 'device'];
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 /**
@@ -95,10 +93,6 @@ function banner(mark, board, lede, colours) {
 `;
 }
 
-function card(art, colours) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300"><rect x="1" y="1" width="398" height="298" rx="22" fill="${colours.raised}" stroke="${colours.line}" stroke-width="2"/>${art.inner}</svg>\n`;
-}
-
 /** The laptop's page in a window, the phone's in front of it, on transparent. */
 function showcase(desktop, phone) {
   return `<!doctype html><html><body style="margin:0;background:transparent">
@@ -124,21 +118,18 @@ const page = await landing(browser, { width: 1280, height: 860 }, 1);
 const colours = await page.evaluate(() => {
   const css = getComputedStyle(document.documentElement);
   const v = (n) => css.getPropertyValue(n).trim();
-  return { bg: v('--bg'), raised: v('--bg-raised'), line: v('--line'), text: v('--text'), dim: v('--text-dim'), red: v('--board-red'), green: v('--board-green') };
+  return { bg: v('--bg'), text: v('--text'), dim: v('--text-dim'), red: v('--board-red'), green: v('--board-green') };
 });
 const mark = await page.$eval('.landing-mark svg', flatten, {
   font: FONT,
   classFills: { 'wordmark-ink': colours.text, 'wordmark-red': colours.red, 'wordmark-green': colours.green },
 });
 const board = await page.$eval('.landing-backdrop-board svg', flatten, { font: FONT });
-const arts = [];
-for (const svg of await page.$$('.landing-point-art svg')) arts.push(await svg.evaluate(flatten, { font: FONT }));
 const lede = {
   head: 'Darts, scored properly.',
   tail: 'X01 · a spoken caller · statistics from every dart · a camera that reads the board',
 };
 await writeFile(join(OUT, 'banner.svg'), banner(mark, board, lede, colours));
-for (const [i, name] of CARDS.entries()) await writeFile(join(OUT, `card-${name}.svg`), card(arts[i], colours));
 const desktop = (await page.screenshot()).toString('base64');
 
 const phonePage = await landing(browser, { width: 390, height: 780 }, 2);
@@ -149,4 +140,4 @@ await stage.setContent(showcase(desktop, phone));
 await stage.locator('#stage').screenshot({ path: join(OUT, 'screenshot.png'), omitBackground: true });
 
 await browser.close();
-console.log('wrote banner.svg, card-*.svg and screenshot.png in docs/assets');
+console.log('wrote banner.svg and screenshot.png in docs/assets');

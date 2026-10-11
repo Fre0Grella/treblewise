@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://fre0grella.github.io/treblewise/"><img alt="Play it in your browser" src="https://img.shields.io/badge/play-in_your_browser-c0182f?style=for-the-badge"></a>
   <a href="LICENSE"><img alt="Licence: AGPL-3.0" src="https://img.shields.io/badge/licence-AGPL--3.0-00713c?style=for-the-badge"></a>
-  <img alt="Offline-first PWA" src="https://img.shields.io/badge/PWA-offline--first-15130f?style=for-the-badge">
+  <img alt="Your data stays on your device" src="https://img.shields.io/badge/data-on_your_device-15130f?style=for-the-badge">
   <a href="https://ko-fi.com/freogrella"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/ko--fi-support-eacf75?style=for-the-badge&logo=ko-fi&logoColor=15130f&labelColor=15130f"></a>
 </p>
 
@@ -33,60 +33,67 @@ spoken caller work today, on a phone or a laptop.
 > of a real board yet, so it is off by default and every dart it enters can be
 > corrected with a tap. See [`docs/03-autoscorer.md`](docs/03-autoscorer.md).
 
-## At a glance
-
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/assets/card-score.svg" alt="" width="100%"><br>
-      <h3>You throw, it counts</h3>
-      Tap where each dart landed, tap its number, or let the camera read it,
-      and the sums are done: X01 from 301 to 1001, any in and out, legs and
-      sets, up to eight players. Every dart can be undone.
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/assets/card-caller.svg" alt="" width="100%"><br>
-      <h3>A caller in the room</h3>
-      Every visit is called out loud, and when you are on a finish it tells
-      you what you require. Your eyes stay on the board.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/assets/card-stats.svg" alt="" width="100%"><br>
-      <h3>Statistics from every dart</h3>
-      Averages, first nine, checkout percentage and darts per leg. And because
-      each dart records where it landed: heatmaps, how tight you group, and
-      where you should aim.
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/assets/card-device.svg" alt="" width="100%"><br>
-      <h3>Your board, your device</h3>
-      It runs in the browser, works offline, and keeps everything on your
-      phone or laptop. No account to create.
-    </td>
-  </tr>
-</table>
-
-<details>
-<summary><b>Everything it does, in detail</b></summary>
-<br>
+## Features
 
 | | |
 |---|---|
-| **Play** | X01 (301 → 1001), configurable in/out rule (straight / double / triple / master), legs and sets, 1–8 players. |
-| **Score** | Three ways, always interchangeable: press the board, say it out loud, or let the camera read it. Pressing raises a magnifying lens offset from your finger, so you can place a dart in a treble on a phone screen. The camera never gets the last word — you do. |
-| **Caller** | The score is spoken, so nobody has to look at the screen. |
-| **Checkout** | What to aim at on every finishable score, following the configured out rule. |
-| **Stats** | The usual ones (3-dart average, first 9, checkout %, darts per leg, bands, per-double table, session trend) plus the ones that need positions: a heatmap of where your darts land, how tightly they group along and across the sector, what happens when you go at your number, and — from your own spread — **where you should actually aim**, which for most players is not the treble 20. |
-| **Camera setup** | Point the phone at your board and the app tells you what to fix — cut off, too dark, too straight on, camera moved — then you mark the four board points once. |
-| **Try it** | Throw a dart, tap it in the photograph, hear the score called back. If it is right, the camera is set up properly — and that throw is one labelled training sample. In a game, the same thing happens per visit: **Mark where they landed** corrects the score and files the example. All of it stays on your device until you export it. |
-| **Two device modes** | **Solo:** the phone does everything. **Paired:** the phone is only a camera and a laptop does the rest. Pairing is two QR codes and no server at all — or, for a computer with no camera, a 103-character code the phone offers to copy. The video goes straight between the devices and never leaves your network, so it works on a hotspot with no internet. |
+| 🎯&nbsp;**X01** | 301 → 1001 · straight, double, triple or master in and out · legs and sets · 1–8 players · a checkout route on every finishable score, following the out rule · every dart can be undone. |
+| 👆&nbsp;**Board&nbsp;input** | Tap where the dart landed (a magnifying lens rises offset from your finger, so a treble is hittable on a phone screen) or tap its number. A tapped dart keeps its **position in board millimetres**, not just `T20`. |
+| 🔊&nbsp;**Caller** | Every visit called out loud from ~440 recorded clips, the delivery rising with the score up to the 180. One MP3 pack with a byte-range index, fetched on the first tap; player names go through `speechSynthesis`. |
+| 📈&nbsp;**Statistics** | Classical: 3-dart and first-9 average, checkout %, darts at double, a per-double table, scoring bands, the session trend. Positional: a heatmap, grouping along and across the sector, what happens when you go at your number, and an **aim map** built from your own spread. |
+| 📷&nbsp;**Autoscorer** | The camera reads each dart as it lands and proposes the score; you correct the odd one, and each correction is a labelled training sample. *Experimental, off by default.* |
+| 📱&nbsp;**Phone&nbsp;+&nbsp;laptop** | The phone is only a camera, the laptop runs the game. WebRTC, with the handshake carried by QR codes both ways: no signalling server, and it works on a hotspot with no internet. No webcam? A 103-character code instead. |
+| 🔒&nbsp;**Local&#8209;first** | Everything lives in IndexedDB on your device. No account, and the photos you label stay there until you export them. |
 
-Offline-first: it's a PWA, all game data lives on your device, and there is no
-account to create.
+## How it works
 
-</details>
+### Every dart is an event
+
+```ts
+type DartThrown = {
+  type: 'dart.thrown'
+  id: string
+  ts: number
+  pos?: { x: number; y: number }                      // mm from the bull, in the board plane
+  hit: { sector: number; ring: Ring; value: number }
+  source: 'manual' | 'voice' | 'auto'
+  confidence?: number                                 // autoscorer only
+}
+```
+
+A match is an append-only log of darts and `dart.corrected` events. Legs, sets,
+busts, whose throw it is and who won are **folded from the log, never stored**,
+so they cannot disagree with the darts, and a fixed statistics bug fixes your
+history too. Positions are what make the positional statistics possible at all.
+
+### The autoscorer pipeline
+
+```
+camera ──▶ change gate ──▶ rectify ──────▶ detect tips ──▶ reconcile ──▶ score ──────▶ propose
+           64×64 grey      homography,     heatmap model,   which tip     mm → polar    call it,
+           board crop:     board to a      128² grid at     is new since  → sector      or ask
+           still + changed 512² top-down   stride 4         the last one  and ring      when unsure
+```
+
+- **One dart at a time.** Each dart is read as it lands, so dart 3 cannot hide
+  dart 2's tip: dart 2 was already locked in.
+- **Rectify first.** The model only ever sees one geometry (board filling the
+  frame, 20 at the top), so camera angle and distance stop being things it has to
+  learn.
+- **In the browser.** ONNX Runtime Web on WebAssembly, loaded only when you
+  switch proposals on. The model is checked by SHA-256 against its release
+  manifest, so the app runs exactly the file that was evaluated, or nothing.
+- **Calibration** is four board points you place once; `packages/core` fits the
+  homography. Finding the board automatically is on the roadmap.
+
+### Stack
+
+| | |
+|---|---|
+| `packages/core` | Pure TypeScript, no DOM, no I/O: board geometry, X01 rules, checkout routes, statistics, homography. Tested with Vitest. |
+| `apps/web` | Vue 3 (`<script setup>`), Vite 7, strict TypeScript checked by `vue-tsc`, Pinia, Vue Router. No component library. |
+| `ml/` | Python: dataset loading, PyTorch training, evaluation against the accuracy gate, ONNX export. Weights are release artefacts, never committed. |
+| Deploy | Static, on GitHub Pages; the tests gate every deploy. |
 
 ## What comes next
 
@@ -106,16 +113,6 @@ Plans, not promises — the phases and the gates between them are in
 npm install
 npm test          # core rules + geometry
 npm run dev       # app on http://localhost:5173
-```
-
-## Repository layout
-
-```
-packages/core/     Board geometry, X01 rules, checkout routes, stats. Pure TS, no DOM.
-apps/web/          The app: Vue + Vite, PWA.
-docs/              Plan, decisions and the licence map. Start with docs/07-roadmap.md.
-ml/                Dataset loading, training, evaluation, ONNX export (Python; see ml/README.md).
-services/pair/     (later) Signalling relay for phone↔laptop pairing.
 ```
 
 ## Documentation
