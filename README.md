@@ -101,7 +101,9 @@ camera ──▶ change gate ──▶ rectify ──────▶ detect tips
 |:-:|---|---|
 | 🟢 | **Now** | **Scoring, the caller, statistics and the camera.** All working today. The camera already scores a match with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong. |
 | 🟡 | **Next** | **A better interface.** Screens redesigned for the phone, the laptop and a scoreboard you can read from the oche. |
+| 🟡 | **Next** | **Offline and installable.** A service worker, so the app installs to your home screen and plays a match with no connection at all. |
 | ⚪ | **Then** | **Automatic board calibration.** The camera finds the board by itself, instead of you tapping four points on it. |
+| ⚪ | **Later** | **Scoring by voice.** Say "treble twenty, five, one" and the caller says it back, so you never touch the screen. |
 | ⚪ | **Later** | **The autoscorer, out of experimental.** Once it has proved accurate on real boards, the camera scores by default and the switch goes away. |
 
 Plans, not promises — the phases and the gates between them are in
