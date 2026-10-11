@@ -100,22 +100,6 @@ account to create.
 Plans, not promises — the phases and the gates between them are in
 [`docs/07-roadmap.md`](docs/07-roadmap.md).
 
-## The logo
-
-<img src="apps/web/public/icons/icon.svg" alt="The treblewise icon" width="96" align="right">
-
-The logo is the treble ring. The wordmark is *treblewise* in Barlow ExtraBold,
-with the t's crossbar raised over the word and running on as a row of red and
-green treble beds; the dot of the i is the bull. The icon is three beds close
-up — green, red, green, treble 20 between the 5 and the 1 — with the same t in
-the red one.
-
-[`apps/web/scripts/build-logo.py`](apps/web/scripts/build-logo.py) draws all of
-it from Barlow's outlines (SIL OFL 1.1): the wordmark, the favicon and the app
-icons in [`apps/web/public/`](apps/web/public).
-[`apps/web/scripts/build-readme-art.mjs`](apps/web/scripts/build-readme-art.mjs)
-draws the pictures on this page from the running app.
-
 ## Quick start
 
 ```bash
