@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://fre0grella.github.io/treblewise/"><img alt="Play it in your browser" src="https://img.shields.io/badge/play-in_your_browser-c0182f?style=for-the-badge"></a>
-  <a href="LICENSE"><img alt="Licence: AGPL-3.0" src="https://img.shields.io/badge/licence-AGPL--3.0-00713c?style=for-the-badge"></a>
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-00713c?style=for-the-badge"></a>
   <a href="https://ko-fi.com/freogrella"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/ko--fi-support-eacf75?style=for-the-badge&logo=ko-fi&logoColor=15130f&labelColor=15130f"></a>
 </p>
 
@@ -90,8 +90,8 @@ camera ──▶ change gate ──▶ rectify ──────▶ detect tips
 |:-:|---|---|
 | 🟢 | **Now** | **Scoring, the caller, statistics and the camera.** All working today. The camera scores a match by itself: it reads each dart, calls it, and you correct the odd one it gets wrong. |
 | 🟡 | **Next** | **A better interface.** Screens redesigned for the phone, the laptop and a scoreboard you can read from the oche. |
-| 🟡 | **Next** | **Offline and installable.** A service worker, so the app installs to your home screen and plays a match with no connection at all. |
 | ⚪ | **Then** | **Automatic board calibration.** The camera finds the board by itself, instead of you tapping four points on it. |
+| ⚪ | **Then** | **Offline and installable.** A service worker, so the app installs to your home screen and plays a match with no connection at all. |
 | ⚪ | **Later** | **Scoring by voice.** Say "treble twenty, five, one" and the caller says it back, so you never touch the screen. |
 | ⚪ | **Ongoing** | **A sharper autoscorer.** More labelled photos of real boards, in more light and from more angles, to train the next model on. Every dart you correct in a game is one. |
 
@@ -111,7 +111,7 @@ Plans, not promises: the phases and the gates between them are in
 | [07 – Roadmap](docs/07-roadmap.md) | Phases and the gates between them. |
 | [08 – Licensing & data](docs/08-licensing-and-data.md) | What may and may not be used here. Read before importing anything. |
 
-## Licence
+## License
 
 [AGPL-3.0](LICENSE). The scorer and the autoscorer stay free and open source,
 including for anyone who runs them as a service.
