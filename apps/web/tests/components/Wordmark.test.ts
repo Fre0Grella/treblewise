@@ -14,9 +14,12 @@ describe('the wordmark', () => {
     const { container } = render(Wordmark);
     const parts = (cls: string) => container.querySelectorAll(`.${cls}`);
     expect(parts('wordmark-ink')).toHaveLength(1);
-    // the beds, then the bull's ring and centre
+    // the beds under the word, then the bull's ring and centre
     expect(parts('wordmark-red')).toHaveLength(2);
     expect(parts('wordmark-green')).toHaveLength(2);
+    // The ring round the bull is cut out of the bar, not painted over it.
+    const cut = container.querySelector('mask');
+    expect(container.querySelector('.wordmark-ink')!.getAttribute('mask')).toBe(`url(#${cut!.id})`);
     // Outlines only: the mark must not depend on a font being there.
     expect(container.querySelectorAll('text')).toHaveLength(0);
   });
