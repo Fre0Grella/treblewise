@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/vue';
-import { hit } from '@treblewise/core';
+import { dartEvent, hit } from '@treblewise/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useMatchesStore, useSettingsStore } from '@/store/stores.js';
@@ -78,6 +78,31 @@ describe('the game screen', () => {
     await fireEvent.click(names);
     expect(useSettingsStore().settings.callNames).toBe(false);
     expect(names.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('colours the leg average against the usual one, and leaves a guest plain', async () => {
+    await renderAt('/game', () => {
+      const matches = useMatchesStore();
+      // Ann averaged 60 before: three visits of 20, 20, 20.
+      const before = Array.from({ length: 9 }, (_, i) => dartEvent(hit(20, 'single'), { id: `old-${i}`, ts: i }));
+      matches.history = [
+        { id: 'old', createdAt: 0, updatedAt: 0, finished: true, events: before, config: { ...config, players: [{ id: 'ann', name: 'Ann' }] } },
+      ];
+      startMatch({ players: [{ id: 'ann', name: 'Ann' }, { id: 'guest', name: 'Guest', temporary: true } as never] });
+      matches.throwDart(hit(20, 'treble'));
+      matches.throwDart(hit(20, 'treble'));
+      matches.throwDart(hit(20, 'single'));
+    });
+    const ann = screen.getByText('Ann', { selector: '.player-card-name' }).closest('.player-card') as HTMLElement;
+    // 140 in a visit against a usual 60.
+    expect(within(ann).getByText('140.0')).toBeDefined();
+    expect(within(ann).getByText('▲ +80.0')).toBeDefined();
+    expect(within(ann).getByText('average 60.0')).toBeDefined();
+    expect((within(ann).getByText('140.0') as HTMLElement).style.color).not.toBe('');
+
+    const guest = screen.getByText('Guest', { selector: '.player-card-name' }).closest('.player-card') as HTMLElement;
+    expect(within(guest).queryByText(/average \d/)).toBeNull();
+    expect(within(guest).queryByText(/[▲▼≈]/)).toBeNull();
   });
 
   it('switches between the board and the keypad with one button', async () => {

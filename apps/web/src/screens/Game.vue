@@ -26,6 +26,7 @@ import VisitSheet, { type SheetVisit } from '../components/VisitSheet.vue';
 import Icon from '../components/ui/Icon.vue';
 import Switch from '../components/ui/Switch.vue';
 import { useGameVisit } from '../composables/useGameVisit.js';
+import { averageColour, difference, usualAverages } from '../game/usualAverage.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore, useMatchesStore, useSettingsStore } from '../store/stores.js';
@@ -149,6 +150,18 @@ const leg = computed(() => snapshot.value?.legs.at(-1) ?? null);
 // leg's zero (and the loser's remainder) belongs to the history.
 const legOver = computed(() => leg.value?.winnerId != null);
 
+/** Each player's usual average, from the matches before this one (issue #28). */
+const usual = computed(() => usualAverages(players.value, matches.history, matches.match?.id ?? null));
+
+function againstUsual(average: number | null, usualAverage: number | null) {
+  if (average === null || usualAverage === null) return { color: null, note: null };
+  const d = difference(average, usualAverage);
+  return {
+    color: averageColour(average, usualAverage),
+    note: d === null ? t.game.nearUsual : fill(d > 0 ? t.game.aboveUsual : t.game.belowUsual, { n: Math.abs(d).toFixed(1) }),
+  };
+}
+
 const cards = computed(() => {
   const s = snapshot.value;
   if (!s) return [];
@@ -157,6 +170,9 @@ const cards = computed(() => {
     const visits = legOver.value ? [] : (leg.value?.visits ?? []).filter((v) => v.playerId === player.id);
     const darts = visits.reduce((sum, v) => sum + v.darts.length, 0);
     const points = visits.reduce((sum, v) => sum + scored(v), 0);
+    const legAverage = darts > 0 ? (points / darts) * 3 : null;
+    const usualAverage = usual.value[player.id] ?? null;
+    const against = againstUsual(legAverage, usualAverage);
     return {
       id: player.id,
       name: player.name,
@@ -169,7 +185,10 @@ const cards = computed(() => {
       setsWon: s.config.setsToWin > 1 ? (s.setsWon[player.id] ?? 0) : null,
       starts: !legOver.value && leg.value?.startingPlayerId === player.id,
       current: holder.value ? holder.value === player.id : s.current?.playerId === player.id,
-      legAverage: darts > 0 ? (points / darts) * 3 : null,
+      legAverage,
+      averageColor: against.color,
+      averageNote: against.note,
+      usual: usualAverage,
       visits: visits.map<VisitBar>((v) => ({ score: scored(v), bust: v.busted, live: !v.complete })),
     };
   });
@@ -300,6 +319,9 @@ const nextName = computed(() => (current.value ? nameOf(current.value.playerId) 
           :starts="card.starts"
           :current="card.current"
           :leg-average="card.legAverage"
+          :average-color="card.averageColor"
+          :average-note="card.averageNote"
+          :usual="card.usual"
           :visits="card.visits"
         />
       </section>
