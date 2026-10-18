@@ -128,6 +128,24 @@ describe('the match in play', () => {
     expect(matches.throwDart(hit(20, 'treble'))).toBeNull();
   });
 
+  it('ends a match early, finished and won by the leader, and takes the end back with undo', () => {
+    const state = held();
+    const matches = createMatches(state);
+    expect(matches.endMatch()).toBeNull();
+    matches.start({ ...config, startScore: 40, legsPerSet: 3 });
+    matches.throwDart(hit(20, 'double'));
+
+    const ended = matches.endMatch()!;
+    expect(ended.snapshot.winnerId).toBe('ann');
+    expect(ended.match.finished).toBe(true);
+    expect(matches.throwDart(hit(20, 'single'))).toBeNull();
+    expect(matches.endMatch()).toBeNull();
+
+    const undone = matches.undo()!;
+    expect(undone.match.finished).toBe(false);
+    expect(undone.snapshot.current!.playerId).toBe('bob');
+  });
+
   it('resumes a stored match from the history', async () => {
     const state = held();
     const matches = createMatches(state);

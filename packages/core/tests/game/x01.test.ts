@@ -184,6 +184,45 @@ describe('legs and sets', () => {
   });
 });
 
+describe('ending a match early', () => {
+  const ended: MatchEvent = { type: 'match.ended', id: 'end', ts: 1_800_000_000_000 };
+
+  it('is finished, won by whoever leads on legs', () => {
+    const cfg = config({ startScore: 40, legsPerSet: 5 });
+    // Ann, Bob, Ann take a leg each: 2–1 to Ann.
+    const snapshot = reduceMatch(cfg, [...darts('D20', 'D20', 'D20'), ended]);
+    expect(snapshot.endedEarly).toBe(true);
+    expect(snapshot.winnerId).toBe('ann');
+    expect(snapshot.current).toBeNull();
+  });
+
+  it('has no winner when level, and ignores darts after it', () => {
+    const cfg = config({ startScore: 40, legsPerSet: 5 });
+    const snapshot = reduceMatch(cfg, [...darts('D20', 'D20'), ended, ...darts('D20')]);
+    expect(snapshot.endedEarly).toBe(true);
+    expect(snapshot.winnerId).toBeNull();
+    expect(snapshot.legsWon).toEqual({ ann: 1, bob: 1 });
+    expect(snapshot.current).toBeNull();
+  });
+
+  it('decides on sets before legs', () => {
+    // First to two legs a set: Ann takes the first set 2–1, then Bob leads the second 1–0.
+    const cfg = config({ startScore: 40, legsPerSet: 2, setsToWin: 3 });
+    const snapshot = reduceMatch(cfg, [...darts('D20', 'D20', 'D20', 'D20'), ended]);
+    expect(snapshot.setsWon).toEqual({ ann: 1, bob: 0 });
+    expect(snapshot.legsWon).toEqual({ ann: 0, bob: 1 });
+    expect(snapshot.winnerId).toBe('ann');
+  });
+
+  it('plays on once the end is taken back', () => {
+    const cfg = config({ startScore: 40, legsPerSet: 5 });
+    const snapshot = reduceMatch(cfg, darts('D20', 'D20', 'D20'));
+    expect(snapshot.endedEarly).toBe(false);
+    expect(snapshot.winnerId).toBeNull();
+    expect(snapshot.current).not.toBeNull();
+  });
+});
+
 describe('corrections', () => {
   it('rescores the leg and keeps the original reading', () => {
     const thrown = dartEvent(parseHit('T20')!, { id: 'x1', ts: 1, source: 'auto', confidence: 0.42 });

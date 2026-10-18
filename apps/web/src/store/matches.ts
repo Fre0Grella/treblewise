@@ -68,6 +68,8 @@ export interface MatchesActions {
   /** Null when there is no match in play, or it is over. */
   throwDart(hit: Hit, options?: ThrowOptions): Appended | null;
   correctDart(dartId: string, hit: Hit, pos?: Point): Appended | null;
+  /** Ends the match where it stands, won by whoever leads; undo takes it back. Null when it is over. */
+  endMatch(): Appended | null;
   /** Takes the last event back; null when there is none. */
   undo(): Appended | null;
 }
@@ -98,7 +100,7 @@ export function createMatches(state: Slice<MatchesState>, options: MatchesOption
       ...current,
       events,
       updatedAt: Date.now(),
-      finished: snapshot.winnerId !== null,
+      finished: snapshot.winnerId !== null || snapshot.endedEarly,
     };
     state.set({ match, snapshot });
     void putMatch(match);
@@ -177,6 +179,12 @@ export function createMatches(state: Slice<MatchesState>, options: MatchesOption
           ...(pos ? { pos } : {}),
         },
       ]);
+    },
+
+    endMatch() {
+      const { match, snapshot } = state.get();
+      if (!match || !snapshot || snapshot.current === null) return null;
+      return commit(match, [...match.events, { type: 'match.ended', id: newId(), ts: Date.now() }]);
     },
 
     undo() {

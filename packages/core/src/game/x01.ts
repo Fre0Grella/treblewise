@@ -73,7 +73,18 @@ export interface DartCorrectedEvent {
   source: Exclude<DartSource, 'auto'>;
 }
 
-export type MatchEvent = DartThrownEvent | DartCorrectedEvent;
+/**
+ * The match is ended before anyone has won it (issue #18): "end the match
+ * here", between legs. It is finished, won by whoever leads; level, nobody
+ * wins. Darts after it are ignored, and undoing it plays on.
+ */
+export interface MatchEndedEvent {
+  type: 'match.ended';
+  id: string;
+  ts: number;
+}
+
+export type MatchEvent = DartThrownEvent | DartCorrectedEvent | MatchEndedEvent;
 
 /** One dart as the rest of the app sees it, after corrections are applied. */
 export interface Dart {
@@ -142,6 +153,8 @@ export interface MatchSnapshot {
   legsWon: Record<string, number>;
   setsWon: Record<string, number>;
   winnerId: string | null;
+  /** Ended before it was won (a `match.ended` event); `winnerId` is the leader then, or null when level. */
+  endedEarly: boolean;
   /** Null once the match is over. */
   current: CurrentState | null;
 }
@@ -226,9 +239,15 @@ export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): M
 
   let visit = createVisit(leg.startingPlayerId);
 
+  let endedEarly = false;
+
   for (const event of events) {
-    if (event.type !== 'dart.thrown') continue;
     if (winnerId !== null) break; // darts thrown after the match ended are ignored
+    if (event.type === 'match.ended') {
+      endedEarly = true;
+      break;
+    }
+    if (event.type !== 'dart.thrown') continue;
 
     if (visit.complete) {
       if (leg.winnerId !== null) {
@@ -322,14 +341,28 @@ export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): M
     visit.complete = visit.darts.length === DARTS_PER_VISIT;
   }
 
+  if (endedEarly) winnerId = leader(ids, setsWon, legsWon);
+
   return {
     config,
     legs,
     legsWon,
     setsWon,
     winnerId,
-    current: winnerId !== null ? null : describeCurrent(config, leg, visit, legNumber, setIndex, setPending, nextPlayer),
+    endedEarly,
+    current: winnerId !== null || endedEarly ? null : describeCurrent(config, leg, visit, legNumber, setIndex, setPending, nextPlayer),
   };
+}
+
+/** Who leads a match ended early: more sets, then more legs in the set; null when level. */
+function leader(ids: readonly string[], setsWon: Record<string, number>, legsWon: Record<string, number>): string | null {
+  const score = (id: string) => [setsWon[id] ?? 0, legsWon[id] ?? 0] as const;
+  const ranked = [...ids].sort((a, b) => score(b)[0] - score(a)[0] || score(b)[1] - score(a)[1]);
+  const [first, second] = ranked;
+  if (first === undefined) return null;
+  if (second === undefined) return first;
+  const [a, b] = [score(first), score(second)];
+  return a[0] === b[0] && a[1] === b[1] ? null : first;
 }
 
 function routeFor(

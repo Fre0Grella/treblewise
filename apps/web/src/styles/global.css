@@ -2184,6 +2184,273 @@ input:focus-visible {
   text-align: center;
 }
 
+/* ---------- a leg or a match won (components/ResultCard.vue) ---------- */
+
+.result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: var(--space-5);
+  width: min(1080px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 30px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  animation: popover-in 0.2s ease-out;
+}
+
+.result-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.result-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 3.75rem;
+  font-weight: 700;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.result-sub {
+  margin: var(--space-2) 0 0;
+  color: var(--text-dim);
+}
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
+.result-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.result-grow {
+  flex: 1;
+}
+
+.result-back {
+  align-self: flex-start;
+}
+
+.result-side {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  border-radius: 10px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.result-side .h2h {
+  background: none;
+}
+
+.result-bands-title {
+  padding: var(--space-3) var(--space-4) 6px;
+  border-top: 1px solid var(--bg-hover);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.result-bands {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0 var(--space-4) 14px;
+  list-style: none;
+}
+
+.result-bands > li {
+  display: grid;
+  grid-template-columns: 1fr 64px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.result-band-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.result-band-side:first-child {
+  justify-content: flex-end;
+}
+
+.result-band-none {
+  color: var(--line);
+}
+
+.result-band-label {
+  font-size: var(--text-xs);
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.result-band-bar {
+  display: block;
+  flex: none;
+  height: 14px;
+  border-radius: 3px;
+  animation: grow-x 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.result-band-a {
+  background: var(--player-a);
+  transform-origin: right;
+}
+
+.result-band-b {
+  background: var(--player-b);
+  transform-origin: left;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Who was ahead (components/charts/LeadChart.vue). */
+
+.lead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.lead-plot {
+  position: relative;
+}
+
+.lead-plot > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lead-grid {
+  stroke: var(--bg-hover);
+  stroke-width: 1;
+}
+
+.lead-zero {
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.lead-area {
+  opacity: 0.3;
+  animation: fade-in 0.6s ease-out both;
+}
+
+.lead-area.lead-a,
+.lead-dot.lead-a {
+  fill: var(--player-a);
+}
+
+.lead-area.lead-b,
+.lead-dot.lead-b {
+  fill: var(--player-b);
+}
+
+.lead-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-dasharray: 1600;
+  animation: lead-draw 1s cubic-bezier(0.3, 0.7, 0.2, 1) 0.1s both;
+}
+
+.lead-dot {
+  stroke: var(--bg-raised);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mark-pop 0.25s ease-out both;
+}
+
+.lead-label {
+  position: absolute;
+  white-space: nowrap;
+  pointer-events: none;
+  font-weight: 650;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.lead-axis {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.lead-who {
+  font-weight: 700;
+}
+
+.lead-label.lead-a {
+  color: var(--player-a);
+}
+
+.lead-label.lead-b {
+  color: var(--player-b);
+}
+
+.lead-caption {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+@keyframes lead-draw {
+  from {
+    stroke-dashoffset: 1600;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 899px) {
+  .result {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
+  }
+
+  .result-title {
+    font-size: 2.5rem;
+  }
+
+  .result-row {
+    flex-wrap: wrap;
+  }
+}
+
 /* ---------- camera, calibration and labelling ---------- */
 
 .stage,

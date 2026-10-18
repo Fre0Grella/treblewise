@@ -141,9 +141,65 @@ describe('the game screen', () => {
     for (const dart of [hit(20, 'treble'), hit(20, 'treble'), hit(20, 'treble'), hit(20, 'treble'), hit(11, 'treble'), hit(14, 'double')]) {
       matches.throwDart(dart);
     }
-    const won = (await screen.findByRole('heading', { name: /wins the match/i })).closest('.overlay-card') as HTMLElement;
+    const won = await screen.findByRole('dialog', { name: /wins the match/i });
     await fireEvent.click(within(won).getByRole('button', { name: /new match/i }));
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/setup'));
+  });
+
+  it('shows the leg won, then puts it away for the next leg', async () => {
+    await renderAt('/game', () => {
+      startMatch({ startScore: 40, legsPerSet: 3 });
+      useMatchesStore().throwDart(hit(20, 'double'));
+    });
+    const card = screen.getByRole('dialog', { name: 'Leg to Ann' });
+    expect(within(card).getByText('Ann leads 1–0 · 40 out on D20, in 1 dart')).toBeDefined();
+    expect(within(card).getByText('Leg average')).toBeDefined();
+    expect(within(card).getByText('Visits by score')).toBeDefined();
+    expect(within(card).getByText('won by 40')).toBeDefined();
+
+    await fireEvent.click(within(card).getByRole('button', { name: 'Next leg · Bob throws first' }));
+    expect(screen.queryByRole('dialog', { name: /leg to/i })).toBeNull();
+    expect(screen.getByRole('heading', { name: /bob, you require 40/i })).toBeDefined();
+  });
+
+  it('takes the winning dart back from the leg won card', async () => {
+    await renderAt('/game', () => {
+      startMatch({ startScore: 40, legsPerSet: 3 });
+      useMatchesStore().throwDart(hit(20, 'double'));
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Undo the last dart' }));
+    expect(screen.queryByRole('dialog', { name: /leg to/i })).toBeNull();
+    expect(useMatchesStore().snapshot!.legs[0]!.winnerId).toBeNull();
+  });
+
+  it('ends the match early, won by the leader, and can take the end back', async () => {
+    await renderAt('/game', () => {
+      startMatch({ startScore: 40, legsPerSet: 3 });
+      useMatchesStore().throwDart(hit(20, 'double'));
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'End the match here' }));
+    const won = screen.getByRole('dialog', { name: 'Ann wins 1–0' });
+    expect(within(won).getByText('Ended after 1 leg · 40 out on D20, in 1 dart')).toBeDefined();
+    expect(within(won).queryByRole('button', { name: /next leg/i })).toBeNull();
+    expect(useMatchesStore().match!.finished).toBe(true);
+
+    await fireEvent.click(within(won).getByRole('button', { name: /play on/i }));
+    expect(useMatchesStore().match!.finished).toBe(false);
+    expect(screen.getByRole('dialog', { name: 'Leg to Ann' })).toBeDefined();
+  });
+
+  it('ends a level match with no winner', async () => {
+    await renderAt('/game', () => {
+      startMatch({ startScore: 40, legsPerSet: 3 });
+      const matches = useMatchesStore();
+      matches.throwDart(hit(20, 'double'));
+      matches.throwDart(hit(20, 'double')); // Bob throws first in the second leg
+    });
+    const card = screen.getByRole('dialog', { name: 'Leg to Bob' });
+    expect(within(card).getByText(/^Level at 1–1 · /)).toBeDefined();
+    await fireEvent.click(within(card).getByRole('button', { name: 'End the match here' }));
+    expect(screen.getByRole('dialog', { name: 'Level at 1–1' })).toBeDefined();
+    expect(useMatchesStore().snapshot!.winnerId).toBeNull();
   });
 
   it('has fullscreen in the corner, not in the match, and the footer under the match', async () => {
