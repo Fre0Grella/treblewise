@@ -310,22 +310,22 @@ export const en = {
       {
         when: 'Now',
         title: 'Scoring, the caller, statistics and the camera',
-        body: 'All working today. The camera already scores a match with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong.',
+        body: 'All working today, in a new interface: a match screen you can read from the oche, a card at the end of every leg, and your average against your usual one. The camera already scores with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong.',
       },
       {
         when: 'Next',
-        title: 'A better interface',
-        body: 'Screens redesigned for the phone, the laptop and a scoreboard you can read from the oche.',
-      },
-      {
-        when: 'Then',
         title: 'Automatic board calibration',
         body: 'The camera finds the board by itself, instead of you tapping four points on it.',
       },
       {
+        when: 'Then',
+        title: 'Improve the autoscorer accuracy',
+        body: 'Taught on more real boards, lights and throws, so the camera reads more darts right and you correct fewer.',
+      },
+      {
         when: 'Later',
-        title: 'The autoscorer, out of experimental',
-        body: 'Once it has proved accurate on real boards, the camera scores by default and the switch goes away.',
+        title: 'Cloud sync with your Google account',
+        body: 'Sign in to keep your matches and statistics on every device. Only if you want it: without it, everything stays on this one.',
       },
     ],
     points: [

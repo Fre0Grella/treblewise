@@ -27,8 +27,11 @@ describe('the landing page', () => {
     const steps = within(roadmap).getAllByRole('listitem');
     expect(roadmap.querySelector('ol')).not.toBeNull();
     expect(steps[0].className).toContain('is-now');
-    expect(steps[1].textContent).toMatch(/better interface/i);
-    expect(steps[2].textContent).toMatch(/board calibration/i);
+    // The new interface has shipped: it is part of what works now.
+    expect(steps[0].textContent).toMatch(/new interface/i);
+    expect(steps[1].textContent).toMatch(/board calibration/i);
+    expect(steps[2].textContent).toMatch(/autoscorer accuracy/i);
+    expect(steps[3].textContent).toMatch(/cloud sync/i);
   });
 
   it('puts the board behind the page as decoration, not as something to use', async () => {
