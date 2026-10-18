@@ -7,7 +7,7 @@
   typed in. After that the video is a direct connection across the network.
 -->
 <script setup lang="ts">
-import { markRaw, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, markRaw, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import QrCode from '../../components/QrCode.vue';
@@ -38,6 +38,11 @@ const readingOptions = [
 ];
 const typed = ref('');
 let connection: PairingConnection | null = lobby.pairing;
+
+/** Which of t.pair.steps is being done: open the site, read this code, show the phone's back. */
+const stepAt = computed(() =>
+  step.value === 'intro' ? 0 : step.value === 'offer' ? 1 : step.value === 'connected' ? 3 : 2,
+);
 
 const enterLobby = () => {
   lobby.enter('paired');
@@ -125,68 +130,68 @@ const back = () => (lobby.pairing ? enterLobby() : void router.push(PATHS.pair))
     :back-label="lobby.pairing ? t.lobby.back : t.pair.back"
     :on-back="back"
   >
-    <template v-if="step === 'intro'">
+    <!-- The three steps on the left, the one you are on lit; what it needs on the right. -->
+    <div class="pair-layout">
       <ol class="steps">
-        <li v-for="line in t.pair.steps" :key="line">{{ line }}</li>
+        <li
+          v-for="(line, index) in t.pair.steps"
+          :key="line"
+          :class="{ 'step-now': index === stepAt, 'step-done': index < stepAt }"
+        >
+          <span class="step-n" aria-hidden="true">{{ index < stepAt ? '✓' : index + 1 }}</span>
+          <span>{{ line }}</span>
+        </li>
       </ol>
-      <div class="controls">
-        <button type="button" class="primary" @click="start">{{ t.pair.start }}</button>
+
+      <div class="pair-stage">
+        <template v-if="step === 'intro'">
+          <button type="button" class="btn-primary btn-lg" @click="start">{{ t.pair.start }}</button>
+        </template>
+
+        <template v-if="step === 'offer' && code">
+          <p class="pair-instruction">{{ t.pair.showToPhone }}</p>
+          <QrCode :text="code" :label="t.pair.qrLabelHub" />
+          <button type="button" class="btn-primary btn-lg pair-next" @click="step = 'scanning'">{{ t.pair.scannedIt }}</button>
+        </template>
+
+        <template v-if="step === 'scanning'">
+          <Segmented v-model="reading" :options="readingOptions" :label="t.pair.answerHow" />
+
+          <template v-if="reading === 'scan'">
+            <p class="pair-instruction">{{ t.pair.holdUpPhone }}</p>
+            <QrScanner facing="user" :hint="t.pair.scanningHint" @code="onPhoneCode" />
+          </template>
+          <template v-else>
+            <p class="pair-instruction">{{ t.pair.typeTheCode }}</p>
+            <textarea
+              v-focus
+              class="pair-code-input"
+              rows="6"
+              spellcheck="false"
+              autocapitalize="characters"
+              :aria-label="t.pair.useCode"
+              :placeholder="t.pair.codePlaceholder"
+              :value="typed"
+              @input="onTyped(($event.target as HTMLTextAreaElement).value)"
+            />
+            <p class="hint">{{ t.pair.codeCounter(shortCodeLength(typed)) }} — {{ t.pair.codeWaiting }}</p>
+          </template>
+
+          <button type="button" class="btn-quiet" @click="step = 'offer'">{{ t.pair.backToCode }}</button>
+        </template>
+
+        <p v-if="step === 'connecting'" class="pair-instruction">{{ t.pair.connecting }}</p>
+
+        <template v-if="step === 'connected'">
+          <span class="status status-ok" role="status"><span class="status-dot" aria-hidden="true" />{{ t.pair.connected }}</span>
+          <button type="button" class="btn-primary btn-lg" @click="enterLobby">{{ t.lobby.back }}</button>
+        </template>
+
+        <template v-if="step === 'failed'">
+          <p class="warning">{{ error ?? t.pair.failed }}</p>
+          <button type="button" class="btn-primary" @click="start">{{ t.pair.retry }}</button>
+        </template>
       </div>
-    </template>
-
-    <template v-if="step === 'offer' && code">
-      <p class="pair-instruction">{{ t.pair.showToPhone }}</p>
-      <QrCode :text="code" :label="t.pair.qrLabelHub" />
-      <div class="controls">
-        <button type="button" class="primary" @click="step = 'scanning'">{{ t.pair.scannedIt }}</button>
-      </div>
-    </template>
-
-    <template v-if="step === 'scanning'">
-      <Segmented v-model="reading" :options="readingOptions" :label="t.pair.answerHow" />
-
-      <template v-if="reading === 'scan'">
-        <p class="pair-instruction">{{ t.pair.holdUpPhone }}</p>
-        <QrScanner facing="user" :hint="t.pair.scanningHint" @code="onPhoneCode" />
-      </template>
-      <template v-else>
-        <p class="pair-instruction">{{ t.pair.typeTheCode }}</p>
-        <textarea
-          v-focus
-          class="pair-code-input"
-          rows="6"
-          spellcheck="false"
-          autocapitalize="characters"
-          :aria-label="t.pair.useCode"
-          :placeholder="t.pair.codePlaceholder"
-          :value="typed"
-          @input="onTyped(($event.target as HTMLTextAreaElement).value)"
-        />
-        <p class="hint">{{ t.pair.codeCounter(shortCodeLength(typed)) }} — {{ t.pair.codeWaiting }}</p>
-      </template>
-
-      <div class="controls">
-        <button type="button" class="chip" @click="step = 'offer'">{{ t.pair.backToCode }}</button>
-      </div>
-    </template>
-
-    <p v-if="step === 'connecting'" class="pair-instruction">{{ t.pair.connecting }}</p>
-
-    <template v-if="step === 'connected'">
-      <div class="coach coach-ready">
-        <span class="coach-dot" aria-hidden="true" />
-        <span class="coach-message">{{ t.pair.connected }}</span>
-      </div>
-      <div class="controls">
-        <button type="button" class="primary" @click="enterLobby">{{ t.lobby.back }}</button>
-      </div>
-    </template>
-
-    <template v-if="step === 'failed'">
-      <p class="warning">{{ error ?? t.pair.failed }}</p>
-      <div class="controls">
-        <button type="button" class="primary" @click="start">{{ t.pair.retry }}</button>
-      </div>
-    </template>
+    </div>
   </ScreenShell>
 </template>

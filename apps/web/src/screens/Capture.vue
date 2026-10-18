@@ -29,6 +29,7 @@ import PhoneBattery from '../components/PhoneBattery.vue';
 import QualityMarks from '../components/QualityMarks.vue';
 import SetupCoach from '../components/SetupCoach.vue';
 import Fold from '../components/ui/Fold.vue';
+import Icon from '../components/ui/Icon.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
 import Toggle from '../components/ui/Toggle.vue';
 import { useCamera } from '../composables/useCamera.js';
@@ -374,12 +375,12 @@ const storageLine = computed(() => {
          would lose its stream). The layout changes in CSS: in try-it on a wide
          screen the side column holds everything to read and press, and the
          board sits beside it; elsewhere it all stacks, board under the coach. -->
-    <div :class="['capture-work', { 'capture-work-split': mode === 'try' }]">
+    <div class="capture-work capture-work-split">
       <div class="capture-side">
         <header class="screen-head">
           <!-- Back asks first when there are marks nobody saved (the marking session's leave). -->
           <button type="button" class="screen-back" @click="session.leave('back')">
-            <span aria-hidden="true">‹</span> {{ fromGame ? t.capture.backToMatch : t.capture.back }}
+            <Icon name="back" /> {{ fromGame ? t.capture.backToMatch : t.capture.back }}
           </button>
           <h1>{{ t.capture.title }}</h1>
           <Fold id="capture-about" :summary="t.capture.foldAbout">
@@ -431,40 +432,40 @@ const storageLine = computed(() => {
 
         <div v-if="mode === 'try'" class="capture-actions">
           <div class="controls">
-            <button type="button" class="primary" :disabled="!marking.canSave" @click="save">{{ saveLabel }}</button>
-            <button type="button" class="chip" :disabled="!photo" @click="session.skip()">{{ t.capture.skipPhoto }}</button>
-            <button v-if="photo && photo.proposed > 0 && !photo.edited" type="button" class="chip" @click="noNewDart">
+            <button type="button" class="btn-primary" :disabled="!marking.canSave" @click="save">{{ saveLabel }}</button>
+            <button type="button" class="btn-sm" :disabled="!photo" @click="session.skip()">{{ t.capture.skipPhoto }}</button>
+            <button v-if="photo && photo.proposed > 0 && !photo.edited" type="button" class="btn-sm" @click="noNewDart">
               {{ t.capture.noNewDart }}
             </button>
             <!-- Also the way out when the empty-board check cannot see the darts
                  are gone (a shadow that was not there at calibration). -->
             <button
               type="button"
-              class="chip"
+              class="btn-sm"
               :disabled="inBoard.length === 0 && (!photo || photo.inBoard === 0) && !pullingOut"
               @click="session.boardCleared()"
             >
               {{ t.capture.boardCleared }}
             </button>
-            <button type="button" class="chip" :disabled="!camera.ready.value" @click="captureNow">{{ t.capture.captureNow }}</button>
-            <button type="button" class="chip" :disabled="!marking.canUndo" @click="undo">{{ t.capture.undo }}</button>
-            <button type="button" class="chip" @click="session.leave('done')">{{ t.capture.doneTrying }}</button>
+            <button type="button" class="btn-sm" :disabled="!camera.ready.value" @click="captureNow">{{ t.capture.captureNow }}</button>
+            <button type="button" class="btn-sm" :disabled="!marking.canUndo" @click="undo">{{ t.capture.undo }}</button>
+            <button type="button" class="btn-sm" @click="session.leave('done')">{{ t.capture.doneTrying }}</button>
           </div>
 
           <div v-if="askingKeep" class="panel" role="alertdialog" :aria-label="t.capture.askKeep">
             <p>{{ t.capture.askKeep }}</p>
             <div class="controls">
-              <button type="button" class="primary" @click="keepAndSave">{{ t.capture.askKeepYes }}</button>
-              <button type="button" class="chip" @click="askingKeep = null">{{ t.capture.askKeepNo }}</button>
+              <button type="button" class="btn-primary" @click="keepAndSave">{{ t.capture.askKeepYes }}</button>
+              <button type="button" class="btn-sm" @click="askingKeep = null">{{ t.capture.askKeepNo }}</button>
             </div>
           </div>
 
           <div v-if="marking.leaving?.asking" class="panel" role="alertdialog" :aria-label="t.capture.unsavedTitle">
             <p>{{ t.capture.unsavedTitle }}</p>
             <div class="controls">
-              <button type="button" class="primary" @click="answer('save')">{{ t.capture.unsavedSave }}</button>
-              <button type="button" class="chip" @click="answer('discard')">{{ t.capture.unsavedDiscard }}</button>
-              <button type="button" class="chip" @click="session.answer('stay')">{{ t.capture.unsavedStay }}</button>
+              <button type="button" class="btn-primary" @click="answer('save')">{{ t.capture.unsavedSave }}</button>
+              <button type="button" class="btn-sm" @click="answer('discard')">{{ t.capture.unsavedDiscard }}</button>
+              <button type="button" class="btn-sm" @click="session.answer('stay')">{{ t.capture.unsavedStay }}</button>
             </div>
           </div>
 
@@ -486,7 +487,7 @@ const storageLine = computed(() => {
 
           <section v-if="modelInfo" class="panel">
             <div class="controls">
-              <button type="button" :class="['chip', { 'chip-on': proposing }]" :aria-pressed="proposing" @click="proposing = !proposing">
+              <button type="button" :class="['btn-sm', { 'toggle-on': proposing }]" :aria-pressed="proposing" @click="proposing = !proposing">
                 {{ proposing ? (marking.model.status === 'ready' ? t.capture.proposingOn : t.capture.proposingLoading) : t.capture.proposingOff }}
               </button>
             </div>
@@ -503,6 +504,62 @@ const storageLine = computed(() => {
               <template v-if="modelInfo.dartscribe">{{ ` ${t.capture.dartscribeCredit}` }}</template>
             </p>
           </section>
+        </div>
+        <div class="capture-more">
+        <section v-if="mode === 'calibrate'" class="panel">
+          <h2>{{ t.capture.calibrateTitle }}</h2>
+          <p class="hint">{{ t.capture.calibrateHelp }}</p>
+          <ul class="landmark-list">
+            <li v-for="handle in handles" :key="handle.label">
+              <b>{{ handle.label }}</b> {{ handle.hint }}
+            </li>
+          </ul>
+          <p class="hint">
+            {{ t.capture.calibrateError }}: <b>{{ draftCalibration ? `${draftCalibration.error.toFixed(1)} px` : '—' }}</b>
+          </p>
+          <div class="controls">
+            <button type="button" class="btn-primary" :disabled="!draftCalibration" @click="finishCalibration(true)">{{ t.capture.calibrateSave }}</button>
+            <button type="button" class="btn-sm" @click="finishCalibration(false)">{{ t.capture.calibrateCancel }}</button>
+          </div>
+        </section>
+
+        <template v-if="mode === 'setup'">
+          <div class="controls">
+            <span v-if="paired" class="status status-ok"><span class="status-dot" aria-hidden="true" />{{ t.capture.phoneCamera }}</span>
+            <Toggle v-else v-model="cameraOn" :label="cameraOn ? t.capture.stop : t.capture.start" />
+            <button type="button" class="btn-sm" :disabled="!camera.ready.value" @click="startCalibration">
+              {{ calibration ? t.capture.recalibrate : t.capture.calibrate }}
+            </button>
+          </div>
+
+          <button type="button" class="btn-primary" :disabled="!ready" @click="tryIt">{{ t.capture.tryIt }}</button>
+
+          <section class="panel">
+            <h2>{{ t.capture.stepsTitle }}</h2>
+            <ol class="steps">
+              <li v-for="(line, index) in t.capture.steps" :key="line"><span class="step-n" aria-hidden="true">{{ index + 1 }}</span><span>{{ line }}</span></li>
+            </ol>
+          </section>
+        </template>
+
+        <section class="panel">
+          <h2>{{ t.capture.frames }}</h2>
+          <p><b>{{ stats.labelled }}</b> {{ t.capture.labelled }} · {{ storageLine }}</p>
+          <p class="hint">{{ t.capture.privacy }}</p>
+          <div class="controls">
+            <Toggle v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
+          </div>
+          <p v-if="!keepPhotos" class="hint">{{ t.capture.keepPhotosOffHelp }}</p>
+          <div class="controls">
+            <button type="button" class="btn-sm" :disabled="busy || stats.total === 0" @click="exportAll">
+              {{ stats.total === 0 ? t.capture.exportEmpty : t.capture.export }}
+            </button>
+            <button type="button" class="btn-sm" :disabled="stats.total === 0" @click="router.push(PATHS.review)">{{ t.review.open }}</button>
+            <button type="button" :class="['btn-sm', confirmDelete ? 'btn-danger-solid' : 'btn-danger']" :disabled="stats.total === 0" @click="deleteAll">
+              {{ confirmDelete ? t.capture.deleteAllConfirm : t.capture.deleteAll }}
+            </button>
+          </div>
+        </section>
         </div>
       </div>
 
@@ -532,60 +589,5 @@ const storageLine = computed(() => {
         </div>
       </div>
     </div>
-
-    <section v-if="mode === 'calibrate'" class="panel">
-      <h2>{{ t.capture.calibrateTitle }}</h2>
-      <p class="hint">{{ t.capture.calibrateHelp }}</p>
-      <ul class="landmark-list">
-        <li v-for="handle in handles" :key="handle.label">
-          <b>{{ handle.label }}</b> {{ handle.hint }}
-        </li>
-      </ul>
-      <p class="hint">
-        {{ t.capture.calibrateError }}: <b>{{ draftCalibration ? `${draftCalibration.error.toFixed(1)} px` : '—' }}</b>
-      </p>
-      <div class="controls">
-        <button type="button" class="primary" :disabled="!draftCalibration" @click="finishCalibration(true)">{{ t.capture.calibrateSave }}</button>
-        <button type="button" class="chip" @click="finishCalibration(false)">{{ t.capture.calibrateCancel }}</button>
-      </div>
-    </section>
-
-    <template v-if="mode === 'setup'">
-      <div class="controls">
-        <span v-if="paired" class="chip chip-on">{{ t.capture.phoneCamera }}</span>
-        <Toggle v-else v-model="cameraOn" :label="cameraOn ? t.capture.stop : t.capture.start" />
-        <button type="button" class="chip" :disabled="!camera.ready.value" @click="startCalibration">
-          {{ calibration ? t.capture.recalibrate : t.capture.calibrate }}
-        </button>
-      </div>
-
-      <button type="button" class="primary" :disabled="!ready" @click="tryIt">{{ t.capture.tryIt }}</button>
-
-      <section class="panel">
-        <h2>{{ t.capture.stepsTitle }}</h2>
-        <ol class="steps">
-          <li v-for="line in t.capture.steps" :key="line">{{ line }}</li>
-        </ol>
-      </section>
-    </template>
-
-    <section class="panel">
-      <h2>{{ t.capture.frames }}</h2>
-      <p><b>{{ stats.labelled }}</b> {{ t.capture.labelled }} · {{ storageLine }}</p>
-      <p class="hint">{{ t.capture.privacy }}</p>
-      <div class="controls">
-        <Toggle v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
-      </div>
-      <p v-if="!keepPhotos" class="hint">{{ t.capture.keepPhotosOffHelp }}</p>
-      <div class="controls">
-        <button type="button" class="chip" :disabled="busy || stats.total === 0" @click="exportAll">
-          {{ stats.total === 0 ? t.capture.exportEmpty : t.capture.export }}
-        </button>
-        <button type="button" class="chip" :disabled="stats.total === 0" @click="router.push(PATHS.review)">{{ t.review.open }}</button>
-        <button type="button" class="chip" :disabled="stats.total === 0" @click="deleteAll">
-          {{ confirmDelete ? t.capture.deleteAllConfirm : t.capture.deleteAll }}
-        </button>
-      </div>
-    </section>
   </div>
 </template>

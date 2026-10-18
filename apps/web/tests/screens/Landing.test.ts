@@ -11,15 +11,13 @@ describe('the landing page', () => {
     expect(title.querySelector('svg.wordmark')).not.toBeNull();
   });
 
-  it('gives every point a picture, as decoration the words already carry', async () => {
+  it('gives every point a title and a line under it', async () => {
     const { container } = await renderAt('/');
-    const cards = container.querySelectorAll('.landing-points li');
-    expect(cards.length).toBeGreaterThan(0);
-    for (const card of cards) {
-      const art = card.querySelector('.landing-point-art')!;
-      expect(art.getAttribute('aria-hidden')).toBe('true');
-      expect(art.querySelector('svg')).not.toBeNull();
-      expect(card.querySelector('b')!.textContent).not.toBe('');
+    const points = container.querySelectorAll('.landing-points li');
+    expect(points.length).toBe(4);
+    for (const point of points) {
+      expect(point.querySelector('b')!.textContent).not.toBe('');
+      expect(point.querySelector('span')!.textContent).not.toBe('');
     }
   });
 
@@ -51,8 +49,8 @@ describe('the landing page', () => {
   it('gives the action that starts play the board button, and goes to the start', async () => {
     const { router } = await renderAt('/');
     const play = screen.getByRole('button', { name: /play darts/i });
-    expect(play.className).toContain('board-btn');
-    expect(screen.getByRole('button', { name: /statistics/i }).className).not.toContain('board-btn');
+    expect(play.className).toContain('btn-primary');
+    expect(screen.getByRole('button', { name: /statistics/i }).className).not.toContain('btn-primary');
     await fireEvent.click(play);
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/start'));
   });
@@ -76,13 +74,13 @@ describe('the landing page', () => {
       };
     });
     expect(screen.queryByRole('button', { name: /carry on|resume/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /play darts/i }).className).toContain('board-btn');
+    expect(screen.getByRole('button', { name: /play darts/i }).className).toContain('btn-primary');
   });
 
   it('moves the board button to the lobby when there is a session', async () => {
     await renderAt('/', () => useLobbyStore().enter('solo'));
-    expect(screen.getByRole('button', { name: /back to the lobby/i }).className).toContain('board-btn');
-    expect(screen.getByRole('button', { name: /play darts/i }).className).not.toContain('board-btn');
+    expect(screen.getByRole('button', { name: /back to the lobby/i }).className).toContain('btn-primary');
+    expect(screen.getByRole('button', { name: /play darts/i }).className).not.toContain('btn-primary');
   });
 
   it('ends with the footer: the source one click away, and the donation link', async () => {

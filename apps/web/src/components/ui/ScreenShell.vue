@@ -8,6 +8,7 @@
 <script setup lang="ts">
 import { useStrings } from '../../i18n/index.js';
 import { useBack } from '../../router/back.js';
+import Icon from './Icon.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -34,9 +35,14 @@ const pressBack = () => (props.onBack ? props.onBack() : goBack());
 <template>
   <div class="screen" :class="name ? `screen-${name}` : undefined">
     <header class="screen-head">
-      <button v-if="back" type="button" class="screen-back" :disabled="backDisabled" @click="pressBack">
-        <span aria-hidden="true">‹</span> {{ backLabel ?? t.app.back }}
-      </button>
+      <!-- Back on the left; the screen's quiet tools (other places to go) on
+           the right, short of fullscreen's corner. -->
+      <div v-if="back || $slots.tools" class="screen-top">
+        <button v-if="back" type="button" class="screen-back" :disabled="backDisabled" @click="pressBack">
+          <Icon name="back" /> {{ backLabel ?? t.app.back }}
+        </button>
+        <div v-if="$slots.tools" class="screen-tools"><slot name="tools" /></div>
+      </div>
       <h1>{{ title }}</h1>
       <p v-if="lead">{{ lead }}</p>
       <slot name="head" />

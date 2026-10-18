@@ -154,7 +154,7 @@ function back() {
         <p class="hint">{{ t.camera.codeHelp }}</p>
         <pre class="pair-code">{{ formatShortCode(shortCode) }}</pre>
         <div class="controls">
-          <button type="button" class="primary" @click="copy">{{ copied === 'yes' ? t.camera.copied : t.camera.copyCode }}</button>
+          <button type="button" class="btn-primary" @click="copy">{{ copied === 'yes' ? t.camera.copied : t.camera.copyCode }}</button>
         </div>
         <p v-if="copied === 'no'" class="warning">{{ t.camera.copyFailed }}</p>
       </details>
@@ -163,16 +163,15 @@ function back() {
     <template v-if="step === 'failed'">
       <p class="warning">{{ error ?? t.camera.failed }}</p>
       <div class="controls">
-        <button type="button" class="primary" @click="retry">{{ t.camera.retry }}</button>
+        <button type="button" class="btn-primary" @click="retry">{{ t.camera.retry }}</button>
       </div>
     </template>
 
     <div :class="step === 'live' ? 'camera-live' : 'camera-live camera-live-hidden'">
-      <div class="coach coach-ready">
-        <span class="coach-dot" aria-hidden="true" />
-        <span class="coach-message">{{ t.camera.connected }}</span>
-        <span v-if="battery !== null" class="coach-numbers">{{ t.camera.battery }}: {{ battery }}%</span>
-      </div>
+      <span class="status status-ok" role="status">
+        <span class="status-dot" aria-hidden="true" />
+        {{ t.camera.connected }}<template v-if="battery !== null"> · {{ t.camera.battery }} {{ battery }}%</template>
+      </span>
       <video ref="video" class="camera-role-preview" playsinline muted />
       <p class="hint">{{ t.camera.keepHere }}</p>
     </div>

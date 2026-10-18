@@ -178,13 +178,18 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
     :lead="fill(t.stats.subtitle, { matches: career.matches, darts: career.dartsThrown })"
     :back-label="t.stats.back"
   >
-    <Segmented v-model="active" :options="peopleOptions" :label="t.stats.player" />
-    <Segmented v-model="range" :options="rangeOptions" :label="t.stats.period" />
+    <template #head>
+      <div class="stats-filters">
+        <Segmented v-model="active" :options="peopleOptions" :label="t.stats.player" />
+        <Segmented v-model="range" :options="rangeOptions" :label="t.stats.period" />
+      </div>
+    </template>
 
-    <p v-if="career.dartsThrown === 0" class="hint">{{ t.stats.nothingInRange }}</p>
+    <p v-if="career.dartsThrown === 0" class="empty-note">{{ t.stats.nothingInRange }}</p>
     <template v-else>
-      <section class="panel">
-        <h2>{{ t.stats.scoring }}</h2>
+      <!-- The four that matter, big; the records in a line under them. -->
+      <section class="stats-scoring" :aria-label="t.stats.scoring">
+        <h2 class="visually-hidden">{{ t.stats.scoring }}</h2>
         <div class="tiles">
           <StatTile
             :label="t.stats.average"
@@ -212,7 +217,7 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
           />
         </div>
 
-        <div class="tiles">
+        <div class="tiles tiles-small">
           <StatTile small :label="t.stats.bestLeg" :value="career.bestLegDarts === null ? '—' : `${career.bestLegDarts}`" />
           <StatTile small :label="t.stats.highestOut" :value="career.highestCheckout === 0 ? '—' : `${career.highestCheckout}`" />
           <StatTile small label="180s" :value="`${career.oneEighties}`" />
@@ -222,107 +227,109 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
         </div>
       </section>
 
-      <section class="panel">
-        <h2>{{ t.stats.trendTitle }}</h2>
-        <LegTrend v-if="legPoints.length >= 2" :points="legPoints" :reference="career.average" />
-        <p v-else class="hint">{{ t.stats.trendNeedsMore }}</p>
-      </section>
+      <div class="stats-grid">
+        <section class="panel stats-wide">
+          <h2>{{ t.stats.trendTitle }}</h2>
+          <LegTrend v-if="legPoints.length >= 2" :points="legPoints" :reference="career.average" />
+          <p v-else class="hint">{{ t.stats.trendNeedsMore }}</p>
+        </section>
 
-      <section class="panel">
-        <h2>{{ t.stats.shape }}</h2>
-        <BandBars
-          :bands="career.bands.map((band) => ({ label: band.label, count: band.count, strong: band.from >= 100 }))"
-          :total="career.visits"
-        />
-      </section>
-
-      <section class="panel">
-        <h2>{{ t.stats.doubles }}</h2>
-        <p v-if="career.doubles.length === 0" class="hint">{{ t.stats.noDoubles }}</p>
-        <template v-else>
-          <p v-if="bestDouble && worstDouble && bestDouble !== worstDouble" class="hint">
-            {{
-              fill(t.stats.doublesSummary, {
-                best: doubleName(bestDouble.target),
-                bestPercent: number(bestDouble.percent ?? 0, 0),
-                worst: doubleName(worstDouble.target),
-                worstPercent: number(worstDouble.percent ?? 0, 0),
-              })
-            }}
-          </p>
-          <ul class="bars">
-            <li v-for="entry in career.doubles.slice(0, 10)" :key="entry.target">
-              <span class="bars-label">{{ doubleName(entry.target) }}</span>
-              <span class="bars-track">
-                <span class="bars-fill" :style="{ width: `${entry.percent ?? 0}%` }" />
-              </span>
-              <span class="bars-value">
-                {{ entry.percent === null ? '—' : `${number(entry.percent, 0)}%` }}
-                <small>{{ entry.hits }}/{{ entry.attempts }}</small>
-              </span>
-            </li>
-          </ul>
-          <p class="hint">{{ t.stats.doublesNote }}</p>
-        </template>
-      </section>
-
-      <section v-if="darts.length > 0" class="panel">
-        <h2>{{ t.stats.where }}</h2>
-        <BoardMap :grid="density" :label="t.stats.whereLabel" />
-        <div class="legend">
-          <span>{{ t.stats.fewer }}</span>
-          <span class="legend-ramp" :style="{ background: ramp }" />
-          <span>{{ t.stats.more }}</span>
-        </div>
-
-        <p v-if="spread" class="stat-sentence">
-          {{ fill(t.stats.groupSentence, { along: number(spread.along, 0), across: number(spread.across, 0), n: spread.count }) }}
-        </p>
-
-        <template v-if="split.total >= 10">
-          <h2>{{ fill(t.stats.goingAt, { sector: split.sector }) }}</h2>
+        <section class="panel">
+          <h2>{{ t.stats.shape }}</h2>
           <BandBars
-            :bands="[
-              { label: `T${split.sector}`, count: split.treble, strong: true },
-              { label: `S${split.sector}`, count: split.single },
-              { label: `D${split.sector}`, count: split.double },
-              { label: `${split.clockwise.sector}`, count: split.clockwise.count },
-              { label: `${split.anticlockwise.sector}`, count: split.anticlockwise.count },
-              { label: t.stats.offBoard, count: split.off },
-            ]"
-            :total="split.total"
+            :bands="career.bands.map((band) => ({ label: band.label, count: band.count, strong: band.from >= 100 }))"
+            :total="career.visits"
           />
-        </template>
+        </section>
 
-        <p v-if="tapped > 0" class="hint">{{ fill(t.stats.tappedNote, { n: tapped }) }}</p>
-      </section>
+        <section class="panel">
+          <h2>{{ t.stats.doubles }}</h2>
+          <p v-if="career.doubles.length === 0" class="hint">{{ t.stats.noDoubles }}</p>
+          <template v-else>
+            <p v-if="bestDouble && worstDouble && bestDouble !== worstDouble" class="stat-sentence">
+              {{
+                fill(t.stats.doublesSummary, {
+                  best: doubleName(bestDouble.target),
+                  bestPercent: number(bestDouble.percent ?? 0, 0),
+                  worst: doubleName(worstDouble.target),
+                  worstPercent: number(worstDouble.percent ?? 0, 0),
+                })
+              }}
+            </p>
+            <ul class="bars">
+              <li v-for="entry in career.doubles.slice(0, 10)" :key="entry.target">
+                <span class="bars-label">{{ doubleName(entry.target) }}</span>
+                <span class="bars-track">
+                  <span class="bars-fill" :style="{ width: `${entry.percent ?? 0}%` }" />
+                </span>
+                <span class="bars-value">
+                  {{ entry.percent === null ? '—' : `${number(entry.percent, 0)}%` }}
+                  <small>{{ entry.hits }}/{{ entry.attempts }}</small>
+                </span>
+              </li>
+            </ul>
+            <p class="hint">{{ t.stats.doublesNote }}</p>
+          </template>
+        </section>
 
-      <section class="panel">
-        <h2>{{ t.stats.aim }}</h2>
-        <template v-if="aim && aimTarget">
-          <BoardMap :grid="aim" :floor="0.02" :label="t.stats.aimLabel" :markers="aimMarkers" />
+        <section v-if="darts.length > 0" class="panel">
+          <h2>{{ t.stats.where }}</h2>
+          <BoardMap :grid="density" :label="t.stats.whereLabel" />
           <div class="legend">
-            <span>0</span>
+            <span>{{ t.stats.fewer }}</span>
             <span class="legend-ramp" :style="{ background: ramp }" />
-            <span>{{ fill(t.stats.perDart, { max: number(aimPeak) }) }}</span>
+            <span>{{ t.stats.more }}</span>
           </div>
-          <p class="stat-sentence">
-            {{
-              aimIsTrebleTwenty
-                ? fill(t.stats.aimSentenceSame, { expected: number(aim.best.expected), average: number(aim.best.expected * 3) })
-                : fill(t.stats.aimSentenceOther, {
-                    target: formatHit(aimTarget),
-                    expected: number(aim.best.expected),
-                    treble: number(aim.trebleTwenty),
-                    gain: number(aim.best.expected - aim.trebleTwenty),
-                    perThree: number((aim.best.expected - aim.trebleTwenty) * 3),
-                  })
-            }}
+
+          <p v-if="spread" class="stat-sentence">
+            {{ fill(t.stats.groupSentence, { along: number(spread.along, 0), across: number(spread.across, 0), n: spread.count }) }}
           </p>
-          <p class="hint">{{ t.stats.aimNote }}</p>
-        </template>
-        <p v-else class="hint">{{ fill(t.stats.aimPending, { have: darts.length, need: AIM_MAP_MINIMUM }) }}</p>
-      </section>
+
+          <template v-if="split.total >= 10">
+            <h3 class="stats-sub">{{ fill(t.stats.goingAt, { sector: split.sector }) }}</h3>
+            <BandBars
+              :bands="[
+                { label: `T${split.sector}`, count: split.treble, strong: true },
+                { label: `S${split.sector}`, count: split.single },
+                { label: `D${split.sector}`, count: split.double },
+                { label: `${split.clockwise.sector}`, count: split.clockwise.count },
+                { label: `${split.anticlockwise.sector}`, count: split.anticlockwise.count },
+                { label: t.stats.offBoard, count: split.off },
+              ]"
+              :total="split.total"
+            />
+          </template>
+
+          <p v-if="tapped > 0" class="hint">{{ fill(t.stats.tappedNote, { n: tapped }) }}</p>
+        </section>
+
+        <section class="panel">
+          <h2>{{ t.stats.aim }}</h2>
+          <template v-if="aim && aimTarget">
+            <BoardMap :grid="aim" :floor="0.02" :label="t.stats.aimLabel" :markers="aimMarkers" />
+            <div class="legend">
+              <span>0</span>
+              <span class="legend-ramp" :style="{ background: ramp }" />
+              <span>{{ fill(t.stats.perDart, { max: number(aimPeak) }) }}</span>
+            </div>
+            <p class="stat-sentence">
+              {{
+                aimIsTrebleTwenty
+                  ? fill(t.stats.aimSentenceSame, { expected: number(aim.best.expected), average: number(aim.best.expected * 3) })
+                  : fill(t.stats.aimSentenceOther, {
+                      target: formatHit(aimTarget),
+                      expected: number(aim.best.expected),
+                      treble: number(aim.trebleTwenty),
+                      gain: number(aim.best.expected - aim.trebleTwenty),
+                      perThree: number((aim.best.expected - aim.trebleTwenty) * 3),
+                    })
+              }}
+            </p>
+            <p class="hint">{{ t.stats.aimNote }}</p>
+          </template>
+          <p v-else class="hint">{{ fill(t.stats.aimPending, { have: darts.length, need: AIM_MAP_MINIMUM }) }}</p>
+        </section>
+      </div>
     </template>
   </ScreenShell>
 </template>

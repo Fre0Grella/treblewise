@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 
 import Dartboard from '../components/Dartboard.vue';
 import Wordmark from '../components/Wordmark.vue';
-import LandingArt, { type LandingArtKind } from '../components/art/LandingArt.vue';
 import { useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore } from '../store/stores.js';
@@ -12,10 +11,6 @@ import { useLobbyStore } from '../store/stores.js';
 const t = useStrings();
 const router = useRouter();
 const lobby = useLobbyStore();
-
-// A picture for each of t.landing.points, in the same order: scoring, the
-// caller, statistics, the device.
-const POINT_ART: LandingArtKind[] = ['score', 'caller', 'stats', 'device'];
 </script>
 
 <template>
@@ -31,28 +26,28 @@ const POINT_ART: LandingArtKind[] = ['score', 'caller', 'stats', 'device'];
       <header class="landing-hero">
         <h1 class="landing-mark"><Wordmark /></h1>
         <p class="landing-lede">{{ t.landing.lede }}</p>
+        <!-- One primary: the way in. With a session open, the way back to it. -->
+        <div class="landing-cta">
+          <button v-if="lobby.session" type="button" class="btn-primary btn-lg" @click="router.push(PATHS.lobby)">
+            {{ t.lobby.back }}
+          </button>
+          <!-- No "carry on with your match" here: a match is played on one device
+               or two, and that is chosen first. The lobby offers to resume it. -->
+          <button
+            type="button"
+            :class="lobby.session ? 'btn-lg' : 'btn-primary btn-lg'"
+            @click="router.push(PATHS.start)"
+          >
+            {{ t.landing.cta }}
+          </button>
+          <button type="button" class="btn-quiet" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
+        </div>
       </header>
 
-      <div class="landing-cta">
-        <button v-if="lobby.session" type="button" class="primary board-btn" @click="router.push(PATHS.lobby)">
-          {{ t.lobby.back }}
-        </button>
-        <!-- No "carry on with your match" here: a match is played on one device
-             or two, and that is chosen first. The lobby offers to resume it. -->
-        <button type="button" :class="lobby.session ? 'chip' : 'primary board-btn'" @click="router.push(PATHS.start)">
-          {{ t.landing.cta }}
-        </button>
-        <button type="button" class="chip" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
-      </div>
-
       <ul class="landing-points">
-        <li v-for="(point, index) in t.landing.points" :key="point.title">
+        <li v-for="point in t.landing.points" :key="point.title">
           <b>{{ point.title }}</b>
           <span>{{ point.body }}</span>
-          <!-- Small and faint behind the words: the words lead. -->
-          <div class="landing-point-art" aria-hidden="true">
-            <LandingArt :kind="POINT_ART[index]" />
-          </div>
         </li>
       </ul>
 

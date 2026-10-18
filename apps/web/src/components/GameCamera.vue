@@ -267,13 +267,13 @@ const attachVideo = (element: unknown) => {
       <button
         v-if="keepFrames"
         type="button"
-        :class="visitComplete && usable && darts.length > 0 ? 'primary' : 'chip'"
+        :class="visitComplete && usable && darts.length > 0 ? 'btn-primary' : 'btn-sm'"
         :disabled="!usable || darts.length === 0"
         @click="emit('report')"
       >
         {{ visitComplete ? t.report.markVisit : t.report.button }}
       </button>
-      <button v-if="keepFrames" type="button" class="chip" @click="router.push(`${PATHS.camera}?from=game`)">
+      <button v-if="keepFrames" type="button" class="btn-sm" @click="router.push(`${PATHS.camera}?from=game`)">
         {{ calibration ? t.report.cameraSetup : t.capture.calibrate }}
       </button>
       <Toggle v-if="keepFrames && calibration" v-model="showPreview" :label="t.report.preview" />
@@ -283,7 +283,7 @@ const attachVideo = (element: unknown) => {
     <div v-if="keepFrames && calibration && modelInfo" class="controls">
       <button
         type="button"
-        :class="['chip', { 'chip-on': autoscore }]"
+        :class="['btn-sm', { 'toggle-on': autoscore }]"
         :aria-pressed="autoscore"
         :disabled="!canThrow && !autoscore"
         @click="toggleAutoscore"
@@ -343,7 +343,7 @@ const attachVideo = (element: unknown) => {
           <p class="hint">{{ keepPhotos ? t.report.help : t.report.helpNotKept }}</p>
 
           <div class="chip-row">
-            <button v-for="(dart, index) in darts" :key="dart.id" type="button" class="chip" @click="setMark(index, null)">
+            <button v-for="(dart, index) in darts" :key="dart.id" type="button" class="btn-sm" @click="setMark(index, null)">
               {{ index + 1 }}: {{ formatHit(dart.hit) }}{{
                 report.marks[index] && report.marks[index]!.hit.value !== dart.hit.value ? ` → ${formatHit(report.marks[index]!.hit)}` : ''
               }}
@@ -351,8 +351,8 @@ const attachVideo = (element: unknown) => {
           </div>
 
           <div class="controls">
-            <button type="button" class="primary" @click="save">{{ t.report.save }}</button>
-            <button type="button" class="chip" @click="closeReport">{{ t.report.cancel }}</button>
+            <button type="button" class="btn-primary" @click="save">{{ t.report.save }}</button>
+            <button type="button" class="btn-sm" @click="closeReport">{{ t.report.cancel }}</button>
           </div>
         </div>
 

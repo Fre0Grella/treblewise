@@ -86,7 +86,7 @@ const pointable = computed(() => said.value?.image === 'glare' || said.value?.im
   <div v-if="said" :class="`coach coach-${said.status}`" role="status">
     <span class="coach-dot" aria-hidden="true" />
     <span class="coach-message">{{ said.message }}</span>
-    <button v-if="pointable && onShowWhere" type="button" class="chip" @click="onShowWhere">{{ t.coach.showWhere }}</button>
+    <button v-if="pointable && onShowWhere" type="button" class="btn-sm" @click="onShowWhere">{{ t.coach.showWhere }}</button>
     <p v-if="detail" class="coach-detail">{{ detail }}</p>
     <span v-if="showNumbers && view && quality" class="coach-numbers">
       {{ t.coach.fill }} {{ Math.round(view.coverage * 100) }}% · {{ t.coach.angle }} {{ Math.round(view.tilt) }}° ·

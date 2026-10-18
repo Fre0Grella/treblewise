@@ -1,9 +1,10 @@
 <!--
-  One choice out of a few, as a row of chips: a start score, a rule, a period.
+  One choice out of a few: a start score, a rule, a period. A segmented bar
+  (issue #20): a dark track with the chosen one raised in it.
 
   A radio group, so a keyboard and a screen reader get what it is: one tab stop
-  for the row, the arrow keys move the choice (wrapping), and the chosen chip
-  is announced as checked. It looks like the chip rows it replaces.
+  for the row, the arrow keys move the choice (wrapping), and the chosen one
+  is announced as checked.
 -->
 <script setup lang="ts" generic="T extends string | number">
 import { ref } from 'vue';
@@ -29,14 +30,14 @@ function move(event: KeyboardEvent, index: number) {
 </script>
 
 <template>
-  <div class="chip-row" role="radiogroup" :aria-label="label" :aria-disabled="disabled || undefined">
+  <div class="segmented" role="radiogroup" :aria-label="label" :aria-disabled="disabled || undefined">
     <button
       v-for="(option, index) in options"
       :key="String(option.value)"
       ref="chips"
       type="button"
       role="radio"
-      :class="['chip', { 'chip-on': option.value === model }]"
+      :class="{ 'segmented-on': option.value === model }"
       :aria-checked="option.value === model"
       :tabindex="option.value === model ? 0 : -1"
       :disabled="disabled"

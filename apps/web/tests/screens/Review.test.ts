@@ -103,9 +103,9 @@ describe('reviewing labelled photographs', () => {
 
   it('saves an edited photograph as reviewed, and it stays that way in the export', async () => {
     await renderAt('/review');
-    await press(/S20, S5/); // the card of the person's photograph
+    await press(/S20 S5/); // the card of the person's photograph
     await press(/remove mark 2/i);
-    await press(/looks right — save/i);
+    await press(/looks right/i);
 
     const saved = store.frames.find((f) => f.id === 'person')!;
     expect(saved.reviewed).toBe(true);
@@ -132,12 +132,12 @@ describe('reviewing labelled photographs', () => {
   it('keeps a model’s name on a reviewed photograph only while its mark still stands', async () => {
     await renderAt('/review');
     await press(/^S1 /); // guess-a: one dart, the model's
-    await press(/looks right — save/i);
+    await press(/looks right/i);
     expect(store.frames.find((f) => f.id === 'guess-a')).toMatchObject({ reviewed: true, model: 'tips-v1' });
 
     // guess-b opens next: remove the model's mark, keep the person's.
     await press(/remove mark 2/i);
-    await press(/looks right — save/i);
+    await press(/looks right/i);
     const cleaned = store.frames.find((f) => f.id === 'guess-b')!;
     expect(cleaned.reviewed).toBe(true);
     expect(cleaned.model).toBeUndefined();
@@ -145,7 +145,7 @@ describe('reviewing labelled photographs', () => {
 
   it('deletes one photograph after asking', async () => {
     await renderAt('/review');
-    await press(/S20, S5/);
+    await press(/S20 S5/);
     await press(/delete this photo/i);
     expect(store.frames).toHaveLength(3);
     await press(/really delete it/i);

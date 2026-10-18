@@ -16,7 +16,7 @@ describe('starting a match', () => {
 
   it('keeps a guest around for the rest of the session', async () => {
     const { router } = await renderAt('/setup');
-    await press(/\+ guest/i);
+    await press(/^guest$/i);
     await fireEvent.update(screen.getByLabelText(/guest/i), 'Dave');
     await press(/add for this match/i);
     expect(screen.getByText('Dave')).toBeDefined();
@@ -25,7 +25,7 @@ describe('starting a match', () => {
     // to be typed again, and he is still not a profile.
     await router.push('/lobby');
     await router.push('/setup');
-    await press(/\+ dave/i);
+    await press(/add dave/i);
     expect(screen.getByText('Dave')).toBeDefined();
     expect(usePlayersStore().profiles).toEqual([]);
 

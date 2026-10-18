@@ -156,13 +156,13 @@ function markVisit() {
            out" instead of being searched for further down. -->
       <template #actions>
         <div class="held-actions">
-          <button type="button" class="primary darts-out" @click="gameVisit.dartsOut()">
+          <button type="button" class="btn-primary darts-out" @click="gameVisit.dartsOut()">
             {{ fill(t.game.dartsOut, { name: nameOf(current.playerId) }) }}
           </button>
           <button
             v-if="correcting && canReport && lastVisit.darts.some((dart) => dart.id === correcting)"
             type="button"
-            class="chip held-mark"
+            class="btn-sm held-mark"
             @click="markVisit"
           >
             {{ t.report.markVisit }}
@@ -211,20 +211,20 @@ function markVisit() {
     </p>
 
     <div class="controls">
-      <button type="button" class="chip" @click="matches.undo()">{{ t.game.undo }}</button>
+      <button type="button" class="btn-sm" @click="matches.undo()">{{ t.game.undo }}</button>
       <Toggle v-model="callerOn" :label="callerOn ? t.game.callerOn : t.game.callerOff" />
       <Toggle v-if="callerOn" v-model="namesOn" :label="namesOn ? t.game.namesOn : t.game.namesOff" />
       <Toggle v-model="soundsOn" :label="soundsOn ? t.game.soundsOn : t.game.soundsOff" />
       <button
         type="button"
-        class="chip"
+        class="btn-sm"
         @click="settings.setEntryMode(settings.settings.entryMode === 'board' ? 'keypad' : 'board')"
       >
         {{ settings.settings.entryMode === 'board' ? t.game.keypad : t.game.board }}
       </button>
-      <button type="button" class="chip" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
-      <button type="button" class="chip" @click="router.push(PATHS.setup)">{{ t.game.newMatch }}</button>
-      <button v-if="lobby.session" type="button" class="chip" @click="router.push(PATHS.lobby)">{{ t.lobby.back }}</button>
+      <button type="button" class="btn-sm" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
+      <button type="button" class="btn-sm" @click="router.push(PATHS.setup)">{{ t.game.newMatch }}</button>
+      <button v-if="lobby.session" type="button" class="btn-sm" @click="router.push(PATHS.lobby)">{{ t.lobby.back }}</button>
     </div>
 
     <p v-if="settings.settings.entryMode === 'board' && !finished" class="hint">{{ t.game.sourceNote }}</p>
@@ -243,7 +243,7 @@ function markVisit() {
     <div v-if="finished" class="overlay">
       <div class="overlay-card">
         <h2>{{ fill(t.game.matchWon, { name: winnerName }) }}</h2>
-        <button type="button" class="primary" @click="router.push(PATHS.setup)">{{ t.game.newMatch }}</button>
+        <button type="button" class="btn-primary" @click="router.push(PATHS.setup)">{{ t.game.newMatch }}</button>
       </div>
     </div>
   </div>
