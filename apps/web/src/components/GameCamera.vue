@@ -31,7 +31,8 @@ import PhoneBattery from './PhoneBattery.vue';
 import PhotoStage from './PhotoStage.vue';
 import QualityMarks from './QualityMarks.vue';
 import SetupCoach from './SetupCoach.vue';
-import Toggle from './ui/Toggle.vue';
+import Icon from './ui/Icon.vue';
+import Switch from './ui/Switch.vue';
 
 const props = defineProps<{
   matchId: string;
@@ -41,6 +42,10 @@ const props = defineProps<{
   canThrow: boolean;
   /** The photograph the game visit's report is open on, or null: the game decides when one opens. */
   report: GrabbedFrame | null;
+  /** Where the badge goes (the match's top bar); in place without one. */
+  badgeTarget?: string;
+  /** Where the camera's switches go (the match's menu, while open); null hides them, none keeps them in place. */
+  settingsTarget?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -64,7 +69,6 @@ const lobby = useLobbyStore();
 
 const visitState = useExternal(props.gameVisit);
 const darts = computed(() => visitState.value.visit?.darts ?? []);
-const visitComplete = computed(() => visitState.value.visit?.complete === true);
 const calibration = computed(() => settings.settings.calibration);
 const keepFrames = computed({
   get: () => settings.settings.keepFrames,
@@ -83,10 +87,10 @@ const latest = shallowRef<GrabbedFrame | null>(null);
 const opened = shallowRef<{ photo: GrabbedFrame; url: string } | null>(null);
 const report = shallowRef<OpenedReport | null>(null);
 const saved = ref<string | null>(null);
-// During a game the preview is clutter: the coach line says whether the
-// camera is happy, and that is all anyone needs mid-leg. It is one tap away
-// when something looks wrong.
-const showPreview = ref(false);
+// During a game the picture is clutter: the badge says whether the camera is
+// happy, and that is all anyone needs mid-leg. The picture and what is wrong
+// with it are one click away, on the badge.
+const panelOpen = ref(false);
 
 // ---- the autoscorer -------------------------------------------------------
 // The game visit drives the board watcher; the camera only switches the model
@@ -244,6 +248,26 @@ function toggleAutoscore() {
   unlockSounds();
   settings.setAutoscoreGames(!autoscore.value);
 }
+const autoscoreOn = computed({ get: () => autoscore.value, set: () => toggleAutoscore() });
+
+/**
+ * The badge's state (issue #15): quiet while the autoscorer can work, a
+ * reflection included; 'bad' only when it cannot (no calibration, the board
+ * moved or cut off). The full story is in the panel's coach line.
+ */
+const status = computed<'ok' | 'off' | 'bad'>(() => {
+  if (!keepFrames.value) return 'off';
+  if (!calibration.value) return 'bad';
+  if (camera.quality.value?.issues.includes('moved')) return 'bad';
+  if (view.value?.issues.some((issue) => issue.code === 'offFrame')) return 'bad';
+  return 'ok';
+});
+const statusLabel = computed(() => {
+  if (status.value === 'off') return t.report.badgeOff;
+  if (status.value === 'ok') return t.report.badgeReady;
+  if (!calibration.value) return t.report.badgeNotCalibrated;
+  return camera.quality.value?.issues.includes('moved') ? t.report.badgeMoved : t.report.badgeCutOff;
+});
 
 const size = computed(() => ({ width: camera.width.value || 1280, height: camera.height.value || 720 }));
 const reportCrop = computed(() =>
@@ -262,97 +286,125 @@ const attachVideo = (element: unknown) => {
 
 <template>
   <div v-if="supported" class="game-camera">
-    <div class="controls">
-      <Toggle v-model="keepFrames" :label="keepFrames ? t.report.cameraOn : t.report.cameraOff" />
-      <button
+    <!-- The badge, in the top bar: quiet while the autoscorer can work, red
+         only when it cannot, with the way to fix it one click away. -->
+    <Teleport defer :to="badgeTarget ?? 'body'" :disabled="!badgeTarget">
+      <span class="camera-badge">
+        <button
+          type="button"
+          :class="['status', 'status-btn', `status-${status}`]"
+          :aria-expanded="panelOpen"
+          :aria-label="fill(t.report.showCamera, { status: statusLabel })"
+          @click="panelOpen = !panelOpen"
+        >
+          <span class="status-dot" aria-hidden="true" />{{ statusLabel }}
+          <Icon :name="panelOpen ? 'chevron-up' : 'chevron-down'" :size="14" />
+        </button>
+        <button
+          v-if="status === 'bad' && keepFrames"
+          type="button"
+          class="btn-primary btn-sm"
+          @click="router.push(`${PATHS.camera}?from=game`)"
+        >
+          {{ t.report.cameraSetup }}
+        </button>
+      </span>
+    </Teleport>
+
+    <!-- The camera itself and what is wrong with it. The picture stays
+         mounted while hidden: a hidden video can stop being fed. -->
+    <div v-if="panelOpen" class="popover-scrim" @click="panelOpen = false" />
+    <div :class="['camera-panel', { 'camera-panel-open': panelOpen }]" role="dialog" :aria-label="t.report.camera" :aria-hidden="!panelOpen">
+      <div
         v-if="keepFrames"
-        type="button"
-        :class="visitComplete && usable && darts.length > 0 ? 'btn-primary' : 'btn-sm'"
-        :disabled="!usable || darts.length === 0"
-        @click="emit('report')"
+        class="game-camera-preview"
+        :style="{ aspectRatio: `${size.width} / ${size.height}` }"
       >
-        {{ visitComplete ? t.report.markVisit : t.report.button }}
-      </button>
-      <button v-if="keepFrames" type="button" class="btn-sm" @click="router.push(`${PATHS.camera}?from=game`)">
-        {{ calibration ? t.report.cameraSetup : t.capture.calibrate }}
-      </button>
-      <Toggle v-if="keepFrames && calibration" v-model="showPreview" :label="t.report.preview" />
-      <Toggle v-if="keepFrames" v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
-    </div>
-
-    <div v-if="keepFrames && calibration && modelInfo" class="controls">
-      <button
-        type="button"
-        :class="['btn-sm', { 'toggle-on': autoscore }]"
-        :aria-pressed="autoscore"
-        :disabled="!canThrow && !autoscore"
-        @click="toggleAutoscore"
-      >
-        {{ autoscore ? (modelReady ? t.report.autoscoreOn : t.report.autoscoreLoading) : t.report.autoscoreOff }}
-      </button>
-    </div>
-    <p v-if="keepFrames && calibration && modelInfo && autoscore" class="hint">
-      {{ visitState.pullingOut ? t.report.autoscorePullOut : visitState.reading ? t.report.autoscoreReading : t.report.autoscoreHelp }}
-      {{ fill(t.capture.modelName, { name: modelInfo.name }) }} {{ t.report.autoscoreUnchecked }}
-      <template v-if="modelInfo.deepdarts">{{ ` ${t.capture.deepdartsCredit}` }}</template>
-      <template v-if="modelInfo.dartscribe">{{ ` ${t.capture.dartscribeCredit}` }}</template>
-    </p>
-
-    <p v-if="saved" class="hint">{{ saved }}</p>
-
-    <PhoneBattery v-if="keepFrames" />
-
-    <SetupCoach
-      v-if="keepFrames && camera.ready.value"
-      :calibrated="calibration !== null"
-      :view="view"
-      :quality="camera.quality.value"
-      :on-show-where="() => (showPreview = true)"
-    />
-
-    <div
-      v-if="keepFrames"
-      :class="['game-camera-preview', { 'game-camera-preview-hidden': !showPreview }]"
-      :style="{
-        aspectRatio: `${size.width} / ${size.height}`,
-        // Cap the height by capping the width instead: clamping the height of
-        // an aspect-ratio box squashes the picture.
-        maxWidth: `calc(30vh * ${(size.width / size.height).toFixed(4)})`,
-      }"
-    >
-      <video :ref="attachVideo" class="stage-video" playsinline muted />
-      <BoardOverlay :width="size.width" :height="size.height" :to-image="previewToImage" />
-      <QualityMarks
-        :width="size.width"
-        :height="size.height"
-        :region="region ?? { x: 0, y: 0, width: size.width, height: size.height }"
+        <video :ref="attachVideo" class="stage-video" playsinline muted />
+        <BoardOverlay :width="size.width" :height="size.height" :to-image="previewToImage" />
+        <QualityMarks
+          :width="size.width"
+          :height="size.height"
+          :region="region ?? { x: 0, y: 0, width: size.width, height: size.height }"
+          :quality="camera.quality.value"
+        />
+        <div class="stage-badge">
+          {{ camera.moving.value ? t.capture.moving : t.capture.waiting }}{{ latest ? ` · ${t.capture.captured}` : '' }}
+        </div>
+      </div>
+      <SetupCoach
+        v-if="keepFrames && camera.ready.value"
+        :calibrated="calibration !== null"
+        :view="view"
         :quality="camera.quality.value"
       />
-      <div class="stage-badge">
-        {{ camera.moving.value ? t.capture.moving : t.capture.waiting }}{{ latest ? ` · ${t.capture.captured}` : '' }}
+      <p v-if="!keepFrames" class="hint">{{ t.report.noFrame }}</p>
+      <p v-else-if="!usable && latest !== null" class="hint">{{ t.capture.noCalibration }}</p>
+      <PhoneBattery v-if="keepFrames" />
+      <div class="camera-panel-actions">
+        <button type="button" :class="status === 'bad' ? 'btn-primary' : ''" @click="router.push(`${PATHS.camera}?from=game`)">
+          {{ calibration ? t.report.cameraSetup : t.capture.calibrate }}
+        </button>
+        <button type="button" class="btn-quiet" @click="panelOpen = false">{{ t.report.close }}</button>
       </div>
     </div>
 
-    <p v-if="keepFrames && !usable && latest !== null" class="hint">{{ t.capture.noCalibration }}</p>
-    <p v-if="keepFrames && latest === null" class="hint">{{ t.report.noFrame }}</p>
+    <!-- The camera's switches, in the match's menu when it is open. -->
+    <Teleport v-if="settingsTarget !== null" defer :to="settingsTarget ?? 'body'" :disabled="!settingsTarget">
+      <div class="camera-settings">
+        <Switch v-model="keepFrames" :label="t.report.cameraSwitch" :note="t.report.cameraNote" />
+        <Switch
+          v-if="keepFrames && calibration && modelInfo"
+          v-model="autoscoreOn"
+          :label="t.report.autoscoreSwitch"
+          :note="autoscore && !modelReady ? t.report.autoscoreLoadingNote : t.report.autoscoreNote"
+          :disabled="!canThrow && !autoscore"
+        />
+        <Switch v-if="keepFrames" v-model="keepPhotos" :label="t.report.keepPhotosSwitch" :note="t.report.keepPhotosNote" />
+        <p v-if="keepFrames && calibration && modelInfo" class="hint camera-credits">
+          {{ fill(t.capture.modelName, { name: modelInfo.name }) }}
+          <template v-if="modelInfo.deepdarts">{{ ` ${t.capture.deepdartsCredit}` }}</template>
+          <template v-if="modelInfo.dartscribe">{{ ` ${t.capture.dartscribeCredit}` }}</template>
+        </p>
+      </div>
+    </Teleport>
 
+    <p v-if="saved" class="toast" role="status">{{ saved }}</p>
+
+    <!-- The report: where did the darts actually land? -->
     <div v-if="opened && shown && report" class="overlay overlay-report" role="dialog" :aria-label="t.report.title">
       <div class="report">
         <div class="report-side">
           <h2>{{ t.report.title }}</h2>
           <p class="hint">{{ keepPhotos ? t.report.help : t.report.helpNotKept }}</p>
 
-          <div class="chip-row">
-            <button v-for="(dart, index) in darts" :key="dart.id" type="button" class="btn-sm" @click="setMark(index, null)">
-              {{ index + 1 }}: {{ formatHit(dart.hit) }}{{
-                report.marks[index] && report.marks[index]!.hit.value !== dart.hit.value ? ` → ${formatHit(report.marks[index]!.hit)}` : ''
-              }}
-            </button>
-          </div>
+          <ol class="report-marks">
+            <li
+              v-for="(dart, index) in darts"
+              :key="dart.id"
+              :class="['row', { 'report-mark-changed': report.marks[index] && report.marks[index]!.hit.value !== dart.hit.value }]"
+            >
+              <span class="report-mark-n">{{ index + 1 }}</span>
+              <span class="num report-mark-hit">{{ report.marks[index] ? formatHit(report.marks[index]!.hit) : '·' }}</span>
+              <span v-if="report.marks[index] && report.marks[index]!.hit.value !== dart.hit.value" class="report-mark-was">
+                {{ t.report.was }} <s>{{ formatHit(dart.hit) }}</s>
+              </span>
+              <!-- Cleared, the mark is placed again with a tap on the photograph. -->
+              <button
+                v-if="report.marks[index]"
+                type="button"
+                class="btn-quiet btn-sm btn-icon"
+                :aria-label="fill(t.review.removeMark, { n: index + 1 })"
+                @click="setMark(index, null)"
+              >
+                <Icon name="close" :size="16" />
+              </button>
+            </li>
+          </ol>
 
-          <div class="controls">
-            <button type="button" class="btn-primary" @click="save">{{ t.report.save }}</button>
-            <button type="button" class="btn-sm" @click="closeReport">{{ t.report.cancel }}</button>
+          <div class="report-actions">
+            <button type="button" class="btn-primary btn-lg" @click="save">{{ t.report.save }}</button>
+            <button type="button" class="btn-quiet" @click="closeReport">{{ t.report.cancel }}</button>
           </div>
         </div>
 
