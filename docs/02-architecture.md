@@ -62,11 +62,18 @@ type DartCorrected = {
   pos?: { x: number; y: number }
   source: 'manual' | 'voice'
 }
+
+type MatchEnded = {
+  type: 'match.ended'
+  id: string; ts: number
+}
 ```
 
-That is the whole event vocabulary: darts, and corrections to darts. Legs, sets,
-busts, whose throw it is and who won are **derived**, never recorded, so they
-cannot disagree with the darts. Undo pops the last event — the log has a single
+That is the whole event vocabulary: darts, corrections to darts, and the match
+ended before its legs were all played. Legs, sets, busts, whose throw it is and
+who won are **derived**, never recorded, so they cannot disagree with the darts:
+a match ended early goes to whoever leads on sets, then legs, and a level one
+has no winner. Darts after the end are ignored. Undo pops the last event — the log has a single
 writer on one device, so a retraction event would buy nothing.
 
 ### Why coordinates, not just "T20"

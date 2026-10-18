@@ -76,6 +76,9 @@ export const useMatchesStore = defineStore('matches', () => {
       const appended = matches.correctDart(dartId, hit, pos);
       if (appended) voice.heard(appended.calls);
     },
+    endMatch() {
+      if (matches.endMatch()) voice.hush();
+    },
     undo() {
       if (matches.undo()) voice.hush();
     },
