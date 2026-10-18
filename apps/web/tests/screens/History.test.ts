@@ -41,7 +41,9 @@ describe('past matches', () => {
 
   it('opens one match at its own address, and resumes it from there', async () => {
     const { router } = await renderAt('/history/open');
-    expect(await screen.findAllByRole('link', { name: /ann v bob/i })).toHaveLength(1);
+    // The list stays beside the match it opened, which is marked as the page.
+    const links = await screen.findAllByRole('link', { name: /ann v bob/i });
+    expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1);
     await fireEvent.click(screen.getByRole('button', { name: /resume/i }));
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/game'));
     expect(useMatchesStore().match?.id).toBe('open');

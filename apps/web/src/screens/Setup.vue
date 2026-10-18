@@ -16,10 +16,12 @@ import type { InOutRule, PlayerConfig, X01Config } from '@treblewise/core';
 import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 
+import Icon from '../components/ui/Icon.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
+import Stepper from '../components/ui/Stepper.vue';
 import { vFocus } from '../components/ui/focus.js';
-import { useStrings } from '../i18n/index.js';
+import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore, useMatchesStore, usePlayersStore } from '../store/stores.js';
 
@@ -115,165 +117,185 @@ function start() {
   void router.push(PATHS.game);
 }
 
-const atLeastOne = (value: string) => Math.max(1, Number(value) || 1);
+function removeProfile(id: string) {
+  void players.removeProfile(id);
+  dropFromLineup(id);
+}
+
+function removeGuest(id: string) {
+  players.removeSessionGuest(id);
+  dropFromLineup(id);
+}
+
+/** The bottom bar: what is about to be played, and by whom. */
+const summary = computed(() => t.setup.summary(startScore.value, inRule.value, outRule.value, legsPerSet.value, setsToWin.value));
+const who = computed(() =>
+  lineup.value.length === 0
+    ? t.setup.nobodyYet
+    : `${lineup.value.map((player) => player.name).join(' v ')} · ${fill(t.setup.firstThrower, { name: lineup.value[0]!.name })}`,
+);
 
 </script>
 
 <template>
   <ScreenShell
     name="setup"
-    :title="t.app.name"
-    :lead="t.app.tagline"
+    :title="t.setup.title"
     :back-label="lobby.session ? t.lobby.back : t.capture.back"
   >
-    <section class="panel">
-      <h2>{{ t.setup.players }}</h2>
+    <template #tools>
+      <button v-if="matches.history.length > 0" type="button" @click="router.push(PATHS.history)">{{ t.setup.history }}</button>
+      <button type="button" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
+    </template>
 
-      <p v-if="lineup.length === 0" class="hint">{{ t.setup.noPlayers }}</p>
-      <ol v-else class="lineup">
-        <li v-for="(player, index) in lineup" :key="player.id">
-          <span class="lineup-order">{{ index + 1 }}</span>
-          <span class="lineup-name">
-            {{ player.name }}
-            <small v-if="player.temporary">{{ t.setup.guestTag }}</small>
-          </span>
+    <div class="setup-grid">
+      <!-- Who plays, in throwing order. -->
+      <section class="panel" :aria-label="t.setup.players">
+        <div class="section-head">
+          <h2>{{ t.setup.players }}</h2>
+          <span class="section-note">{{ t.setup.playersNote }}</span>
+        </div>
+
+        <p v-if="lineup.length === 0" class="empty-note">{{ t.setup.noPlayers }}</p>
+        <ol v-else class="lineup">
+          <li v-for="(player, index) in lineup" :key="player.id" class="row">
+            <span class="num lineup-order">{{ index + 1 }}</span>
+            <span class="lineup-name">{{ player.name }}</span>
+            <span v-if="player.temporary" class="tag">{{ t.setup.guest }}</span>
+            <span v-if="index === 0 && lineup.length > 1" class="tag tag-on">{{ t.setup.throwsFirst }}</span>
+            <button
+              type="button"
+              class="btn-quiet btn-icon"
+              :aria-label="`${t.setup.removePlayer} ${player.name}`"
+              @click="dropFromLineup(player.id)"
+            >
+              <Icon name="close" :size="18" />
+            </button>
+          </li>
+        </ol>
+
+        <div class="bench">
           <button
+            v-for="profile in pickableProfiles"
+            :key="profile.id"
             type="button"
-            class="chip"
-            :aria-label="`${t.setup.removePlayer} ${player.name}`"
-            @click="dropFromLineup(player.id)"
+            class="btn-sm"
+            :aria-label="`${t.setup.addPlayer} ${profile.name}`"
+            @click="addToLineup({ id: profile.id, name: profile.name })"
           >
-            ✕
+            <Icon name="plus" :size="16" />{{ profile.name }}
           </button>
-        </li>
-      </ol>
+          <button
+            v-for="guest in pickableGuests"
+            :key="guest.id"
+            type="button"
+            class="btn-sm"
+            :aria-label="`${t.setup.addPlayer} ${guest.name}`"
+            @click="addToLineup(guest)"
+          >
+            <Icon name="plus" :size="16" />{{ guest.name }} <span class="tag">{{ t.setup.guest }}</span>
+          </button>
+          <button type="button" class="btn-quiet btn-sm" @click="adding = 'profile'">{{ t.setup.newProfile }}</button>
+          <button type="button" class="btn-quiet btn-sm" @click="adding = 'guest'">{{ t.setup.addGuest }}</button>
+        </div>
 
-      <div class="chip-row">
-        <button
-          v-for="profile in pickableProfiles"
-          :key="profile.id"
-          type="button"
-          class="chip"
-          @click="addToLineup({ id: profile.id, name: profile.name })"
-        >
-          + {{ profile.name }}
-        </button>
-        <button v-for="guest in pickableGuests" :key="guest.id" type="button" class="chip" @click="addToLineup(guest)">
-          + {{ guest.name }}
-          <small>{{ t.setup.guestTag }}</small>
-        </button>
-        <button type="button" class="chip" @click="adding = 'profile'">{{ t.setup.newProfile }}</button>
-        <button type="button" class="chip" @click="adding = 'guest'">{{ t.setup.addGuest }}</button>
-      </div>
+        <div v-if="adding" class="field-row">
+          <input
+            v-model="draftName"
+            v-focus
+            :aria-label="adding === 'profile' ? t.setup.newProfile : t.setup.addGuest"
+            :placeholder="adding === 'profile' ? t.setup.namePlaceholder : t.setup.guest"
+            @keydown.enter="submitDraft"
+          />
+          <button type="button" class="btn-primary" @click="submitDraft">
+            {{ adding === 'profile' ? t.setup.createProfile : t.setup.addForSession }}
+          </button>
+          <button type="button" class="btn-quiet" @click="cancelDraft">{{ t.setup.cancel }}</button>
+        </div>
 
-      <div v-if="adding" class="field-row">
-        <input
-          v-model="draftName"
-          v-focus
-          :aria-label="adding === 'profile' ? t.setup.newProfile : t.setup.addGuest"
-          :placeholder="adding === 'profile' ? t.setup.namePlaceholder : t.setup.guest"
-          @keydown.enter="submitDraft"
-        />
-        <button type="button" class="chip chip-on" @click="submitDraft">
-          {{ adding === 'profile' ? t.setup.createProfile : t.setup.addForSession }}
-        </button>
-        <button type="button" class="chip" @click="cancelDraft">{{ t.setup.cancel }}</button>
-      </div>
+        <p class="hint">{{ adding === 'guest' ? t.setup.guestHelp : t.setup.profileHelp }}</p>
 
-      <p class="hint">{{ adding === 'guest' ? t.setup.guestHelp : t.setup.profileHelp }}</p>
+        <template v-if="players.profiles.length > 0 || players.sessionGuests.length > 0">
+          <button type="button" class="btn-quiet btn-sm manage-toggle" @click="managing = !managing">
+            {{ managing ? t.setup.doneManaging : t.setup.manageProfiles }}
+          </button>
 
-      <template v-if="players.profiles.length > 0 || players.sessionGuests.length > 0">
-        <button type="button" class="chip" @click="managing = !managing">
-          {{ managing ? t.setup.doneManaging : t.setup.manageProfiles }}
-        </button>
-
-        <template v-if="managing">
-          <ul class="player-list">
-            <li v-for="profile in players.profiles" :key="profile.id">
-              <input
-                :aria-label="`${t.setup.playerName} ${profile.name}`"
-                :value="drafts[profile.id] ?? profile.name"
-                @input="drafts = { ...drafts, [profile.id]: ($event.target as HTMLInputElement).value }"
-                @blur="commitDraft(profile.id)"
-                @keydown.enter="($event.target as HTMLInputElement).blur()"
-              />
-              <button
-                type="button"
-                class="chip"
-                @click="
-                  players.removeProfile(profile.id);
-                  dropFromLineup(profile.id);
-                "
-              >
-                {{ t.setup.deleteProfile }}
-              </button>
-            </li>
-            <li v-for="guest in players.sessionGuests" :key="guest.id">
-              <span class="lineup-name">
-                {{ guest.name }}
-                <small>{{ t.setup.guestTag }}</small>
-              </span>
-              <button
-                type="button"
-                class="chip"
-                @click="
-                  players.removeSessionGuest(guest.id);
-                  dropFromLineup(guest.id);
-                "
-              >
-                {{ t.setup.deleteProfile }}
-              </button>
-            </li>
-          </ul>
-          <p class="hint">{{ t.setup.manageHelp }}</p>
+          <template v-if="managing">
+            <ul class="player-list">
+              <li v-for="profile in players.profiles" :key="profile.id">
+                <input
+                  :aria-label="`${t.setup.playerName} ${profile.name}`"
+                  :value="drafts[profile.id] ?? profile.name"
+                  @input="drafts = { ...drafts, [profile.id]: ($event.target as HTMLInputElement).value }"
+                  @blur="commitDraft(profile.id)"
+                  @keydown.enter="($event.target as HTMLInputElement).blur()"
+                />
+                <button type="button" class="btn-danger" @click="removeProfile(profile.id)">
+                  {{ t.setup.deleteProfile }}
+                </button>
+              </li>
+              <li v-for="guest in players.sessionGuests" :key="guest.id">
+                <span class="lineup-name">
+                  {{ guest.name }}
+                  <span class="tag">{{ t.setup.guest }}</span>
+                </span>
+                <button type="button" class="btn-danger" @click="removeGuest(guest.id)">
+                  {{ t.setup.deleteProfile }}
+                </button>
+              </li>
+            </ul>
+            <p class="hint">{{ t.setup.manageHelp }}</p>
+          </template>
         </template>
-      </template>
-    </section>
+      </section>
 
-    <section class="panel">
-      <h2>{{ t.setup.startScore }}</h2>
-      <Segmented v-model="startScore" :options="scoreOptions" :label="t.setup.startScore" />
-    </section>
+      <!-- The game: a row per setting, the control on the right. -->
+      <section class="panel" :aria-label="t.setup.game">
+        <h2>{{ t.setup.game }}</h2>
+        <div>
+          <div class="setting">
+            <span class="setting-label">{{ t.setup.startScore }}</span>
+            <Segmented v-model="startScore" :options="scoreOptions" :label="t.setup.startScore" />
+          </div>
+          <div class="setting">
+            <span class="setting-label">
+              {{ t.setup.legsPerSet }}
+              <span class="setting-note">{{ fill(t.setup.firstTo, { n: legsPerSet }) }}</span>
+            </span>
+            <Stepper v-model="legsPerSet" :label="t.setup.legsPerSet" :min="1" :max="21" />
+          </div>
+          <div class="setting">
+            <span class="setting-label">
+              {{ t.setup.setsToWin }}
+              <span class="setting-note">{{ setsToWin === 1 ? t.setup.singleSet : fill(t.setup.firstToSets, { n: setsToWin }) }}</span>
+            </span>
+            <Stepper v-model="setsToWin" :label="t.setup.setsToWin" :min="1" :max="13" />
+          </div>
+          <div class="setting">
+            <span class="setting-label">
+              {{ t.setup.inRule }}
+              <span class="setting-note">{{ t.setup.ruleNotes[inRule] }}</span>
+            </span>
+            <Segmented v-model="inRule" :options="ruleOptions" :label="t.setup.inRule" />
+          </div>
+          <div class="setting">
+            <span class="setting-label">
+              {{ t.setup.outRule }}
+              <span class="setting-note">{{ t.setup.ruleNotes[outRule] }}</span>
+            </span>
+            <Segmented v-model="outRule" :options="ruleOptions" :label="t.setup.outRule" />
+          </div>
+        </div>
+      </section>
+    </div>
 
-    <section class="panel">
-      <h2>{{ t.setup.inRule }}</h2>
-      <Segmented v-model="inRule" :options="ruleOptions" :label="t.setup.inRule" />
-      <h2>{{ t.setup.outRule }}</h2>
-      <Segmented v-model="outRule" :options="ruleOptions" :label="t.setup.outRule" />
-    </section>
-
-    <section class="panel">
-      <div class="field-row">
-        <label>
-          {{ t.setup.legsPerSet }}
-          <input
-            type="number"
-            :min="1"
-            :max="21"
-            :value="legsPerSet"
-            @input="legsPerSet = atLeastOne(($event.target as HTMLInputElement).value)"
-          />
-        </label>
-        <label>
-          {{ t.setup.setsToWin }}
-          <input
-            type="number"
-            :min="1"
-            :max="13"
-            :value="setsToWin"
-            @input="setsToWin = atLeastOne(($event.target as HTMLInputElement).value)"
-          />
-        </label>
-      </div>
-    </section>
-
+    <!-- What is about to be played, and the one thing this screen is for. -->
     <template #actions>
-      <button type="button" class="primary" @click="start">{{ t.setup.start }}</button>
-      <button v-if="matches.history.length > 0" type="button" class="chip" @click="router.push(PATHS.history)">
-        {{ t.setup.history }}
-      </button>
-      <button type="button" class="chip" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
-      <button type="button" class="chip" @click="router.push(PATHS.camera)">{{ t.capture.title }}</button>
+      <span class="setup-summary">
+        <span class="setup-summary-game">{{ summary }}</span>
+        <span class="setup-summary-who">{{ who }}</span>
+      </span>
+      <button type="button" class="btn-primary btn-lg" @click="start">{{ t.setup.start }}</button>
     </template>
   </ScreenShell>
 </template>

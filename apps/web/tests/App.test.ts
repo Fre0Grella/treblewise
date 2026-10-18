@@ -44,10 +44,11 @@ describe('the app', () => {
     await press(/^create$/i);
 
     // …and a guest, who does not.
-    await press(/\+ guest/i);
+    await press(/^guest$/i);
     await press(/add for this match/i);
 
-    expect(screen.getByText(/marco/i)).toBeDefined();
+    // In the line-up (the bottom bar names him too).
+    expect(screen.getByText('Marco', { selector: '.lineup-name' })).toBeDefined();
     expect(usePlayersStore().profiles.map((profile) => profile.id)).toEqual(['marco']);
 
     await press(/start match/i);

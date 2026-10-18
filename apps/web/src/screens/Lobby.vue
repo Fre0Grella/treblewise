@@ -9,10 +9,11 @@
   the phone) opens the lobby, every screen comes back here, and the pairing
   only ends when you leave the lobby and say so.
 
-  Laid out like a console game's lobby (issue #7): the menu in the bottom left,
-  the entry you are on named large in the top left with a line on what it
-  does, and its picture filling the right. On a phone the menu takes the whole
-  screen and the picture sits behind it, faint. One entry is always the
+  Laid out like a console game's lobby (issues #7 and #20): the menu on the
+  left in big rows, the selected one solid beige; on the right the entry you
+  are on named large, with a line on what it does (and, for a match to resume,
+  where it stands) over its picture, faint. On a phone the menu takes the
+  whole screen and the picture sits behind it. One entry is always the
   selected one (by pointer, focus or the arrow keys), and the menu is a list of
   real buttons, so a screen reader and a keyboard get the same menu.
 -->
@@ -59,6 +60,23 @@ const phoneLive = computed(
     (lobby.pairState === 'connected' || lobby.pairState === 'connecting'),
 );
 const inProgress = computed(() => matches.match !== null && !matches.match.finished && matches.match.events.length > 0);
+
+/** The match to resume, as it stands: who has what left, and who throws. */
+const standing = computed(() => {
+  const snapshot = matches.snapshot;
+  if (!inProgress.value || !snapshot || !snapshot.current) return null;
+  const leg = snapshot.legs.at(-1);
+  return {
+    players: snapshot.config.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      left: snapshot.current!.playerId === player.id ? snapshot.current!.remaining : (leg?.remaining[player.id] ?? snapshot.config.startScore),
+      throwing: snapshot.current!.playerId === player.id,
+    })),
+    legs: snapshot.config.players.map((player) => snapshot.legsWon[player.id] ?? 0).join('–'),
+    startScore: snapshot.config.startScore,
+  };
+});
 const battery = computed(() => shownBattery(lobby.phone));
 
 // The menu, first entry first: whatever matters most right now leads.
@@ -133,7 +151,7 @@ const keep = (index: number) => (element: unknown) => {
        tab): there is nothing to show until a mode is chosen. -->
   <ScreenShell v-if="!lobby.session" name="lobby" :title="t.lobby.title" :lead="t.lobby.noSession">
     <template #actions>
-      <button type="button" class="primary" @click="go(PATHS.start)">{{ t.lobby.chooseMode }}</button>
+      <button type="button" class="btn-primary" @click="go(PATHS.start)">{{ t.lobby.chooseMode }}</button>
     </template>
   </ScreenShell>
 
@@ -149,36 +167,44 @@ const keep = (index: number) => (element: unknown) => {
       <header class="lobby-head">
         <h1 class="lobby-kicker">{{ t.lobby.title }} · {{ paired ? t.lobby.pairedShort : t.lobby.soloShort }}</h1>
 
-        <div v-if="paired" :class="`coach ${phoneLive ? 'coach-ready' : 'coach-warn'}`" role="status">
-          <span class="coach-dot" aria-hidden="true" />
-          <span class="coach-message">
-            {{
-              phoneLive
-                ? lobby.pairState === 'connecting'
-                  ? t.lobby.phoneReconnecting
-                  : t.lobby.phoneConnected
-                : lobby.pairing
-                  ? t.lobby.phoneLost
-                  : t.lobby.phoneGoneAfterReload
-            }}
-          </span>
-          <span v-if="phoneLive && lobby.phone" class="coach-numbers">
+        <span v-if="paired" :class="['status', phoneLive ? 'status-ok' : 'status-bad']" role="status">
+          <span class="status-dot" aria-hidden="true" />
+          {{
+            phoneLive
+              ? lobby.pairState === 'connecting'
+                ? t.lobby.phoneReconnecting
+                : t.lobby.phoneConnected
+              : lobby.pairing
+                ? t.lobby.phoneLost
+                : t.lobby.phoneGoneAfterReload
+          }}
+          <template v-if="phoneLive && lobby.phone">
             <template v-if="battery !== undefined">
-              {{ fill(t.lobby.battery, { n: battery, charging: lobby.phone.charging ? t.lobby.charging : '' }) }}
+              · {{ fill(t.lobby.battery, { n: battery, charging: lobby.phone.charging ? t.lobby.charging : '' }) }}
             </template>
             {{ lobby.phone.width && lobby.phone.height ? ` · ${lobby.phone.width}×${lobby.phone.height}` : '' }}
-          </span>
-        </div>
-
-        <p class="lobby-title" aria-hidden="true">{{ selected.label }}</p>
-        <p id="lobby-desc" class="lobby-desc">{{ selected.description }}</p>
+          </template>
+        </span>
       </header>
 
-      <div v-if="confirmLeave" class="panel lobby-confirm" role="alertdialog" :aria-label="t.lobby.leaveTitle">
+      <!-- The entry you are on, named large, and what it does. -->
+      <div class="lobby-pick">
+        <p class="lobby-title" aria-hidden="true">{{ selected.label }}</p>
+        <p id="lobby-desc" class="lobby-desc">{{ selected.description }}</p>
+        <div v-if="selected.id === 'resume' && standing" class="lobby-standing">
+          <span v-for="player in standing.players" :key="player.id" class="lobby-standing-player">
+            <span class="lobby-standing-name">{{ player.name }}</span>
+            <span :class="['num', 'lobby-standing-left', { 'lobby-standing-throwing': player.throwing }]">{{ player.left }}</span>
+          </span>
+          <span class="lobby-standing-meta">{{ standing.startScore }} · {{ t.game.legs }} {{ standing.legs }}</span>
+        </div>
+      </div>
+
+      <div v-if="confirmLeave" class="lobby-confirm" role="alertdialog" :aria-label="t.lobby.leaveTitle">
         <p>{{ t.lobby.leavePaired }}</p>
         <div class="controls">
-          <button type="button" class="primary" @click="leaveLobby">{{ t.lobby.leaveConfirm }}</button>
-          <button type="button" class="chip" @click="confirmLeave = false">{{ t.lobby.stay }}</button>
+          <button type="button" class="btn-quiet" @click="confirmLeave = false">{{ t.lobby.stay }}</button>
+          <button type="button" class="btn-danger-solid" @click="leaveLobby">{{ t.lobby.leaveConfirm }}</button>
         </div>
       </div>
 

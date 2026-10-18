@@ -5,6 +5,10 @@ import App from './App.vue';
 import { setLocale } from './i18n/index.js';
 import { createAppRouter, redirectOldHash } from './router/index.js';
 import { loadStores, useLobbyStore, useMatchesStore, useSettingsStore } from './store/stores.js';
+// The display face, served with the app so it works offline and asks no
+// third party for anything (issue #20). Latin only, the two weights in use.
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
 import './styles/global.css';
 
 redirectOldHash();

@@ -18,6 +18,7 @@ import { computed, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PhotoStage from '../components/PhotoStage.vue';
+import Icon from '../components/ui/Icon.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
 import { fill, useStrings } from '../i18n/index.js';
@@ -194,7 +195,17 @@ const reviewDarts = computed(() =>
     :back-disabled="dirty"
     :on-back="backToList"
   >
-    <template v-if="open">
+    <template #tools>
+      <button type="button" :disabled="dirty || !neighbour(-1)" @click="openFrame(neighbour(-1)!)">
+        <Icon name="back" :size="18" />{{ t.review.previous }}
+      </button>
+      <button type="button" :disabled="dirty || !neighbour(1)" @click="openFrame(neighbour(1)!)">
+        {{ t.review.next }}<Icon name="forward" :size="18" />
+      </button>
+    </template>
+
+    <!-- The photograph large; its marks and what to do beside it. -->
+    <div v-if="open" class="review-detail">
       <PhotoStage
         v-if="urls.get(open.id)"
         class="review-board"
@@ -208,33 +219,39 @@ const reviewDarts = computed(() =>
         :on-tap="addMark"
       />
 
-      <div class="chip-row">
-        <button
-          v-for="(dart, index) in marks"
-          :key="index"
-          type="button"
-          class="chip"
-          :aria-label="fill(t.review.removeMark, { n: index + 1 })"
-          @click="removeMark(index)"
-        >
-          {{ index + 1 }} · {{ formatHit(dart.hit) }}{{ dart.by === 'model' ? ` (${t.review.byModel})` : '' }} ×
-        </button>
-      </div>
-      <p class="hint">{{ open.reviewed ? t.review.alreadyReviewed : t.review.notReviewed }}{{ dirty ? ` ${t.review.unsaved}` : '' }}</p>
+      <div class="review-side">
+        <ul class="review-marks">
+          <li v-for="(dart, index) in marks" :key="index" class="row">
+            <span class="review-mark-n">{{ index + 1 }}</span>
+            <span class="num review-mark-hit">{{ formatHit(dart.hit) }}</span>
+            <span v-if="dart.by === 'model'" class="tag review-mark-model">{{ t.review.byModel }}</span>
+            <button
+              type="button"
+              class="btn-quiet btn-icon"
+              :aria-label="fill(t.review.removeMark, { n: index + 1 })"
+              @click="removeMark(index)"
+            >
+              <Icon name="close" :size="18" />
+            </button>
+          </li>
+        </ul>
+        <p class="hint">{{ open.reviewed ? t.review.alreadyReviewed : t.review.notReviewed }}{{ dirty ? ` ${t.review.unsaved}` : '' }}</p>
 
-      <div class="controls">
-        <button type="button" class="primary" :disabled="marks.length === 0" @click="saveOpen">{{ t.review.looksRight }}</button>
-        <button type="button" class="chip" @click="confirm === 'delete' ? deleteOpen() : (confirm = 'delete')">
-          {{ confirm === 'delete' ? t.review.deleteConfirm : t.review.deletePhoto }}
-        </button>
-        <button v-if="dirty" type="button" class="chip" @click="marks = open.darts">{{ t.review.discard }}</button>
+        <div class="review-actions">
+          <button type="button" class="btn-primary btn-lg" :disabled="marks.length === 0" @click="saveOpen">{{ t.review.looksRight }}</button>
+          <div class="review-actions-more">
+            <button v-if="dirty" type="button" class="btn-quiet" @click="marks = open.darts">{{ t.review.discard }}</button>
+            <button
+              type="button"
+              :class="confirm === 'delete' ? 'btn-danger-solid' : 'btn-danger'"
+              @click="confirm === 'delete' ? deleteOpen() : (confirm = 'delete')"
+            >
+              {{ confirm === 'delete' ? t.review.deleteConfirm : t.review.deletePhoto }}
+            </button>
+          </div>
+        </div>
       </div>
-    </template>
-
-    <template #actions>
-      <button type="button" class="chip" :disabled="dirty || !neighbour(-1)" @click="openFrame(neighbour(-1)!)">{{ t.review.previous }}</button>
-      <button type="button" class="chip" :disabled="dirty || !neighbour(1)" @click="openFrame(neighbour(1)!)">{{ t.review.next }}</button>
-    </template>
+    </div>
   </ScreenShell>
 
   <ScreenShell
@@ -244,24 +261,32 @@ const reviewDarts = computed(() =>
     :lead="fill(t.review.subtitle, { n: frames.length, reviewed: frames.filter((frame) => frame.reviewed).length })"
     :back-label="t.review.back"
   >
-    <Segmented v-model="filter" :options="filterOptions" :label="t.review.filterLabel" />
+    <template #head>
+      <Segmented v-model="filter" :options="filterOptions" :label="t.review.filterLabel" />
+    </template>
 
-    <section v-if="models.length > 0" class="panel">
+    <section v-if="models.length > 0" class="review-models">
       <p class="hint">{{ t.review.modelHelp }}</p>
-      <div class="controls">
-        <button v-for="{ model, frames: count } in models" :key="model" type="button" class="chip" @click="deleteByModel(model)">
+      <div class="chip-row">
+        <button
+          v-for="{ model, frames: count } in models"
+          :key="model"
+          type="button"
+          :class="['btn-sm', confirm === `model:${model}` ? 'btn-danger-solid' : 'btn-danger']"
+          @click="deleteByModel(model)"
+        >
           {{ confirm === `model:${model}` ? fill(t.review.deleteModelConfirm, { n: count }) : fill(t.review.deleteModel, { model, n: count }) }}
         </button>
       </div>
     </section>
 
-    <p v-if="shown.length === 0" class="hint">{{ t.review.empty }}</p>
+    <p v-if="shown.length === 0" class="empty-note">{{ t.review.empty }}</p>
 
     <ul class="review-grid">
       <li v-for="frame in visible" :key="frame.id">
         <button type="button" class="review-card" @click="openFrame(frame)">
           <img :src="urls.get(frame.id)" alt="" loading="lazy" :style="{ aspectRatio: `${frame.width} / ${frame.height}` }" />
-          <span class="review-card-line">{{ frame.darts.map((dart) => formatHit(dart.hit)).join(', ') || t.review.noMarks }}</span>
+          <span class="review-card-line num">{{ frame.darts.map((dart) => formatHit(dart.hit)).join(' ') || t.review.noMarks }}</span>
           <span class="review-card-tags">
             {{ frame.source === 'game' ? t.review.fromGame : t.review.fromLab }}{{ hasModelMarks(frame) ? ` · ${t.review.byModel}` : ''
             }}{{ frame.reviewed ? ` · ${t.review.reviewedTag}` : '' }}
@@ -270,10 +295,14 @@ const reviewDarts = computed(() =>
       </li>
     </ul>
 
-    <div v-if="pages > 1" class="controls">
-      <button type="button" class="chip" :disabled="current === 0" @click="page = current - 1">{{ t.review.previous }}</button>
+    <div v-if="pages > 1" class="review-pages">
+      <button type="button" class="btn-quiet" :disabled="current === 0" @click="page = current - 1">
+        <Icon name="back" :size="18" />{{ t.review.previous }}
+      </button>
       <span class="hint">{{ fill(t.review.page, { n: current + 1, of: pages }) }}</span>
-      <button type="button" class="chip" :disabled="current >= pages - 1" @click="page = current + 1">{{ t.review.next }}</button>
+      <button type="button" class="btn-quiet" :disabled="current >= pages - 1" @click="page = current + 1">
+        {{ t.review.next }}<Icon name="forward" :size="18" />
+      </button>
     </div>
   </ScreenShell>
 </template>
