@@ -15,6 +15,7 @@ import { WORDMARK_BULL, WORDMARK_GREEN, WORDMARK_INK, WORDMARK_RED, WORDMARK_VIE
 
 const t = useStrings();
 const bull = WORDMARK_BULL;
+const [, , width, height] = WORDMARK_VIEWBOX.split(' ').map(Number);
 const cut = `${useId().replace(/[^a-zA-Z0-9-]/g, '')}-cut`;
 </script>
 
@@ -22,7 +23,7 @@ const cut = `${useId().replace(/[^a-zA-Z0-9-]/g, '')}-cut`;
   <svg class="wordmark" :viewBox="WORDMARK_VIEWBOX" role="img" :aria-label="t.app.name">
     <defs>
       <mask :id="cut">
-        <rect width="100%" height="100%" fill="white" />
+        <rect :width="width" :height="height" fill="white" />
         <circle :cx="bull.cx" :cy="bull.cy" :r="bull.cut" fill="black" />
       </mask>
     </defs>
