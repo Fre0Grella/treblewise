@@ -295,7 +295,9 @@ h2 {
 /* ---------- the app ---------- */
 
 /* Every page, then the footer: a page fills the window above it, so a short
-   page puts the footer at the bottom and a long one pushes it further down. */
+   page puts the footer at the bottom and a long one pushes it further down.
+   A page that fills the window grows into .app-page (flex: 1), never to the
+   window's own height, which would push the footer just out of sight. */
 .app {
   position: relative;
   display: flex;
@@ -760,19 +762,32 @@ input:focus-visible {
 
 /* ---------- the match (issue #15) ---------- */
 
-/* The whole window: the top bar, then players | the visit | the visits. */
+/* The window above the footer: the top bar, then players | the visit | the
+   visits. */
 .game {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  flex: 1 0 auto;
   padding: 0 var(--space-4) var(--space-4);
 }
 
+/* From 900px wide the match is exactly that tall, so its columns scroll
+   inside it: the app is held to the window, the footer included. */
 @media (min-width: 900px) {
+  .app:has(> .app-page > .game) {
+    height: 100%;
+    min-height: 680px;
+  }
+
+  .app:has(> .app-page > .game) > .app-page {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
   .game {
-    height: 100dvh;
-    min-height: 620px;
+    flex: 1 1 0;
+    min-height: 0;
     padding: 0 var(--space-6) var(--space-5);
   }
 }
@@ -4048,13 +4063,13 @@ input:focus-visible {
    the screen and the picture sits behind it, faint; from 900px wide the menu
    moves to the bottom left, the selected entry is named large in the top left,
    and its picture fills the right. */
-/* The whole window, on a phone too: the menu sits at the bottom of the screen
-   and the footer below it, a scroll away. */
+/* The window above the footer, on a phone too: the menu sits at the bottom,
+   just over the footer. */
 .lobby {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  flex: 1 0 auto;
   overflow: hidden;
 }
 
@@ -4287,10 +4302,6 @@ input:focus-visible {
 }
 
 @media (min-width: 900px) {
-  .lobby {
-    min-height: 100vh;
-  }
-
   /* Faint behind the right half: it reaches in under the title, which stays
      readable on top. */
   .lobby-art {
@@ -4311,7 +4322,6 @@ input:focus-visible {
   /* The menu on the left, the entry you are on large on the right. */
   .lobby-content {
     max-width: 1440px;
-    min-height: 100vh;
     display: grid;
     grid-template-columns: minmax(340px, 520px) minmax(0, 1fr);
     grid-template-rows: auto 1fr;
