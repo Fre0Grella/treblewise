@@ -22,62 +22,95 @@ const config = {
   ],
 };
 
-function startMatch() {
+function startMatch(overrides: Partial<typeof config> = {}) {
   const settings = useSettingsStore();
   settings.settings = { ...settings.settings, entryMode: 'keypad', soundsEnabled: false, callerEnabled: false };
-  useMatchesStore().start(config);
+  useMatchesStore().start({ ...config, ...overrides });
 }
 
+const visits = () => screen.getByRole('region', { name: /visits/i });
+
 describe('the game screen', () => {
-  it('keeps the visit just thrown correctable, third dart included, until the next player throws', async () => {
+  it('corrects any dart of the leg from the visits, not only the last visit', async () => {
     await renderAt('/game', () => {
       startMatch();
       const matches = useMatchesStore();
       matches.throwDart(hit(20, 'treble'));
       matches.throwDart(hit(20, 'treble'));
       matches.throwDart(hit(5, 'single')); // meant to be a treble 20
+      matches.throwDart(hit(19, 'single')); // Bob has started his visit
     });
 
-    const last = screen.getByText(/ann, just thrown/i).closest('.throw-strip') as HTMLElement;
-    await fireEvent.click(within(last).getByRole('button', { name: 'S5' }));
+    await fireEvent.click(within(visits()).getByRole('button', { name: /^S5\b/ }));
+    expect(screen.getByRole('heading', { name: /correcting/i })).toBeDefined();
     await fireEvent.click(screen.getByRole('radio', { name: /treble/i }));
     await fireEvent.click(screen.getByRole('button', { name: '20' }));
 
     const snapshot = useMatchesStore().snapshot!;
     expect(snapshot.legs[0]!.remaining.ann).toBe(501 - 180);
+    // Still Bob's visit: a correction enters no dart.
     expect(snapshot.current!.playerId).toBe('bob');
-
-    // Bob throws: Ann's visit is no longer offered.
-    await fireEvent.click(screen.getByRole('button', { name: '19' }));
-    expect(screen.queryByText(/ann, just thrown/i)).toBeNull();
+    // The corrected dart says what it was.
+    expect(within(visits()).getByText('S5').tagName).toBe('S');
   });
 
-  it('lets the names be left out of the calls, while the caller is on', async () => {
-    await renderAt('/game', startMatch);
-    expect(screen.queryByRole('button', { name: /names/i })).toBeNull();
+  it('names each dart in notation on its card, and writes the checkout into the waiting slots', async () => {
+    await renderAt('/game', () => startMatch({ startScore: 101, players: [{ id: 'ann', name: 'Ann' }] }));
+    await fireEvent.click(screen.getByRole('button', { name: '1' }));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Caller off' }));
-    await fireEvent.click(screen.getByRole('button', { name: 'Names on' }));
+    const slots = document.querySelector('.dart-slots') as HTMLElement;
+    expect(within(slots).getByRole('button', { name: /^1: S1\b/ })).toBeDefined();
+    // 100 left with two darts: T20, then D20.
+    expect(within(slots).getAllByText(/aim/i)).toHaveLength(2);
+    expect(within(slots).getByText('T20')).toBeDefined();
+    expect(within(slots).getByText('D20')).toBeDefined();
+    expect(screen.getByRole('heading', { name: /ann, you require 100/i })).toBeDefined();
+  });
+
+  it('keeps the caller, the names and the sounds behind the speaker, the names only while the caller is on', async () => {
+    await renderAt('/game', () => startMatch());
+    await fireEvent.click(screen.getByRole('button', { name: /the caller and sounds/i }));
+    expect(screen.queryByRole('switch', { name: /say the names/i })).toBeNull();
+
+    await fireEvent.click(screen.getByRole('switch', { name: /^caller/i }));
+    expect(useSettingsStore().settings.callerEnabled).toBe(true);
+    const names = screen.getByRole('switch', { name: /say the names/i });
+    await fireEvent.click(names);
     expect(useSettingsStore().settings.callNames).toBe(false);
-    expect(screen.getByRole('button', { name: 'Names off' }).getAttribute('aria-pressed')).toBe('false');
+    expect(names.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('switches between the board and the keypad with one button', async () => {
+    await renderAt('/game', () => startMatch());
+    expect(screen.getByRole('button', { name: '20' })).toBeDefined();
+    await fireEvent.click(screen.getByRole('button', { name: /switch to tapping the board/i }));
+    expect(useSettingsStore().settings.entryMode).toBe('board');
+    expect(screen.getByRole('button', { name: 'Dartboard' })).toBeDefined();
+    expect(screen.getByRole('button', { name: /switch to the keypad/i })).toBeDefined();
   });
 
   it('scores a visit from the keypad and passes the throw', async () => {
-    await renderAt('/game', startMatch);
+    await renderAt('/game', () => startMatch());
     for (let n = 0; n < 3; n += 1) {
       await fireEvent.click(screen.getByRole('radio', { name: /treble/i }));
       await fireEvent.click(screen.getByRole('button', { name: '20' }));
     }
     expect(screen.getAllByText('321')).toHaveLength(1);
-    expect(screen.getByText(/bob to throw/i)).toBeDefined();
+    expect(screen.getByRole('heading', { name: /bob to throw/i })).toBeDefined();
+    // The title carries the score in legs.
+    expect(screen.getByText('501 · First to 1 leg · 0–0')).toBeDefined();
+  });
+
+  it('hides the visits, and brings them back from the edge', async () => {
+    await renderAt('/game', () => startMatch());
+    await fireEvent.click(screen.getByRole('button', { name: /hide the visits/i }));
+    expect(screen.queryByRole('region', { name: /visits/i })).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: /show the visits/i }));
+    expect(visits()).toBeDefined();
   });
 
   it('offers a new match once it is won', async () => {
-    const { router } = await renderAt('/game', () => {
-      const settings = useSettingsStore();
-      settings.settings = { ...settings.settings, entryMode: 'keypad', soundsEnabled: false, callerEnabled: false };
-      useMatchesStore().start({ ...config, startScore: 301, players: [{ id: 'ann', name: 'Ann' }] });
-    });
+    const { router } = await renderAt('/game', () => startMatch({ startScore: 301, players: [{ id: 'ann', name: 'Ann' }] }));
     const matches = useMatchesStore();
     // 180, then 60 + 33 + a double 14: 301 checked out.
     for (const dart of [hit(20, 'treble'), hit(20, 'treble'), hit(20, 'treble'), hit(20, 'treble'), hit(11, 'treble'), hit(14, 'double')]) {
@@ -88,16 +121,16 @@ describe('the game screen', () => {
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/setup'));
   });
 
-  it('has fullscreen in the corner, not among the controls, and the footer under the match', async () => {
+  it('has fullscreen in the corner, not in the match, and the footer under the match', async () => {
     const { restore } = fakeFullscreen();
     try {
-      await renderAt('/game', startMatch);
+      await renderAt('/game', () => startMatch());
       const button = screen.getByRole('button', { name: 'Fullscreen' });
       expect(button.classList).toContain('app-fullscreen');
-      expect(button.closest('.screen-game')).toBeNull();
+      expect(button.closest('.game')).toBeNull();
       const footer = screen.getByRole('contentinfo');
-      const controls = screen.getByRole('button', { name: 'Caller off' }).closest('.controls')!;
-      expect(controls.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      const match = document.querySelector('.game')!;
+      expect(match.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     } finally {
       restore();
     }

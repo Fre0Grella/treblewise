@@ -204,6 +204,12 @@ describe('the autoscorer in a game', () => {
     return view;
   }
 
+  /** The report opened the way the game screen opens it ("Mark on the photo"). */
+  async function openTheReport() {
+    game.openReport();
+    await nextTick();
+  }
+
   /** The darts of the match change, as they do when one is entered. */
   async function enter(next: TestDart[]) {
     darts.value = next;
@@ -294,7 +300,7 @@ describe('the autoscorer in a game', () => {
     await settle(DARTS, 'a hand');
 
     expect(hooks.paused()).toBe(false);
-    await fireEvent.click(screen.getByRole('button', { name: /report/i }));
+    await openTheReport();
     expect(screen.getByRole('dialog')).toBeDefined();
     expect(shown.at(-1)).toBe(withTheDart.jpeg);
     expect(hooks.paused()).toBe(true);
@@ -326,7 +332,7 @@ describe('the autoscorer in a game', () => {
     const now = photo('three darts');
     hooks.capture = now;
     await enter([...two, { id: 'c', hit: T20, source: 'manual' }]);
-    await fireEvent.click(screen.getByRole('button', { name: /mark where they landed/i }));
+    await openTheReport();
     expect(shown.at(-1)).toBe(now.jpeg);
   });
 
@@ -342,7 +348,7 @@ describe('the autoscorer in a game', () => {
     await enter([...read, { id: 'c', hit: T20, source: 'manual' as const }]);
 
     // The keypad dart is left without a mark: nothing is kept.
-    await fireEvent.click(screen.getByRole('button', { name: /mark where they landed/i }));
+    await openTheReport();
     await fireEvent.click(screen.getByRole('button', { name: /save report/i }));
     await tick();
     expect(saved.frames).toHaveLength(0);
@@ -350,7 +356,7 @@ describe('the autoscorer in a game', () => {
 
     // Without the keypad dart, every dart is marked: kept, the model's marks as the model's.
     await enter(read);
-    await fireEvent.click(screen.getByRole('button', { name: /report/i }));
+    await openTheReport();
     await fireEvent.click(screen.getByRole('button', { name: /save report/i }));
     await tick();
     expect(saved.frames).toHaveLength(1);
@@ -369,9 +375,9 @@ describe('the autoscorer in a game', () => {
     ];
     await start(read, { autoscore: false, keepPhotos: false });
     await settle();
-    expect(screen.getByRole('button', { name: /keep photos.*: off/i })).toBeDefined();
+    expect(screen.getByRole('switch', { name: /keep photos/i }).getAttribute('aria-checked')).toBe('false');
 
-    await fireEvent.click(screen.getByRole('button', { name: /report/i }));
+    await openTheReport();
     expect(screen.getByText(/the score follows the marker\.$/i)).toBeDefined();
     await fireEvent.click(screen.getByRole('button', { name: /save report/i }));
     await tick();
@@ -390,7 +396,7 @@ describe('the autoscorer in a game', () => {
       { autoscore: false },
     );
     await settle();
-    await fireEvent.click(screen.getByRole('button', { name: /report/i }));
+    await openTheReport();
     await fireEvent.click(screen.getByRole('button', { name: /save report/i }));
     await tick();
     expect(saved.frames).toHaveLength(1);
