@@ -220,6 +220,10 @@ export const en = {
     throwsFirst: 'Throws first',
     legsOf: 'Legs: {n} of {of}',
     legAverage: 'Leg avg',
+    /** The leg average against the usual one (issue #28). */
+    aboveUsual: '▲ +{n}',
+    belowUsual: '▼ −{n}',
+    nearUsual: '≈ usual',
     usual: 'average',
     barsEmpty: 'Each visit of the leg stands here as a bar.',
     corrected: 'corrected',
