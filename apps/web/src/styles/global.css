@@ -2172,18 +2172,6 @@ input:focus-visible {
   padding: var(--space-4);
 }
 
-.overlay-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  align-items: center;
-  padding: var(--space-5);
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
 /* ---------- a leg or a match won (components/ResultCard.vue) ---------- */
 
 .result {
@@ -2692,14 +2680,6 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.overlay-card-wide {
-  width: min(100%, 560px);
-  max-height: 92vh;
-  overflow-y: auto;
-  text-align: left;
-  align-items: stretch;
 }
 
 /* A photograph to put marks on, and its lens. The lens floats above the
