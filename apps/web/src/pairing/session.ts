@@ -25,6 +25,17 @@ export interface ControlMessage {
   charging?: boolean;
   width?: number;
   height?: number;
+  sending?: SendingStats;
+}
+
+/**
+ * The video as the phone sends it: its size, and what is holding it back
+ * (`qualityLimitationReason`: 'none', 'cpu', 'bandwidth' or 'other').
+ */
+export interface SendingStats {
+  width: number;
+  height: number;
+  limitation: string;
 }
 
 /** How long to wait for a browser to finish listing its local addresses. */
@@ -64,6 +75,23 @@ function preferHardwareCodecs(transceiver: RTCRtpTransceiver): void {
 
   const chosen = [h264, vp8, rtx].filter((codec): codec is RTCRtpCodec => codec !== undefined);
   if (chosen.length > 0) transceiver.setCodecPreferences(chosen);
+}
+
+/**
+ * Keep the video's size, and give up frames instead when there is not enough
+ * to go round. By default the encoder shrinks the picture when the phone is
+ * busy (it is, photographing the board for the laptop) or the Wi-Fi is (it
+ * is, carrying that photograph), and every change of size made the same still
+ * board look different to the laptop. A board needs detail; a few frames a
+ * second are plenty to see it go still.
+ */
+async function holdResolution(track: MediaStreamTrack, sender: RTCRtpSender): Promise<void> {
+  if ('contentHint' in track) track.contentHint = 'detail';
+  try {
+    await sender.setParameters({ ...sender.getParameters(), degradationPreference: 'maintain-resolution' });
+  } catch {
+    // Not every browser lets it be set; the content hint asks for the same.
+  }
 }
 
 async function waitForIce(pc: RTCPeerConnection): Promise<void> {
@@ -260,6 +288,18 @@ export class PairingConnection {
     });
   }
 
+  /** The phone's side: the video as it is being sent, or null before it is. */
+  async sendingStats(): Promise<SendingStats | null> {
+    const stats = await this.pc.getStats();
+    for (const report of stats.values()) {
+      const r = report as { type: string; kind?: string; frameWidth?: number; frameHeight?: number; qualityLimitationReason?: string };
+      if (r.type === 'outbound-rtp' && r.kind === 'video' && r.frameWidth) {
+        return { width: r.frameWidth, height: r.frameHeight ?? 0, limitation: r.qualityLimitationReason ?? 'none' };
+      }
+    }
+    return null;
+  }
+
   close(): void {
     this.send({ type: 'bye' });
     this.photoChannel?.close();
@@ -335,15 +375,19 @@ export class PairingConnection {
     if (!track) throw new Error('the camera gave us no video to send');
 
     const transceiver = connection.pc.getTransceivers().find((t) => t.receiver.track.kind === 'video');
+    let sender: RTCRtpSender;
     if (transceiver) {
       await transceiver.sender.replaceTrack(track);
       transceiver.direction = 'sendonly';
+      sender = transceiver.sender;
     } else {
-      connection.pc.addTrack(track, stream);
+      sender = connection.pc.addTrack(track, stream);
     }
 
     const answer = await connection.pc.createAnswer();
     await connection.pc.setLocalDescription(answer);
+    // Once negotiated: before that a sender has no parameters to change.
+    await holdResolution(track, sender);
     await waitForIce(connection.pc);
 
     const answerSdp = connection.pc.localDescription?.sdp ?? answer.sdp ?? '';

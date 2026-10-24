@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Calibration } from '@/storage/types.js';
 import { createBoardWatcher, type BoardWatcherDeps } from '@/vision/boardWatcher.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
+import { THUMB_VERSION } from '@/vision/imageStats.js';
 import type { Detection, Detector, ModelManifest } from '@/vision/detector.js';
 
 const WIDTH = 640;
@@ -26,6 +27,7 @@ const calibration: Calibration = {
   height: HEIGHT,
   ts: 0,
   reference: Array.from(EMPTY),
+  referenceVersion: THUMB_VERSION,
 };
 
 const photo = (width = WIDTH): GrabbedFrame => ({ jpeg: new Blob(['x']), width, height: HEIGHT });
@@ -181,6 +183,47 @@ describe('settle', () => {
     watcher.holds([at(0, 0), at(1, 1)]);
     watcher.visitResumed();
     expect(watcher.state().pullingOut).toBe(false);
+  });
+});
+
+describe('still', () => {
+  it('ends the pull-out phase at a still empty board, between settles', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), DARTS, null).kind).toBe('pull-out');
+    expect(watcher.still(DARTS)).toBe(false);
+    expect(watcher.state().pullingOut).toBe(true);
+    expect(watcher.still(EMPTY)).toBe(true);
+    expect(watcher.state().pullingOut).toBe(false);
+    // The darts are forgotten: the next settle is a throw beside nothing.
+    expect(watcher.settle(photo(), DARTS, null).kind).toBe('throw');
+  });
+
+  it('changes nothing outside the pull-out phase: an early pull is for a settle to see', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    watcher.holds([at(0, 0)]);
+    expect(watcher.still(EMPTY)).toBe(false);
+    expect(watcher.settle(photo(), EMPTY, null)).toEqual({ kind: 'early-pull', missed: 2 });
+  });
+
+  it('cannot judge without a calibration', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.still(EMPTY)).toBe(false);
+    expect(watcher.state().pullingOut).toBe(true);
+  });
+});
+
+describe('a calibration reference made the old way', () => {
+  it('is not compared with, so it cannot make an empty board look full', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    const { referenceVersion: _, ...old } = calibration;
+    watcher.setCalibration(old);
+    expect(watcher.settle(photo(), EMPTY, null).kind).toBe('throw');
   });
 });
 

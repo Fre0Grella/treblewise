@@ -23,6 +23,19 @@ import { SettleDetector } from '../vision/settle.js';
 
 /** How long after a photograph from the phone arrives the video is still watched for movement. */
 const REMOTE_PHOTO_GUARD_MS = 250;
+/**
+ * How long the board must look moved, on still frames, before the coach says
+ * so. A hand pulling darts covers half the board, and a video dipping in
+ * quality for a moment changes it everywhere; neither is a moved camera.
+ */
+const MOVED_HOLD_MS = 2000;
+/** How often a still board is handed to `onStill`. */
+const STILL_EVERY_MS = 500;
+
+const withoutMoved = (quality: ImageQuality): ImageQuality =>
+  quality.issues.includes('moved')
+    ? { ...quality, issues: quality.issues.filter((issue) => issue !== 'moved'), changedSpots: [] }
+    : quality;
 
 export interface CameraOptions {
   active: MaybeRefOrGetter<boolean>;
@@ -49,6 +62,12 @@ export interface CameraOptions {
   paused?: MaybeRefOrGetter<boolean>;
   /** Called once per throw, with the frame taken when the board went still and the thumbnail that showed it still. */
   onSettle?: (frame: GrabbedFrame, thumbnail: Uint8Array, before: Uint8Array | null) => void;
+  /**
+   * Called a couple of times a second with the board's thumbnail while nothing
+   * moves and no photograph is being taken: a settle is one look at the board,
+   * and this is another, for a question one look can get wrong.
+   */
+  onStill?: (thumbnail: Uint8Array) => void;
   /** Off: watch for motion without photographing anything. */
   captureOnSettle?: MaybeRefOrGetter<boolean>;
   /** The board's rectangle in the image. The capture trigger looks only inside it (see settle.ts). */
@@ -121,6 +140,10 @@ export function useCamera(options: CameraOptions) {
       let cancelled = false;
       let frame = 0;
       let lastReadoutAt = 0;
+      let lastStillAt = 0;
+      /** Since when the still board has looked moved, or null. */
+      let movedSince: number | null = null;
+      let videoSize = '';
       let wakeLock: WakeLockSentinel | null = null;
       let own: MediaStream | null = null;
 
@@ -167,6 +190,17 @@ export function useCamera(options: CameraOptions) {
               height.value = element.videoHeight;
             }
 
+            // Said, not acted on: the photograph does not change, so this is
+            // for telling whether the video's size changing goes with a
+            // misbehaving board.
+            if (photoSize && element.videoWidth !== 0) {
+              const size = `${element.videoWidth}×${element.videoHeight}`;
+              if (size !== videoSize) {
+                if (videoSize) console.info(`[treblewise] the video from the phone is now ${size} (was ${videoSize})`);
+                videoSize = size;
+              }
+            }
+
             if (toValue(options.paused)) return;
 
             const thumb = thumbnail(element, toVideo(element, region()));
@@ -182,8 +216,23 @@ export function useCamera(options: CameraOptions) {
               lastReadoutAt = now;
               motion.value = detector.motion;
               change.value = detector.change;
-              quality.value = assessImage(thumb, THUMB_SIZE, THUMB_SIZE, toValue(options.reference) ?? null);
+              // A moving picture is not judged: a hand or a dart in flight is not the camera.
+              if (state !== 'moving') {
+                const assessed = assessImage(thumb, THUMB_SIZE, THUMB_SIZE, toValue(options.reference) ?? null);
+                movedSince = assessed.issues.includes('moved') ? (movedSince ?? now) : null;
+                quality.value = movedSince !== null && now - movedSince >= MOVED_HOLD_MS ? assessed : withoutMoved(assessed);
+              }
             }
+
+            if (state === 'idle' && !capturing && now - lastStillAt > STILL_EVERY_MS) {
+              lastStillAt = now;
+              options.onStill?.(thumb);
+            }
+
+            // Settled while the last photograph is still on its way: this one
+            // would be lost, and with it the dart that settled. Take it back,
+            // so it settles again once that photograph is in.
+            if (state === 'settled' && captureOnSettle && capturing) detector.rewind();
 
             if (state === 'settled' && captureOnSettle && !capturing) {
               capturing = true;

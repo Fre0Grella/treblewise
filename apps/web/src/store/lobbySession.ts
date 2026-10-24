@@ -8,7 +8,7 @@
  * lobby told, so going to camera setup and back never drops the phone.
  */
 
-import type { PairState, PairingConnection } from '../pairing/session.js';
+import type { PairState, PairingConnection, SendingStats } from '../pairing/session.js';
 
 import type { Slice } from './slice.js';
 
@@ -21,6 +21,8 @@ export interface PhoneStatus {
   charging?: boolean;
   width?: number;
   height?: number;
+  /** The video as it is sent: a size that keeps changing is what spoils the board's thumbnails. */
+  sending?: SendingStats;
 }
 
 export interface LobbySessionState {
@@ -109,8 +111,12 @@ export function createLobbySession(state: Slice<LobbySessionState>): LobbySessio
         if (!current()) return;
         if (message.type === 'bye') state.set({ pairState: 'closed' });
         if (message.type === 'status') {
-          const { battery, charging, width, height } = message;
-          state.set({ phone: { battery, charging, width, height } });
+          const { battery, charging, width, height, sending } = message;
+          const was = state.get().phone?.sending;
+          if (sending && (sending.width !== was?.width || sending.limitation !== was?.limitation)) {
+            console.info(`[treblewise] the phone is sending ${sending.width}×${sending.height}, held back by: ${sending.limitation}`);
+          }
+          state.set({ phone: { battery, charging, width, height, sending } });
         }
       };
     },

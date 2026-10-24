@@ -27,7 +27,7 @@ import type { Calibration } from '../storage/types.js';
 import { newDarts } from './autoscore.js';
 import { THUMB_SIZE, type GrabbedFrame } from './camera.js';
 import { loadDetector, loadManifest, type Detection, type Detector, type ModelManifest } from './detector.js';
-import { boardLooksEmpty } from './imageStats.js';
+import { boardLooksEmpty, referenceOf } from './imageStats.js';
 
 /** A dart in the board. Entered by number, it has no position. */
 export interface BoardDart {
@@ -125,6 +125,14 @@ export interface BoardWatcher {
    * thumbnail; `before` the board's thumbnail just before the change that settled.
    */
   settle(photo: GrabbedFrame, thumbnail: Uint8Array | undefined, before: Uint8Array | null | undefined): Settled;
+  /**
+   * The board's thumbnail while it is still, between settles. During the
+   * pull-out phase an empty board ends it, as a settle would (true when it
+   * did). The settle after the darts come out is one look, and if a dip in the
+   * video spoilt it the phase used to last until someone pressed "Darts out",
+   * with the next visit's darts landing unread meanwhile.
+   */
+  still(thumbnail: Uint8Array): boolean;
   /**
    * Reads a photograph for a new dart beside the darts in the board. One runs
    * at a time; of those asked for meanwhile, only the newest waits, and it is
@@ -236,7 +244,7 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
   return {
     setCalibration(next) {
       calibration = next;
-      calibrationReference = next?.reference ? Uint8Array.from(next.reference) : null;
+      calibrationReference = referenceOf(next);
     },
 
     holds(next) {
@@ -298,6 +306,13 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
         if (empty) return { kind: 'empty' };
       }
       return { kind: 'throw' };
+    },
+
+    still(thumbnail) {
+      if (!current.pullingOut || !calibration || !looksEmpty(thumbnail)) return false;
+      clearBoard();
+      update({ pullingOut: false });
+      return true;
     },
 
     read(photo, options = {}) {

@@ -11,6 +11,7 @@ import { createAppRouter } from '@/router/index.js';
 import type { CapturedFrame } from '@/storage/frames.js';
 import { useLobbyStore, useSettingsStore } from '@/store/stores.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
+import { THUMB_VERSION } from '@/vision/imageStats.js';
 import GameCamera from '@/components/GameCamera.vue';
 
 const WIDTH = 640;
@@ -194,7 +195,7 @@ describe('the autoscorer in a game', () => {
       keepFrames: true,
       keepPhotos,
       autoscoreGames: autoscore,
-      calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY) },
+      calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY), referenceVersion: THUMB_VERSION },
     };
     useLobbyStore().mode = 'solo';
     const router = createAppRouter(createMemoryHistory());

@@ -8,6 +8,7 @@ import { loadSettings } from '@/storage/db.js';
 import { useLobbyStore, useSettingsStore } from '@/store/stores.js';
 import { renderAt } from '../support/renderAt.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
+import { THUMB_VERSION } from '@/vision/imageStats.js';
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -137,7 +138,7 @@ describe('the capture lab saves only what a person confirmed', () => {
       settings.settings = {
         ...settings.settings,
         keepPhotos: true,
-        calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY) },
+        calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY), referenceVersion: THUMB_VERSION },
       };
     });
     await press(/start camera/i);

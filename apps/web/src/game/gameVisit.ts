@@ -84,6 +84,8 @@ export interface GameVisit {
    * pull-out phase, end the visit early, or be read for a new dart.
    */
   settle(photo: GrabbedFrame, thumbnail: Uint8Array | undefined, before: Uint8Array | null | undefined): void;
+  /** The board's thumbnail while it is still: an empty one can end the pull-out phase, as a settle can. */
+  still(thumbnail: Uint8Array): void;
   /** A photograph taken because a dart was entered by hand: the visit photo is now this one. */
   photographed(photo: GrabbedFrame): void;
   /** "Darts out" pressed: the visit just thrown is closed, and the turn passes. */
@@ -310,6 +312,11 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): Gam
       } else if (seen.kind === 'throw') {
         void read(photo);
       }
+    },
+
+    still(thumbnail) {
+      if (!autoscoring || watcher.state().model.status !== 'ready' || !canThrow()) return;
+      if (watcher.still(thumbnail)) turnPassed();
     },
 
     photographed(photo) {

@@ -36,6 +36,8 @@ export interface Calibration {
    * between "a dart landed" and "this calibration is now a lie".
    */
   reference?: number[];
+  /** How `reference` was made (vision/camera.ts THUMB_VERSION); missing on the first kind. */
+  referenceVersion?: number;
 }
 
 export interface LabelledDart {

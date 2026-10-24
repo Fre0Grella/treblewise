@@ -125,6 +125,16 @@ Alongside the video track, an `RTCDataChannel` carries control messages: the
 phone reports its battery and resolution, and says goodbye when it stops. Scores
 never travel over it — the hub owns the game.
 
+The phone asks its encoder to **keep the video's size** and drop frames instead
+(`contentHint = 'detail'`, `degradationPreference: 'maintain-resolution'`). By
+default a busy phone or a busy Wi-Fi shrinks the picture, and both are busy
+every time a photograph crosses: the same still board then looked different to
+the laptop, which read as a dart landing, the camera moving, and the darts never
+coming out. The hub also makes its board thumbnails by averaging, so they come
+out the same whatever size the video arrives at. The phone reports the size it
+sends and what is holding it back; the capture lab shows it, and the hub's
+console logs every change.
+
 ## What was measured
 
 End to end in a browser, hub and camera in one page, fake camera device:

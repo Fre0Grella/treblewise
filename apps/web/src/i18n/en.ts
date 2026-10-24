@@ -629,6 +629,8 @@ export const en = {
     ready: 'Board found — you can play.',
     notCalibrated: 'Tap "Find the board" and drag the four markers onto it.',
     moved: 'The camera has moved. Find the board again.',
+    oldReference:
+      'Find the board again: this calibration was saved before an update, and until it is redone the app cannot tell when the camera moves.',
     offFrame: 'The board is cut off — turn the camera',
     offCentre: 'Board is off to one side — point a little',
     tooSmall: 'The board looks small. Move the camera closer, about a metre away.',
@@ -692,6 +694,8 @@ export const en = {
     looking: 'Looking for the dart…',
     backToMatch: 'Back to the match',
     photoTime: 'last photo {ms} ms, {dropped} dropped',
+    videoSent: 'phone sends {size}',
+    videoHeldBack: 'phone sends {size}, held back by {reason}',
     foldAbout: 'How this works',
     foldMarking: 'How to mark',
     foldAutoscorer: 'About the autoscorer',

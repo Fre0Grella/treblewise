@@ -5,6 +5,7 @@ import type { ThrowOptions } from '@/store/matches.js';
 import type { Calibration } from '@/storage/types.js';
 import { createBoardWatcher } from '@/vision/boardWatcher.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
+import { THUMB_VERSION } from '@/vision/imageStats.js';
 import type { Detection, ModelManifest } from '@/vision/detector.js';
 import { createGameVisit, type GameVisitSignal } from '@/game/gameVisit.js';
 
@@ -30,6 +31,7 @@ const calibration: Calibration = {
   height: HEIGHT,
   ts: 0,
   reference: Array.from(EMPTY),
+  referenceVersion: THUMB_VERSION,
 };
 
 const config = {
@@ -209,6 +211,37 @@ describe('the autoscorer in a game visit', () => {
     model.found = [{ x: 30, y: -50 }];
     await settle(DARTS);
     expect(thrown).toHaveLength(1);
+  });
+
+  it('passes the turn on a still empty board when the settle after the pull did not see it empty', async () => {
+    const { gameVisit, model, thrown, signals, match, settle } = await setup();
+    match([dart('a'), dart('b'), dart('c')]);
+    await settle(DARTS); // the one look after the pull, spoilt: the darts still seen
+    gameVisit.still(DARTS);
+    expect(signals).toEqual([]);
+
+    gameVisit.still(EMPTY);
+    expect(signals).toEqual(['turn-passed']);
+    expect(gameVisit.state().position).toBe('closed');
+
+    // The next visit's first dart is read, not lost to a pull-out phase that never ended.
+    model.found = [{ x: 30, y: -50 }];
+    await settle(DARTS);
+    expect(thrown).toHaveLength(1);
+  });
+
+  it('ignores a still board outside the pull-out phase, or with the autoscorer not scoring', async () => {
+    const scoring = await setup();
+    scoring.match([dart('a')]);
+    scoring.gameVisit.still(EMPTY);
+    expect(scoring.signals).toEqual([]);
+    expect(scoring.thrown).toEqual([]);
+
+    const notScoring = await setup({ autoscoring: false });
+    notScoring.match([dart('a'), dart('b'), dart('c')]);
+    notScoring.signals.length = 0;
+    notScoring.gameVisit.still(EMPTY);
+    expect(notScoring.signals).toEqual([]);
   });
 
   it('ends a visit pulled out early: the darts not thrown missed the board', async () => {

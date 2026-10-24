@@ -51,6 +51,7 @@ function fakeWatcher() {
     visitResumed: () => told.push('visit resumed'),
     dartsOut: () => told.push('darts out'),
     settle: () => shows,
+    still: () => false,
     read: (read) =>
       new Promise((done) => {
         reads.push({
