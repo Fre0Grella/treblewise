@@ -26,6 +26,7 @@ import { putFrame, readDart } from '../storage/frames.js';
 import { useLobbyStore, useSettingsStore } from '../store/stores.js';
 import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { squareAround } from '../vision/crop.js';
+import { referenceOf } from '../vision/imageStats.js';
 import BoardOverlay from './BoardOverlay.vue';
 import PhoneBattery from './PhoneBattery.vue';
 import PhotoStage from './PhotoStage.vue';
@@ -111,7 +112,8 @@ const region = computed(() => {
   const c = calibration.value;
   return c && c.width > 0 ? boardRegion(c.toImage, { width: c.width, height: c.height }) : null;
 });
-const reference = computed(() => (calibration.value?.reference ? Uint8Array.from(calibration.value.reference) : null));
+const reference = computed(() => referenceOf(calibration.value));
+const oldReference = computed(() => !!calibration.value?.reference && reference.value === null);
 
 const camera = useCamera({
   active: keepFrames,
@@ -119,6 +121,7 @@ const camera = useCamera({
     latest.value = raw(frame);
     props.gameVisit.settle(frame, thumbnail, before);
   },
+  onStill: (thumbnail) => props.gameVisit.still(thumbnail),
   captureOnSettle: true,
   region,
   reference,
@@ -335,6 +338,7 @@ const attachVideo = (element: unknown) => {
       <SetupCoach
         v-if="keepFrames && camera.ready.value"
         :calibrated="calibration !== null"
+        :old-reference="oldReference"
         :view="view"
         :quality="camera.quality.value"
       />

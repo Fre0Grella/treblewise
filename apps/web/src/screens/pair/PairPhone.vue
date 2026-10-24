@@ -18,7 +18,7 @@ import QrScanner from '../../components/QrScanner.vue';
 import ScreenShell from '../../components/ui/ScreenShell.vue';
 import { useStrings } from '../../i18n/index.js';
 import { PATHS } from '../../router/paths.js';
-import { PairingConnection } from '../../pairing/session.js';
+import { PairingConnection, type SendingStats } from '../../pairing/session.js';
 import { formatShortCode } from '../../pairing/shortcode.js';
 import { grabJpeg, keepAwake, startCamera, stopCamera } from '../../vision/camera.js';
 
@@ -97,17 +97,30 @@ watch(step, (now, _, onCleanup) => {
     if (cancelled) return;
     if (info) battery.value = Math.round(info.level * 100);
     const track = stream?.getVideoTracks()[0]?.getSettings();
+    sent = (await connection?.sendingStats().catch(() => null)) ?? null;
+    if (cancelled) return;
     connection?.send({
       type: 'status',
       ...(info ? { battery: Math.round(info.level * 100), charging: info.charging } : {}),
       ...(track?.width ? { width: track.width, height: track.height } : {}),
+      ...(sent ? { sending: sent } : {}),
     });
+  };
+  // The video as it is sent is said again whenever it changes, so the laptop
+  // can tell a board misbehaving from the video shrinking under it.
+  let sent: SendingStats | null = null;
+  const watchSending = async () => {
+    const now = await connection?.sendingStats().catch(() => null);
+    if (cancelled || !now) return;
+    if (now.width !== sent?.width || now.height !== sent?.height || now.limitation !== sent?.limitation) void report();
   };
   void report();
   const timer = setInterval(() => void report(), 30_000);
+  const sending = setInterval(() => void watchSending(), 2_000);
   onCleanup(() => {
     cancelled = true;
     clearInterval(timer);
+    clearInterval(sending);
   });
 });
 

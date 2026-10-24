@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assessImage, boardLooksEmpty, driftFraction } from '@/vision/imageStats.js';
+import { assessImage, averageDown, boardLooksEmpty, driftFraction, referenceOf, THUMB_VERSION } from '@/vision/imageStats.js';
 
 const W = 64;
 const H = 64;
@@ -62,6 +62,11 @@ describe('driftFraction', () => {
     const after = before.map((_, index) => before[(index + 2 * W + 2) % before.length]!);
     expect(driftFraction(after, before, W, H)).toBeGreaterThan(0.35);
     expect(assessImage(after, W, H, before).issues).toContain('moved');
+  });
+
+  it('is not fooled by the light changing: a phone adjusting its exposure is not a moved camera', () => {
+    expect(driftFraction(wires(150), wires(120), W, H)).toBe(0);
+    expect(assessImage(wires(90), W, H, wires(120)).issues).not.toContain('moved');
   });
 
   it('ignores a reference of the wrong size instead of guessing', () => {
@@ -133,11 +138,53 @@ describe('where a warning points', () => {
   });
 
   it('marks the parts of the board that differ from the calibration photograph', () => {
-    // The left half changed a lot: past the "moved" threshold.
-    const now = wires().map((value, index) => (index % W < 32 ? value + 60 : value));
+    // The left half shows something else: past the "moved" threshold.
+    const elsewhere = wires().map((_, index) => {
+      const x = index % W;
+      const y = Math.floor(index / W);
+      return x % 4 === 2 || y % 4 === 2 ? 190 : 120;
+    });
+    const now = wires().map((value, index) => (index % W < 32 ? elsewhere[index]! : value));
     const quality = assessImage(now, W, H, wires());
     expect(quality.issues).toContain('moved');
     expect(quality.changedSpots.every((spot) => spot.x < 0.5)).toBe(true);
     expect(quality.changedSpots.length).toBe(32); // half of the 8×8 blocks
+  });
+});
+
+describe('averageDown', () => {
+  /** RGBA of a `side`×`side` picture, grey `level(x, y)`. */
+  const rgba = (side: number, level: (x: number, y: number) => number) => {
+    const out = new Uint8ClampedArray(side * side * 4);
+    for (let y = 0; y < side; y += 1) {
+      for (let x = 0; x < side; x += 1) out.fill(level(x, y), (y * side + x) * 4, (y * side + x) * 4 + 3);
+    }
+    return out;
+  };
+
+  it('makes each pixel the mean of its patch', () => {
+    const quarter = averageDown(rgba(4, (x, y) => (x < 2 && y < 2 ? 200 : 40)), 2, 2);
+    expect(Array.from(quarter)).toEqual([200, 40, 40, 40]);
+  });
+
+  it('gives the same thumbnail of wires finer than a pixel, wherever they fall', () => {
+    // One sample per pixel would see a wire or the gap beside it, depending on
+    // where the board happened to land: the same board, two thumbnails.
+    const once = averageDown(rgba(256, (x) => (x % 2 === 0 ? 220 : 30)), 64, 4);
+    const shifted = averageDown(rgba(256, (x) => (x % 2 === 1 ? 220 : 30)), 64, 4);
+    expect(Array.from(once)).toEqual(Array.from(shifted));
+    expect(once.every((value) => Math.abs(value - 125) <= 1)).toBe(true);
+  });
+});
+
+describe('referenceOf', () => {
+  it('takes a reference made the way thumbnails are made now', () => {
+    expect(Array.from(referenceOf({ reference: [1, 2], referenceVersion: THUMB_VERSION })!)).toEqual([1, 2]);
+  });
+
+  it('refuses one made the old way, or none at all', () => {
+    expect(referenceOf({ reference: [1, 2] })).toBeNull();
+    expect(referenceOf({})).toBeNull();
+    expect(referenceOf(null)).toBeNull();
   });
 });

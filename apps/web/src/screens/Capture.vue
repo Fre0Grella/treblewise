@@ -42,6 +42,7 @@ import { calibrate, countFrames, deleteFrame, exportFrames, listFrames } from '.
 import { useLobbyStore, useSettingsStore } from '../store/stores.js';
 import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { cropFrameStyle, squareAround } from '../vision/crop.js';
+import { referenceOf, THUMB_VERSION } from '../vision/imageStats.js';
 
 type Mode = 'setup' | 'calibrate' | 'try';
 
@@ -105,6 +106,8 @@ const confirmDelete = ref(false);
 const busy = ref(false);
 
 const paired = computed(() => lobby.mode === 'paired' && lobby.remoteStream !== null);
+/** The video as the phone sends it: when its size keeps changing, so do the board's thumbnails. */
+const sending = computed(() => (paired.value ? (lobby.phone?.sending ?? null) : null));
 
 async function refreshStats() {
   stats.value = await countFrames();
@@ -121,7 +124,8 @@ const region = computed(() => {
   const c = calibration.value;
   return c && c.width > 0 ? boardRegion(c.toImage, { width: c.width, height: c.height }) : null;
 });
-const reference = computed(() => (calibration.value?.reference ? Uint8Array.from(calibration.value.reference) : null));
+const reference = computed(() => referenceOf(calibration.value));
+const oldReference = computed(() => !!calibration.value?.reference && reference.value === null);
 
 const camera = useCamera({
   active: () => cameraOn.value || paired.value,
@@ -187,7 +191,11 @@ function finishCalibration(save: boolean) {
   if (save && made) {
     const boardRect = boardRegion(made.toImage, { width: made.width, height: made.height });
     const thumb = camera.sampleThumbnail(boardRect);
-    settings.saveCalibration({ ...made, ts: Date.now(), ...(thumb ? { reference: Array.from(thumb) } : {}) });
+    settings.saveCalibration({
+      ...made,
+      ts: Date.now(),
+      ...(thumb ? { reference: Array.from(thumb), referenceVersion: THUMB_VERSION } : {}),
+    });
   }
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
   frozen.value = null;
@@ -402,6 +410,7 @@ const storageLine = computed(() => {
         <SetupCoach
           v-if="(cameraOn || paired) && mode !== 'try'"
           :calibrated="mode === 'calibrate' ? draftCalibration !== null : calibration !== null"
+          :old-reference="mode !== 'calibrate' && oldReference"
           :view="view"
           :quality="camera.quality.value"
           show-numbers
@@ -426,6 +435,15 @@ const storageLine = computed(() => {
           {{ camera.change.value.toFixed(1) }} · {{ fill(t.capture.photoSize, { size: `${camera.width.value}×${camera.height.value}` }) }}
           <template v-if="camera.photo.value">
             · {{ fill(t.capture.photoTime, { ms: camera.photo.value.ms, dropped: camera.photo.value.dropped }) }}
+          </template>
+          <template v-if="sending">
+            ·
+            {{
+              fill(sending.limitation === 'none' ? t.capture.videoSent : t.capture.videoHeldBack, {
+                size: `${sending.width}×${sending.height}`,
+                reason: sending.limitation,
+              })
+            }}
           </template>
         </p>
         <PhoneBattery />

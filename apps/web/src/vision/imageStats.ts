@@ -36,6 +36,50 @@ export interface ImageQuality {
   changedSpots: Spot[];
 }
 
+/**
+ * Bumped whenever thumbnails are made differently (vision/camera.ts): a
+ * calibration reference made the old way is not compared with new thumbnails
+ * (see `referenceOf`).
+ */
+export const THUMB_VERSION = 2;
+
+/**
+ * Greyscale `size`×`size`, each pixel the mean luma of a `factor`×`factor`
+ * patch of `rgba`, which is (size·factor)² pixels.
+ */
+export function averageDown(rgba: ArrayLike<number>, size: number, factor: number): Uint8Array {
+  const wide = size * factor;
+  const out = new Uint8Array(size * size);
+  const area = factor * factor;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let total = 0;
+      for (let dy = 0; dy < factor; dy += 1) {
+        let p = ((y * factor + dy) * wide + x * factor) * 4;
+        for (let dx = 0; dx < factor; dx += 1, p += 4) {
+          // Rec. 601 luma, the usual cheap approximation.
+          total += rgba[p]! * 77 + rgba[p + 1]! * 150 + rgba[p + 2]! * 29;
+        }
+      }
+      out[y * size + x] = Math.round(total / area / 256);
+    }
+  }
+  return out;
+}
+
+/**
+ * The calibration's board thumbnail, if it was made the way thumbnails are
+ * made now: one made the old way differs from every new thumbnail, and would
+ * say the camera had moved and the board was never empty.
+ */
+export function referenceOf(
+  calibration: { reference?: number[]; referenceVersion?: number } | null | undefined,
+): Uint8Array | null {
+  return calibration?.reference && calibration.referenceVersion === THUMB_VERSION
+    ? Uint8Array.from(calibration.reference)
+    : null;
+}
+
 export const IMAGE_THRESHOLDS = {
   dark: 45,
   washedOut: 215,
@@ -84,7 +128,19 @@ export function driftFraction(
   return blocks === 0 ? 0 : changed.length / blocks;
 }
 
-/** The blocks that differ from the reference by more than `blockDifference`, and how many there are in all. */
+/** The mean of `current − reference`: how much lighter (or darker) the whole picture got. */
+function brightnessShift(current: Uint8Array, reference: Uint8Array): number {
+  let shift = 0;
+  for (let i = 0; i < current.length; i += 1) shift += current[i]! - reference[i]!;
+  return current.length === 0 ? 0 : shift / current.length;
+}
+
+/**
+ * The blocks that differ from the reference by more than `blockDifference`,
+ * and how many there are in all. The overall brightness is taken out first:
+ * a phone adjusting its exposure, or a lamp going on, moves every block the
+ * same way, and it is not the camera moving.
+ */
 function changedBlocks(
   current: Uint8Array,
   reference: Uint8Array,
@@ -95,6 +151,7 @@ function changedBlocks(
   const changed: Spot[] = [];
   if (current.length !== reference.length || current.length !== width * height) return { changed, blocks: 0 };
 
+  const shift = brightnessShift(current, reference);
   let blocks = 0;
 
   for (let by = 0; by < height; by += blockSize) {
@@ -104,7 +161,7 @@ function changedBlocks(
       for (let y = by; y < Math.min(by + blockSize, height); y += 1) {
         for (let x = bx; x < Math.min(bx + blockSize, width); x += 1) {
           const i = y * width + x;
-          total += Math.abs(current[i]! - reference[i]!);
+          total += Math.abs(current[i]! - reference[i]! - shift);
           count += 1;
         }
       }
@@ -186,9 +243,7 @@ export function boardLooksEmpty(
 ): boolean {
   if (current.length !== reference.length || current.length !== width * height) return false;
 
-  let shift = 0;
-  for (let i = 0; i < current.length; i += 1) shift += current[i]! - reference[i]!;
-  shift /= current.length;
+  const shift = brightnessShift(current, reference);
 
   const step = Math.max(1, Math.floor(blockSize / 2));
   for (let by = 0; by + 1 < height; by += step) {

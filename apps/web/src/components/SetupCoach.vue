@@ -19,6 +19,8 @@ import { IMAGE_THRESHOLDS, type ImageIssueCode, type ImageQuality } from '../vis
 const props = withDefaults(
   defineProps<{
     calibrated: boolean;
+    /** The calibration's board thumbnail was made the old way and is not compared with (imageStats `referenceOf`). */
+    oldReference?: boolean;
     view: ViewAssessment | null;
     quality: ImageQuality | null;
     /** Shows the underlying numbers, for setting thresholds on a real board. */
@@ -28,7 +30,7 @@ const props = withDefaults(
     /** Offers "Show where" for a warning the preview can point at. */
     onShowWhere?: () => void;
   }>(),
-  { showNumbers: false, imageOnly: false, onShowWhere: undefined },
+  { oldReference: false, showNumbers: false, imageOnly: false, onShowWhere: undefined },
 );
 
 const t = useStrings();
@@ -45,6 +47,7 @@ const said = computed<Said | null>(() => {
   if (imageIssue('moved')) return { status: 'error', message: t.coach.moved, image: 'moved' };
   const off = viewIssue('offFrame');
   if (off) return { status: 'error', message: `${t.coach.offFrame} ${direction(off.direction)}` };
+  if (!props.imageOnly && props.calibrated && props.oldReference) return { status: 'warn', message: t.coach.oldReference };
   if (imageIssue('dark')) return { status: 'warn', message: t.coach.dark, image: 'dark' };
   if (imageIssue('glare')) return { status: 'warn', message: t.coach.glare, image: 'glare' };
   if (imageIssue('blurry')) return { status: 'warn', message: t.coach.blurry, image: 'blurry' };

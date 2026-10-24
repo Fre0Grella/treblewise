@@ -6,6 +6,8 @@
  * file is the part that only a browser can do.
  */
 
+import { averageDown } from './imageStats.js';
+
 /**
  * 1080p, and no more. 4K was tried, for sharper dart tips, and made phones
  * crawl: every frame of the video is read into a thumbnail to notice the board
@@ -77,6 +79,17 @@ export interface Region {
 export const THUMB_SIZE = 64;
 
 /**
+ * How many samples a thumbnail pixel averages along each side. Drawn straight
+ * to 64×64, each pixel was one bilinear sample of the board, so which wire it
+ * landed on depended on how many pixels the board had: the video from a paired
+ * phone changes size with the bandwidth, and every time it did the same still
+ * board came out as a different thumbnail. It looked like a dart landing, the
+ * camera having moved, and the darts never coming out. Averaging a 4×4 patch
+ * per pixel gives the same thumbnail whatever the board's size.
+ */
+const SUPERSAMPLE = 4;
+
+/**
  * A small greyscale thumbnail of the current frame, for the capture trigger.
  *
  * `region` crops to the board before scaling, which is the whole point: a dart
@@ -90,30 +103,24 @@ export function thumbnail(
 ): Uint8Array | null {
   if (video.readyState < 2 || video.videoWidth === 0) return null;
 
-  const width = size;
-  const height = size;
+  const wide = size * SUPERSAMPLE;
 
   if (!thumbCanvas) thumbCanvas = document.createElement('canvas');
-  thumbCanvas.width = width;
-  thumbCanvas.height = height;
+  thumbCanvas.width = wide;
+  thumbCanvas.height = wide;
 
   const context = thumbCanvas.getContext('2d', { willReadFrequently: true });
   if (!context) return null;
+  // Set after the size: resizing a canvas resets its context.
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
 
   if (region && region.width > 8 && region.height > 8) {
-    context.drawImage(video, region.x, region.y, region.width, region.height, 0, 0, width, height);
+    context.drawImage(video, region.x, region.y, region.width, region.height, 0, 0, wide, wide);
   } else {
-    context.drawImage(video, 0, 0, width, height);
+    context.drawImage(video, 0, 0, wide, wide);
   }
-  const { data } = context.getImageData(0, 0, width, height);
-
-  const grey = new Uint8Array(width * height);
-  for (let i = 0; i < grey.length; i += 1) {
-    const p = i * 4;
-    // Rec. 601 luma, the usual cheap approximation.
-    grey[i] = (data[p]! * 77 + data[p + 1]! * 150 + data[p + 2]! * 29) >> 8;
-  }
-  return grey;
+  return averageDown(context.getImageData(0, 0, wide, wide).data, size, SUPERSAMPLE);
 }
 
 export interface GrabbedFrame {

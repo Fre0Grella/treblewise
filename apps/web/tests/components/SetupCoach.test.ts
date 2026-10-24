@@ -33,6 +33,11 @@ describe('the setup coach', () => {
     expect(showWhere).toHaveBeenCalledOnce();
   });
 
+  it('asks for the board to be found again when the calibration was saved before thumbnails changed', () => {
+    render(SetupCoach, { props: { calibrated: true, oldReference: true, view: null, quality: quality({}) } });
+    expect(screen.getByText(/saved before an update/i)).toBeDefined();
+  });
+
   it('beside another coach line, says nothing while the picture is fine', () => {
     const { container } = render(SetupCoach, { props: { calibrated: true, view: null, quality: quality({}), imageOnly: true } });
     expect(container.textContent).toBe('');
