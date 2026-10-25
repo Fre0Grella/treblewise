@@ -16,6 +16,11 @@ describe('the camera brightness control', () => {
     expect(screen.getByText('−1.5')).toBeDefined();
   });
 
+  it('says so when the camera has not taken the setting', () => {
+    render(ExposureControl, { props: { range: { ...range, value: 0 }, value: -1 } });
+    expect(screen.getByText(/camera says it is still at 0/i)).toBeDefined();
+  });
+
   it("goes back to the camera's own choice", async () => {
     const { emitted } = render(ExposureControl, { props: { range, value: -1 } });
     await fireEvent.click(screen.getByRole('button', { name: /reset/i }));

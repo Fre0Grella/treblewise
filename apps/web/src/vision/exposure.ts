@@ -39,23 +39,33 @@ export function clampExposure(value: number, range: Pick<Exposure, 'min' | 'max'
 }
 
 /**
- * Sets the camera's exposure compensation; false if it cannot be set. The
+ * Sets the camera's exposure compensation; false if it did not take. The
  * constraints the camera was opened with are kept: applying only the new one
  * would drop the asked-for 1080p, and the camera would go back to its default
  * size, which breaks the calibration.
+ *
+ * A camera can pass over a set of `advanced` constraints it cannot meet
+ * without saying so, so the setting is read back rather than trusted.
  */
 export async function setExposure(track: MediaStreamTrack | null | undefined, value: number): Promise<boolean> {
   const range = exposureOf(track);
   if (!track || !range) return false;
+  const target = clampExposure(value, range);
+  const landed = () => Math.abs((exposureOf(track)?.value ?? Number.NaN) - target) <= range.step / 2;
+  const apply = async (set: Record<string, unknown>) => {
+    try {
+      await track.applyConstraints({ ...track.getConstraints(), advanced: [set as MediaTrackConstraintSet] });
+    } catch {
+      // Refused: said by the read-back.
+    }
+    return landed();
+  };
+
   const capabilities = track.getCapabilities() as MediaTrackCapabilities & WithExposure;
   // Compensation applies to the camera's own automatic exposure, which some
-  // cameras have to be told to keep running.
-  const mode = capabilities.exposureMode?.includes('continuous') ? { exposureMode: 'continuous' } : {};
-  const wanted = { ...mode, exposureCompensation: clampExposure(value, range) };
-  try {
-    await track.applyConstraints({ ...track.getConstraints(), advanced: [wanted as MediaTrackConstraintSet] });
+  // cameras have to be told to keep running; others refuse the two together.
+  if (capabilities.exposureMode?.includes('continuous') && (await apply({ exposureMode: 'continuous', exposureCompensation: target }))) {
     return true;
-  } catch {
-    return false;
   }
+  return apply({ exposureCompensation: target });
 }

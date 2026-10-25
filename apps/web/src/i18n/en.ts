@@ -701,6 +701,7 @@ export const en = {
     exposureTitle: 'Camera brightness',
     exposureValue: '{value} stops',
     exposureReset: 'Reset',
+    exposureIgnored: 'The camera says it is still at {value}: it has not taken this setting.',
     exposureHelp:
       "If lights on the board blow part of it out to white (marked in yellow on the preview), turn this down until the yellow goes, or nearly. 0 is the camera's own choice. Find the board again afterwards: the board looks different at a new brightness.",
     exposureUnsupported: "This camera does not let the app change its brightness (an iPhone, or most laptop cameras). Glare that is there when you find the board is not warned about.",
