@@ -3,6 +3,7 @@
 import { useRouter } from 'vue-router';
 
 import Dartboard from '../components/Dartboard.vue';
+import InstallEntry from '../components/InstallEntry.vue';
 import Wordmark from '../components/Wordmark.vue';
 import { useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
@@ -41,6 +42,7 @@ const lobby = useLobbyStore();
             {{ t.landing.cta }}
           </button>
           <button type="button" class="btn-quiet" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
+          <InstallEntry />
         </div>
       </header>
 

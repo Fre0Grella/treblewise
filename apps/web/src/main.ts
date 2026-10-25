@@ -3,6 +3,8 @@ import { createApp } from 'vue';
 
 import App from './App.vue';
 import { setLocale } from './i18n/index.js';
+import { listenForInstall } from './pwa/install.js';
+import { startUpdates } from './pwa/update.js';
 import { createAppRouter, redirectOldHash } from './router/index.js';
 import { loadStores, useLobbyStore, useMatchesStore, useSettingsStore } from './store/stores.js';
 // The display face, served with the app so it works offline and asks no
@@ -12,6 +14,8 @@ import '@fontsource/barlow-condensed/latin-700.css';
 import './styles/global.css';
 
 redirectOldHash();
+// Before anything awaits: the browser's offer to install comes once, early.
+listenForInstall();
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -42,3 +46,6 @@ if (import.meta.env.DEV) {
 }
 
 app.mount('#root');
+
+// The service worker exists in the built app only (vite.config.ts).
+if (import.meta.env.PROD) void startUpdates();
