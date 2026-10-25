@@ -151,7 +151,16 @@ export interface BoardWatcher {
 
 const DEFAULT_DEPS: BoardWatcherDeps = { loadManifest, loadDetector, newDarts };
 
-export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): BoardWatcher {
+export interface BoardWatcherOptions {
+  /**
+   * How many darts a visit holds: three in a match. Throwing for the bull
+   * leaves a dart per player in the board (game/bullReader.ts).
+   */
+  dartsPerVisit?: number;
+}
+
+export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, options: BoardWatcherOptions = {}): BoardWatcher {
+  const perVisit = options.dartsPerVisit ?? DARTS_PER_VISIT;
   let calibration: Calibration | null = null;
   let calibrationReference: Uint8Array | null = null;
   /** The empty board as it looked just before this visit's first dart. */
@@ -293,13 +302,13 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS): Board
         return { kind: 'emptied' };
       }
 
-      if (darts.length > 0 && darts.length < DARTS_PER_VISIT && empty) {
-        const missed = DARTS_PER_VISIT - darts.length;
+      if (darts.length > 0 && darts.length < perVisit && empty) {
+        const missed = perVisit - darts.length;
         clearBoard();
         pulledEarly = true;
         return { kind: 'early-pull', missed };
       }
-      if (darts.length >= DARTS_PER_VISIT || darts.some((dart) => !dart.board)) return { kind: 'unreadable' };
+      if (darts.length >= perVisit || darts.some((dart) => !dart.board)) return { kind: 'unreadable' };
       if (darts.length === 0) {
         // Seconds old and in today's light: a better empty board than the calibration's.
         if (before) recentEmpty = before;

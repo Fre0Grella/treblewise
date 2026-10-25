@@ -52,6 +52,9 @@ describe('the app', () => {
     expect(usePlayersStore().profiles.map((profile) => profile.id)).toEqual(['marco']);
 
     await press(/start match/i);
+    // Two players: who throws first is decided first (issue #41), here by hand, as they are.
+    await press(/set the order/i);
+    await press(/start match/i);
     await at('/game');
     expect(await screen.findAllByText('501')).toHaveLength(2);
 

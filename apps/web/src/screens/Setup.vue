@@ -16,6 +16,7 @@ import type { InOutRule, PlayerConfig, X01Config } from '@treblewise/core';
 import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 
+import WhoStarts from '../components/order/WhoStarts.vue';
 import Icon from '../components/ui/Icon.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
@@ -48,6 +49,13 @@ const managing = ref(false);
  * "Marco G." could never be typed at all.
  */
 const drafts = ref<Record<string, string>>({});
+
+/**
+ * Deciding who throws first (issue #41): after "Start match" with two or more
+ * players, before the match starts. `order` is the lineup as decided.
+ */
+const ordering = ref(false);
+const order = shallowRef<PlayerConfig[] | null>(null);
 
 const startScore = ref(501);
 const inRule = ref<InOutRule>('straight');
@@ -100,8 +108,17 @@ function commitDraft(id: string) {
 }
 
 function start() {
+  if (!ordering.value && lineup.value.length > 1) {
+    order.value = null;
+    ordering.value = true;
+    return;
+  }
+  begin(ordering.value && order.value ? order.value : lineup.value);
+}
+
+function begin(inOrder: PlayerConfig[]) {
   // Playing alone without making a profile first is allowed: it is a guest.
-  const named = lineup.value.map((player) => {
+  const named = inOrder.map((player) => {
     const profile = players.profiles.find((candidate) => candidate.id === player.id);
     return profile ? { ...player, name: profile.name } : player;
   });
@@ -129,26 +146,29 @@ function removeGuest(id: string) {
 
 /** The bottom bar: what is about to be played, and by whom. */
 const summary = computed(() => t.setup.summary(startScore.value, inRule.value, outRule.value, legsPerSet.value, setsToWin.value));
-const who = computed(() =>
-  lineup.value.length === 0
-    ? t.setup.nobodyYet
-    : `${lineup.value.map((player) => player.name).join(' v ')} · ${fill(t.setup.firstThrower, { name: lineup.value[0]!.name })}`,
-);
+/** In throwing order, once that is decided. */
+const who = computed(() => {
+  const shown = ordering.value && order.value ? order.value : lineup.value;
+  return shown.length === 0 ? t.setup.nobodyYet : shown.map((player) => player.name).join(' v ');
+});
 
 </script>
 
 <template>
   <ScreenShell
     name="setup"
-    :title="t.setup.title"
-    :back-label="lobby.session ? t.lobby.back : t.capture.back"
+    :title="ordering ? t.setup.order.title : t.setup.title"
+    :back-label="ordering ? t.setup.order.back : lobby.session ? t.lobby.back : t.capture.back"
+    :on-back="ordering ? () => (ordering = false) : undefined"
   >
     <template #tools>
       <button v-if="matches.history.length > 0" type="button" @click="router.push(PATHS.history)">{{ t.setup.history }}</button>
       <button type="button" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
     </template>
 
-    <div class="setup-grid">
+    <WhoStarts v-if="ordering" v-model:order="order" :players="lineup" />
+
+    <div v-else class="setup-grid">
       <!-- Who plays, in throwing order. -->
       <section class="panel" :aria-label="t.setup.players">
         <div class="section-head">
@@ -158,11 +178,9 @@ const who = computed(() =>
 
         <p v-if="lineup.length === 0" class="empty-note">{{ t.setup.noPlayers }}</p>
         <ol v-else class="lineup">
-          <li v-for="(player, index) in lineup" :key="player.id" class="row">
-            <span class="num lineup-order">{{ index + 1 }}</span>
+          <li v-for="player in lineup" :key="player.id" class="row">
             <span class="lineup-name">{{ player.name }}</span>
             <span v-if="player.temporary" class="tag">{{ t.setup.guest }}</span>
-            <span v-if="index === 0 && lineup.length > 1" class="tag tag-on">{{ t.setup.throwsFirst }}</span>
             <button
               type="button"
               class="btn-quiet btn-icon"
@@ -295,7 +313,7 @@ const who = computed(() =>
         <span class="setup-summary-game">{{ summary }}</span>
         <span class="setup-summary-who">{{ who }}</span>
       </span>
-      <button type="button" class="btn-primary btn-lg" @click="start">{{ t.setup.start }}</button>
+      <button type="button" class="btn-primary btn-lg" :disabled="ordering && !order" @click="start">{{ t.setup.start }}</button>
     </template>
   </ScreenShell>
 </template>
