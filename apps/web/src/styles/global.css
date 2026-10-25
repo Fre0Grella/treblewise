@@ -4029,6 +4029,32 @@ input:focus-visible {
   align-self: center;
 }
 
+.bull-camera {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bull-camera-video {
+  width: 120px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--photo-bg);
+}
+
+.bull-camera-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.bull-camera-said {
+  margin: 0;
+  font-weight: 600;
+}
+
 .spin-wheel-face {
   transition-property: transform;
   transition-timing-function: cubic-bezier(0.15, 0.7, 0.2, 1);

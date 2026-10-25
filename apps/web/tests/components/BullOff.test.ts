@@ -1,9 +1,19 @@
 import { BULL, hit, type Hit, type PlayerConfig, type Point } from '@treblewise/core';
 import { fireEvent, render, screen } from '@testing-library/vue';
-import { describe, expect, it } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 
 import BullOff from '@/components/order/BullOff.vue';
+import type { Calibration } from '@/storage/types.js';
+import { useSettingsStore } from '@/store/stores.js';
+
+// A camera this browser can open, when a test says so.
+const camera = vi.hoisted(() => ({ supported: false }));
+vi.mock('@/vision/camera.js', async (original) => ({
+  ...(await original<typeof import('@/vision/camera.js')>()),
+  cameraSupported: () => camera.supported,
+}));
 
 const players: PlayerConfig[] = [
   { id: 'ann', name: 'Ann' },
@@ -27,7 +37,8 @@ function renderBullOff() {
   const order = ref<PlayerConfig[] | null>(null);
   render(BullOff, {
     props: { players, order: order.value, 'onUpdate:order': (now: PlayerConfig[] | null) => (order.value = now) },
-    global: { stubs: { Dartboard: Board } },
+    // The camera itself is the bull reader's tests' (tests/game/bullReader.test.ts).
+    global: { stubs: { Dartboard: Board, BullCamera: { template: '<p>camera</p>' } } },
   });
   return order;
 }
@@ -35,6 +46,9 @@ function renderBullOff() {
 const throwDart = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 
 describe('throwing for the bull', () => {
+  // No calibration in a fresh store: no camera, the darts are tapped in.
+  beforeEach(() => setActivePinia(createPinia()));
+
   it('takes a dart from each player in turn, and the closest throws first', async () => {
     const order = renderBullOff();
     expect(screen.getByText(/ann, throw at the bull/i)).toBeDefined();
@@ -64,5 +78,33 @@ describe('throwing for the bull', () => {
     await fireEvent.click(screen.getByRole('button', { name: /undo the last dart/i }));
     expect(order.value).toBeNull();
     expect(screen.getByText(/bob, throw at the bull/i)).toBeDefined();
+  });
+
+  it('offers the camera on a board that has been found, on to begin with when the autoscorer scores games', async () => {
+    camera.supported = true;
+    try {
+      const settings = useSettingsStore();
+      settings.settings = {
+        ...settings.settings,
+        calibration: { width: 640, height: 480 } as Calibration,
+        keepFrames: true,
+        autoscoreGames: true,
+      };
+      renderBullOff();
+      const watching = screen.getByRole('switch', { name: /read the darts with the camera/i });
+      expect(watching.getAttribute('aria-checked')).toBe('true');
+      expect(screen.getByText('camera')).toBeDefined();
+      // Thrown, not tapped: the camera reads it.
+      expect(screen.getByText(/^ann, throw at the bull\.$/i)).toBeDefined();
+    } finally {
+      camera.supported = false;
+    }
+  });
+
+  it('says to pull the darts out before the match, once it is decided', async () => {
+    renderBullOff();
+    await throwDart('near miss');
+    await throwDart('closer');
+    expect(screen.getByText(/pull the darts out before the first throw/i)).toBeDefined();
   });
 });
