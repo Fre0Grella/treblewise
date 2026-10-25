@@ -9,6 +9,9 @@ import type { Call } from '../caller/call.js';
  * "centottanta" are not the same shape, so a locale owns its whole sentence.
  */
 
+const ORDINAL_RULES = new Intl.PluralRules('en', { type: 'ordinal' });
+const ORDINAL_SUFFIX: Partial<Record<Intl.LDMLPluralRule, string>> = { one: 'st', two: 'nd', few: 'rd' };
+
 const UNITS = [
   'zero',
   'one',
@@ -184,6 +187,7 @@ export const en = {
       pullBeforeStart: 'Pull the darts out before the first throw of the match.',
       cameraSwitch: 'Read the darts with the camera',
       cameraNote: 'The darts stay in until it is decided. Tap the board to put a misread right.',
+      cameraNeedsBoard: 'The camera has not found the board yet: run Camera setup once, and it reads the darts here. Until then, tap where each one landed.',
       cameraStarting: 'Starting the camera…',
       cameraLoading: 'Loading the autoscorer…',
       cameraUnavailable: 'The autoscorer cannot run here: tap where each dart landed.',
@@ -197,6 +201,16 @@ export const en = {
       bullOff: 'off the board',
       bullDistance: '{mm} mm',
       bullUndo: 'Undo the last dart',
+      bullNow: 'Throwing now',
+      bullWaiting: 'To throw',
+      bullOut: 'Not in the tie',
+      bullInBull: 'In the bull',
+      bullInOuter: 'In the 25',
+      bullMissShort: 'Off',
+      /** A place in the order after the first: "2nd", "3rd". */
+      bullPlace: (place: number) => `${place}${ORDINAL_SUFFIX[ORDINAL_RULES.select(place)] ?? 'th'}`,
+      bullWhole: 'Show the whole board',
+      bullClose: 'Back to the darts',
       spin: 'Spin',
       spinning: 'Spinning…',
       spinAgain: 'Spin again',

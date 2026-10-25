@@ -3330,6 +3330,23 @@ input:focus-visible {
   transform: translateY(2px);
 }
 
+.mode-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: var(--bg-sunken);
+  color: var(--accent);
+  transition: background-color 150ms, color 150ms;
+}
+
+.mode-card:hover .mode-icon,
+.mode-card:focus-visible .mode-icon {
+  background: var(--action);
+  color: var(--action-ink);
+}
+
 .mode-go {
   margin-top: auto;
   display: flex;
@@ -4007,8 +4024,24 @@ input:focus-visible {
   gap: var(--space-4);
 }
 
-.who-starts h2 {
+.who-starts-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.who-starts-head h2 {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.who-starts-head h2 > svg {
+  flex: none;
+  color: var(--accent);
 }
 
 /* The page must not scroll under a finger dragging a player. */
@@ -4026,7 +4059,6 @@ input:focus-visible {
   cursor: grabbing;
 }
 
-.bull-off,
 .spin-wheel {
   display: flex;
   flex-direction: column;
@@ -4040,11 +4072,347 @@ input:focus-visible {
   font-weight: 600;
 }
 
-.bull-off-board,
 .spin-wheel-svg {
   width: 100%;
   max-width: 420px;
   align-self: center;
+}
+
+/* The bull-off: the players' cards on the left, the board close up filling
+   the rest, as the match's dart card does at its size. */
+.bull-off {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.bull-off-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.bull-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bull-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: 10px;
+  background: var(--bg-raised);
+  border: 2px solid transparent;
+  transition: border-color 200ms, background-color 200ms, opacity 200ms;
+}
+
+.bull-player-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--beige-100);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.bull-player-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bull-player-name {
+  font-size: var(--text-md);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bull-player-note {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.bull-player-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.bull-player-mm {
+  font-size: 2.1rem;
+  line-height: 1;
+}
+
+.bull-player-mm small {
+  font-size: 0.5em;
+  color: var(--text-dim);
+}
+
+.bull-player-mm-none {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+/* Whose turn it is: outlined, the note pulsing as a waiting dart slot does. */
+.bull-player-now {
+  border-color: var(--tonal-hover);
+}
+
+.bull-player-now .bull-player-note {
+  color: var(--text);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* The closest: the board's mark colour, here and on the board. */
+.bull-player-leader {
+  border-color: var(--mark-new);
+}
+
+.bull-player-leader .bull-player-number {
+  background: var(--mark-new);
+}
+
+.bull-player-out {
+  opacity: 0.5;
+}
+
+.bull-off-view {
+  min-width: 0;
+}
+
+/* Right under the switch it explains. */
+.bull-off-needs {
+  margin: calc(-1 * var(--space-3)) 0 0;
+  text-align: left;
+}
+
+.bull-view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--board-backdrop);
+}
+
+.bull-view-stage {
+  position: relative;
+  height: clamp(340px, calc(100dvh - 450px), 720px);
+  touch-action: none;
+  user-select: none;
+}
+
+.bull-view-stage-live {
+  cursor: crosshair;
+}
+
+.bull-view-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bull-view-whole {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  background: var(--mark-shade-strong);
+  color: var(--beige-100);
+}
+
+.bull-view-shade {
+  stroke: var(--mark-shade-strong);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.bull-view-line {
+  stroke: var(--beige-100);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 7 6;
+}
+
+.bull-view-dart-leader .bull-view-line {
+  stroke: var(--mark-new);
+  stroke-dasharray: none;
+}
+
+.bull-view-stem {
+  stroke: var(--mark-shade-strong);
+  stroke-width: 2;
+}
+
+.bull-view-point {
+  fill: var(--beige-100);
+  stroke: var(--mark-shade-strong);
+  stroke-width: 2;
+}
+
+.bull-view-dart-leader .bull-view-point {
+  fill: var(--mark-new);
+}
+
+.bull-view-mark circle {
+  fill: var(--beige-100);
+  stroke: var(--mark-shade-strong);
+  stroke-width: 3;
+}
+
+.bull-view-mark text {
+  fill: var(--accent-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.bull-view-dart-leader .bull-view-stem {
+  stroke: var(--mark-shade-strong);
+  stroke-width: 2;
+}
+
+.bull-view-point {
+  fill: var(--beige-100);
+  stroke: var(--mark-shade-strong);
+  stroke-width: 2;
+}
+
+.bull-view-dart-leader .bull-view-point {
+  fill: var(--mark-new);
+}
+
+.bull-view-mark circle {
+  fill: var(--mark-new);
+}
+
+.bull-view-mark {
+  animation: mark-drop 260ms ease-out both;
+}
+
+/* Popping in, as a dart card's mark does; transform is taken by the place. */
+@keyframes mark-drop {
+  from {
+    opacity: 0;
+  }
+}
+
+.bull-view-label {
+  fill: var(--beige-50);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  paint-order: stroke;
+  stroke: var(--mark-shade-strong);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.bull-view-dart-leader .bull-view-label {
+  fill: var(--mark-new);
+}
+
+.bull-view-centre {
+  fill: var(--beige-50);
+  stroke: var(--mark-shade-strong);
+  stroke-width: 2;
+}
+
+.bull-view-preview {
+  pointer-events: none;
+}
+
+.bull-view-preview circle,
+.bull-view-preview path {
+  fill: none;
+  stroke: var(--mark-new);
+  stroke-width: 2;
+}
+
+.bull-view-preview text {
+  fill: var(--mark-new);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  paint-order: stroke;
+  stroke: var(--mark-shade-strong);
+  stroke-width: 5px;
+}
+
+/* The foot of the card, as a dart card's band: whose turn, or who won it. */
+.bull-view-band {
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--beige-100);
+  color: var(--accent-ink);
+}
+
+.bull-view-band .bull-off-say {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.bull-off-hint {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  opacity: 0.72;
+}
+
+/* On a phone: the board first, then the cards, two by two. */
+@media (max-width: 719px) {
+  .bull-off {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bull-players {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .bull-player {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .bull-player-end {
+    grid-column: 1 / -1;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .bull-player-mm {
+    font-size: 1.6rem;
+  }
+
+  .bull-off-view {
+    order: -1;
+  }
+
+  .bull-view-stage {
+    height: min(62vh, 108vw);
+  }
 }
 
 .bull-camera {

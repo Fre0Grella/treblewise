@@ -10,6 +10,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { pickOne, startingWith, wheelTurn } from '../../game/throwOrder.js';
 import { fill, useStrings } from '../../i18n/index.js';
+import Icon from '../ui/Icon.vue';
 
 const props = defineProps<{ players: PlayerConfig[] }>();
 /** Everyone in order once the wheel has stopped; null until then. */
@@ -98,7 +99,7 @@ function spin() {
     </p>
     <div class="controls">
       <button type="button" :class="picked ? 'btn-sm' : 'btn-primary'" :disabled="spinning" @click="spin">
-        {{ picked ? t.setup.order.spinAgain : t.setup.order.spin }}
+        <Icon name="wheel" :size="18" />{{ picked ? t.setup.order.spinAgain : t.setup.order.spin }}
       </button>
     </div>
   </div>

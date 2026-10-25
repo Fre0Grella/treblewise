@@ -20,7 +20,13 @@ export type IconName =
   | 'board'
   | 'keypad'
   | 'drag'
-  | 'pencil';
+  | 'pencil'
+  | 'order'
+  | 'bull'
+  | 'wheel'
+  | 'undo'
+  | 'expand'
+  | 'shrink';
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 20 });
 
@@ -41,6 +47,12 @@ const PATHS: Record<IconName, string> = {
   keypad: 'M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM10 10h4v4h-4zM16 10h4v4h-4zM4 16h4v4H4zM10 16h4v4h-4zM16 16h4v4h-4z',
   drag: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   pencil: 'M4 20l4-1 11-11-3-3L5 16l-1 4z',
+  order: 'M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4',
+  bull: 'M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16zM12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z',
+  wheel: 'M12 5a8 8 0 1 0 0 16a8 8 0 1 0 0-16zM12 5v16M5.07 9l13.86 8M18.93 9L5.07 17M9.5 1.5h5L12 4.5z',
+  undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
 };
 </script>
 

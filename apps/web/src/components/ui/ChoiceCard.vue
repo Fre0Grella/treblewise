@@ -4,9 +4,11 @@
   The whole card is the button; its foot lights up beige when it is pointed at.
 -->
 <script setup lang="ts">
-import Icon from './Icon.vue';
+import Icon, { type IconName } from './Icon.vue';
 
 defineProps<{
+  /** Drawn above the title, where a card has no picture. */
+  icon?: IconName;
   title: string;
   body: string;
   points?: readonly string[];
@@ -18,6 +20,7 @@ defineEmits<{ choose: [] }>();
 <template>
   <button type="button" class="mode-card" @click="$emit('choose')">
     <slot name="art" />
+    <span v-if="icon" class="mode-icon" aria-hidden="true"><Icon :name="icon" :size="30" /></span>
     <h2>{{ title }}</h2>
     <p>{{ body }}</p>
     <ul v-if="points?.length">
