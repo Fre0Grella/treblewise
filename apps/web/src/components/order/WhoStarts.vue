@@ -9,6 +9,7 @@ import { ref, shallowRef, watch } from 'vue';
 
 import { useStrings } from '../../i18n/index.js';
 import ChoiceCard from '../ui/ChoiceCard.vue';
+import Icon, { type IconName } from '../ui/Icon.vue';
 import BullOff from './BullOff.vue';
 import OrderList from './OrderList.vue';
 import SpinWheel from './SpinWheel.vue';
@@ -36,6 +37,7 @@ watch(chosen, (now) => {
 });
 
 const WAYS: Way[] = ['choose', 'bull', 'wheel'];
+const ICONS: Record<Way, IconName> = { choose: 'order', bull: 'bull', wheel: 'wheel' };
 </script>
 
 <template>
@@ -46,6 +48,7 @@ const WAYS: Way[] = ['choose', 'bull', 'wheel'];
       <ChoiceCard
         v-for="option in WAYS"
         :key="option"
+        :icon="ICONS[option]"
         :title="t.setup.order[option].title"
         :body="t.setup.order[option].body"
         :action="t.setup.order[option].action"
@@ -54,13 +57,15 @@ const WAYS: Way[] = ['choose', 'bull', 'wheel'];
     </div>
 
     <template v-else>
-      <h2>{{ t.setup.order[way].title }}</h2>
+      <div class="who-starts-head">
+        <h2><Icon :name="ICONS[way]" :size="28" />{{ t.setup.order[way].title }}</h2>
+        <button type="button" class="btn-quiet btn-sm" @click="way = null">
+          <Icon name="back" :size="18" />{{ t.setup.order.another }}
+        </button>
+      </div>
       <OrderList v-if="way === 'choose'" v-model="chosen" />
       <BullOff v-else-if="way === 'bull'" v-model:order="order" :players="players" />
       <SpinWheel v-else v-model:order="order" :players="players" />
-      <div class="controls">
-        <button type="button" class="btn-quiet btn-sm" @click="way = null">{{ t.setup.order.another }}</button>
-      </div>
     </template>
   </div>
 </template>
