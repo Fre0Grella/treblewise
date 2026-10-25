@@ -21,6 +21,7 @@ import { PATHS } from '../../router/paths.js';
 import { PairingConnection, type SendingStats } from '../../pairing/session.js';
 import { formatShortCode } from '../../pairing/shortcode.js';
 import { grabJpeg, keepAwake, startCamera, stopCamera } from '../../vision/camera.js';
+import { exposureOf, setExposure } from '../../vision/exposure.js';
 
 type Step = 'scan' | 'answer' | 'live' | 'failed';
 
@@ -38,6 +39,8 @@ const video = ref<HTMLVideoElement | null>(null);
 let connection: PairingConnection | null = null;
 let stream: MediaStream | null = null;
 let wakeLock: WakeLockSentinel | null = null;
+/** Says how the phone is doing now, rather than at the next report; set while live. */
+let reportNow: (() => void) | null = null;
 
 function teardown() {
   connection?.close();
@@ -60,6 +63,12 @@ async function onHubCode(text: string) {
     // The photographs that get labelled come from here, at the camera's full
     // size, not from the video the laptop sees (see pairing/photo.ts).
     joined.connection.onPhotoRequest = async () => (video.value ? grabJpeg(video.value, 0.92) : null);
+    // The laptop sets the camera's brightness (vision/exposure.ts); the phone
+    // says where it ended up, which is how the laptop's control knows.
+    joined.connection.onMessage = (message) => {
+      if (message.type !== 'exposure' || typeof message.value !== 'number') return;
+      void setExposure(media.getVideoTracks()[0], message.value).then(() => reportNow?.());
+    };
     answer.value = joined.code;
     shortCode.value = joined.shortCode;
     step.value = 'answer';
@@ -96,7 +105,9 @@ watch(step, (now, _, onCleanup) => {
     const info = await withBattery.getBattery?.().catch(() => null);
     if (cancelled) return;
     if (info) battery.value = Math.round(info.level * 100);
-    const track = stream?.getVideoTracks()[0]?.getSettings();
+    const camera = stream?.getVideoTracks()[0];
+    const track = camera?.getSettings();
+    const exposure = exposureOf(camera);
     sent = (await connection?.sendingStats().catch(() => null)) ?? null;
     if (cancelled) return;
     connection?.send({
@@ -104,8 +115,10 @@ watch(step, (now, _, onCleanup) => {
       ...(info ? { battery: Math.round(info.level * 100), charging: info.charging } : {}),
       ...(track?.width ? { width: track.width, height: track.height } : {}),
       ...(sent ? { sending: sent } : {}),
+      ...(exposure ? { exposure } : {}),
     });
   };
+  reportNow = () => void report();
   // The video as it is sent is said again whenever it changes, so the laptop
   // can tell a board misbehaving from the video shrinking under it.
   let sent: SendingStats | null = null;
@@ -119,6 +132,7 @@ watch(step, (now, _, onCleanup) => {
   const sending = setInterval(() => void watchSending(), 2_000);
   onCleanup(() => {
     cancelled = true;
+    reportNow = null;
     clearInterval(timer);
     clearInterval(sending);
   });

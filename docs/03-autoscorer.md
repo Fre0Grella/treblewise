@@ -188,6 +188,12 @@ Four mechanisms, in order of how much they buy:
   side", "too dark, put a lamp on the board", "the camera has moved". It is
   better to say that than to score badly in silence. The numbers behind it are
   shown too, because their thresholds still have to be set against real boards.
+  Glare is judged against the photo taken at calibration: lights fixed to the
+  board blow out the same segments in every frame, nothing can be done about
+  them, and a warning that never went away hid every warning behind it. Only
+  glare beyond what was there then counts. Where the camera allows it, camera
+  setup has a brightness slider (exposure compensation) to bring blown-out
+  segments back; a new brightness asks for the board to be found again.
 
 ## The model
 

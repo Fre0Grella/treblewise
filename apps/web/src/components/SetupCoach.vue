@@ -69,7 +69,12 @@ const detail = computed(() => {
   const percent = (value: number) => Math.round(value * 100);
   switch (image) {
     case 'glare':
-      return fill(t.coach.details.glare, { n: percent(quality.glare), limit: percent(IMAGE_THRESHOLDS.glare) });
+      // Over a board that had glare of its own at calibration, say so: the limit is that, not the usual one.
+      return fill(quality.glareLimit > IMAGE_THRESHOLDS.glare ? t.coach.details.glareMore : t.coach.details.glare, {
+        n: percent(quality.glare),
+        limit: percent(quality.glareLimit),
+        before: percent(quality.glareBefore),
+      });
     case 'moved':
       return fill(t.coach.details.moved, { n: percent(quality.drift), limit: percent(IMAGE_THRESHOLDS.drift) });
     case 'dark':

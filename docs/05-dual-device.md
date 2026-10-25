@@ -123,7 +123,12 @@ its code.
 
 Alongside the video track, an `RTCDataChannel` carries control messages: the
 phone reports its battery and resolution, and says goodbye when it stops. Scores
-never travel over it — the hub owns the game.
+never travel over it — the hub owns the game. The one message going the other
+way sets the phone camera's **exposure compensation**: the brightness slider in
+camera setup lives on the laptop, which keeps the setting and tells each phone
+that connects; the phone reports what its camera allows and where it ended up.
+A phone whose browser cannot set it (Safari on an iPhone) reports nothing, and
+there is no slider.
 
 The phone asks its encoder to **keep the video's size** and drop frames instead
 (`contentHint = 'detail'`, `degradationPreference: 'maintain-resolution'`). By

@@ -92,3 +92,30 @@ describe('the match store', () => {
     expect(useMatchesStore().match!.events).toHaveLength(1);
   });
 });
+
+describe('the settings store', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  type Saved = NonNullable<ReturnType<typeof useSettingsStore>['settings']['calibration']>;
+
+  it('stops comparing with the calibration photo once the brightness changes', () => {
+    const settings = useSettingsStore();
+    const calibration = { reference: [1, 2, 3], referenceVersion: 2 } as unknown as Saved;
+    settings.settings = { ...settings.settings, calibration };
+
+    settings.setExposure(-1);
+    expect(settings.settings.exposure).toBe(-1);
+    expect(settings.settings.calibration?.referenceVersion).toBeUndefined();
+    expect(settings.settings.calibration?.reference).toEqual([1, 2, 3]);
+  });
+
+  it('leaves the calibration alone when the brightness is set to what it already is', () => {
+    const settings = useSettingsStore();
+    const calibration = { reference: [1], referenceVersion: 2 } as unknown as Saved;
+    settings.settings = { ...settings.settings, exposure: -1, calibration };
+    settings.setExposure(-1);
+    expect(settings.settings.calibration?.referenceVersion).toBe(2);
+  });
+});

@@ -9,6 +9,7 @@
  */
 
 import type { PairState, PairingConnection, SendingStats } from '../pairing/session.js';
+import type { Exposure } from '../vision/exposure.js';
 
 import type { Slice } from './slice.js';
 
@@ -23,6 +24,8 @@ export interface PhoneStatus {
   height?: number;
   /** The video as it is sent: a size that keeps changing is what spoils the board's thumbnails. */
   sending?: SendingStats;
+  /** What the phone's camera allows and is at; missing when a page cannot set it. */
+  exposure?: Exposure;
 }
 
 export interface LobbySessionState {
@@ -111,12 +114,12 @@ export function createLobbySession(state: Slice<LobbySessionState>): LobbySessio
         if (!current()) return;
         if (message.type === 'bye') state.set({ pairState: 'closed' });
         if (message.type === 'status') {
-          const { battery, charging, width, height, sending } = message;
+          const { battery, charging, width, height, sending, exposure } = message;
           const was = state.get().phone?.sending;
           if (sending && (sending.width !== was?.width || sending.limitation !== was?.limitation)) {
             console.info(`[treblewise] the phone is sending ${sending.width}×${sending.height}, held back by: ${sending.limitation}`);
           }
-          state.set({ phone: { battery, charging, width, height, sending } });
+          state.set({ phone: { battery, charging, width, height, sending, exposure } });
         }
       };
     },

@@ -7,6 +7,8 @@ import type { ImageQuality } from '@/vision/imageStats.js';
 const quality = (overrides: Partial<ImageQuality>): ImageQuality => ({
   brightness: 120,
   glare: 0,
+  glareLimit: 0.04,
+  glareBefore: 0,
   sharpness: 80,
   drift: 0,
   issues: [],
@@ -23,6 +25,13 @@ describe('the setup coach', () => {
     expect(screen.getByText(/marked in yellow on the preview/i)).toBeDefined();
   });
 
+  it('over a board that had glare at calibration, says the warning is about more than that', () => {
+    render(SetupCoach, {
+      props: { calibrated: true, view: null, quality: quality({ glare: 0.12, glareBefore: 0.06, glareLimit: 0.08, issues: ['glare'] }) },
+    });
+    expect(screen.getByText(/12% of the board is pure white, more than the 6% there was.*fine under 8%/i)).toBeDefined();
+  });
+
   it('says how much of the board changed since calibration, and offers to show where', async () => {
     const showWhere = vi.fn();
     render(SetupCoach, {
@@ -35,7 +44,7 @@ describe('the setup coach', () => {
 
   it('asks for the board to be found again when the calibration was saved before thumbnails changed', () => {
     render(SetupCoach, { props: { calibrated: true, oldReference: true, view: null, quality: quality({}) } });
-    expect(screen.getByText(/saved before an update/i)).toBeDefined();
+    expect(screen.getByText(/the picture has changed since you found it/i)).toBeDefined();
   });
 
   it('beside another coach line, says nothing while the picture is fine', () => {

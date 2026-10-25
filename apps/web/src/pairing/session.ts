@@ -13,19 +13,27 @@
  */
 
 import type { GrabbedFrame } from '../vision/camera.js';
+import type { Exposure } from '../vision/exposure.js';
 import { encodePayload, decodePayload, expectRole, type PairingRole } from './payload.js';
 import { PHOTO_CHUNK_BYTES, PhotoAssembler, chunks, type PhotoMessage } from './photo.js';
 import { encodeShortCode, decodeShortCode, readAnswer, rebuildAnswer } from './shortcode.js';
 
 export type PairState = 'new' | 'waiting' | 'connecting' | 'connected' | 'failed' | 'closed';
 
+/**
+ * 'status' and 'bye' go from the phone to the laptop; 'exposure' from the
+ * laptop to the phone, asking it to set its camera's exposure to `value`.
+ */
 export interface ControlMessage {
-  type: 'status' | 'bye';
+  type: 'status' | 'bye' | 'exposure';
   battery?: number;
   charging?: boolean;
   width?: number;
   height?: number;
   sending?: SendingStats;
+  /** What the phone's camera allows and is at; missing when it cannot be set. */
+  exposure?: Exposure;
+  value?: number;
 }
 
 /**
@@ -183,7 +191,7 @@ export class PairingConnection {
     });
   }
 
-  /** Control messages: battery, resolution, goodbye. Never scores. */
+  /** Control messages: battery, resolution, exposure, goodbye. Never scores. */
   send(message: ControlMessage): void {
     if (this.channel?.readyState === 'open') this.channel.send(JSON.stringify(message));
   }

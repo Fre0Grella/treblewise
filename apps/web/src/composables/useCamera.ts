@@ -18,6 +18,7 @@ import {
   type GrabbedFrame,
   type Region,
 } from '../vision/camera.js';
+import { exposureOf, setExposure, type Exposure } from '../vision/exposure.js';
 import { assessImage, type ImageQuality } from '../vision/imageStats.js';
 import { SettleDetector } from '../vision/settle.js';
 
@@ -74,6 +75,12 @@ export interface CameraOptions {
   region?: MaybeRefOrGetter<Region | null>;
   /** The board as it looked when it was calibrated, to notice the camera has been moved since. */
   reference?: MaybeRefOrGetter<Uint8Array | null>;
+  /**
+   * The exposure compensation to set on a camera this opens itself; null
+   * leaves it alone. A stream it was handed is someone else's camera: the
+   * paired phone sets its own (pairing/session.ts).
+   */
+  exposure?: MaybeRefOrGetter<number | null>;
 }
 
 export function useCamera(options: CameraOptions) {
@@ -92,6 +99,21 @@ export function useCamera(options: CameraOptions) {
   const photo = shallowRef<{ ms: number; dropped: number } | null>(null);
   /** Light, glare, sharpness and drift, for the setup coach. */
   const quality = shallowRef<ImageQuality | null>(null);
+  /** The camera this opened: what exposure it allows and is at, or null if it cannot be set. */
+  const exposure = shallowRef<Exposure | null>(null);
+  const ownTrack = shallowRef<MediaStreamTrack | null>(null);
+
+  watch(
+    () => [ownTrack.value, toValue(options.exposure) ?? null] as const,
+    async ([track, wanted]) => {
+      if (!track) {
+        exposure.value = null;
+        return;
+      }
+      if (wanted !== null) await setExposure(track, wanted);
+      if (ownTrack.value === track) exposure.value = exposureOf(track);
+    },
+  );
 
   const detector = new SettleDetector({ width: THUMB_SIZE, height: THUMB_SIZE });
   let capturing = false;
@@ -157,6 +179,7 @@ export function useCamera(options: CameraOptions) {
           // A stream we were handed belongs to whoever handed it over: it is
           // not ours to stop when the screen goes.
           own = external ? null : stream;
+          ownTrack.value = own?.getVideoTracks()[0] ?? null;
 
           element.srcObject = stream;
           element.playsInline = true;
@@ -284,6 +307,7 @@ export function useCamera(options: CameraOptions) {
         cancelled = true;
         cancelAnimationFrame(frame);
         stopCamera(own);
+        ownTrack.value = null;
         void wakeLock?.release().catch(() => undefined);
         ready.value = false;
         moving.value = false;
@@ -292,7 +316,7 @@ export function useCamera(options: CameraOptions) {
     { immediate: true },
   );
 
-  return { video, ready, error, width, height, moving, settles, motion, change, photo, quality, capture, sampleThumbnail };
+  return { video, ready, error, width, height, moving, settles, motion, change, photo, quality, exposure, capture, sampleThumbnail };
 }
 
 export type Camera = ReturnType<typeof useCamera>;
