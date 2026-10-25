@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/vue';
+import { fireEvent, screen, within } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deleteMatch, deleteProfile, listMatches, listProfiles, putMatch, saveSetting } from '@/storage/db.js';
@@ -19,14 +19,14 @@ describe('starting a match', () => {
     await press(/^guest$/i);
     await fireEvent.update(screen.getByLabelText(/guest/i), 'Dave');
     await press(/add for this match/i);
-    expect(screen.getByText('Dave')).toBeDefined();
+    expect(within(screen.getByRole('region', { name: /players/i })).getByText('Dave')).toBeDefined();
 
     // Back at the setup screen after the leg: Dave is one tap away, not a name
     // to be typed again, and he is still not a profile.
     await router.push('/lobby');
     await router.push('/setup');
     await press(/add dave/i);
-    expect(screen.getByText('Dave')).toBeDefined();
+    expect(within(screen.getByRole('region', { name: /players/i })).getByText('Dave')).toBeDefined();
     expect(usePlayersStore().profiles).toEqual([]);
 
     await press(/start match/i);
@@ -113,5 +113,64 @@ describe('starting a match', () => {
     await usePlayersStore().removeProfile('marco');
     await loadStores();
     expect(usePlayersStore().profiles).toEqual([]);
+  });
+
+  describe('deciding who throws first', () => {
+    /** Two guests in the lineup, Ann then Bob, and "Start match" pressed. */
+    async function twoPlayers() {
+      const rendered = await renderAt('/setup');
+      for (const name of ['Ann', 'Bob']) {
+        await press(/^guest$/i);
+        await fireEvent.update(screen.getByLabelText(/guest/i), name);
+        await press(/add for this match/i);
+      }
+      await press(/start match/i);
+      return rendered;
+    }
+
+    it('asks before starting a match of two or more, and starts it in the order set by hand', async () => {
+      const { router } = await twoPlayers();
+      expect(useMatchesStore().snapshot).toBeNull();
+      expect(screen.getByRole('heading', { name: /who throws first/i })).toBeDefined();
+
+      await press(/set the order/i);
+      await press(/move bob up/i);
+      // The bar at the foot says it in the order decided.
+      expect(screen.getByText('Bob v Ann')).toBeDefined();
+      await press(/start match/i);
+
+      const players = useMatchesStore().snapshot!.config.players;
+      expect(players.map((player) => player.name)).toEqual(['Bob', 'Ann']);
+      expect(useMatchesStore().snapshot!.current!.playerId).toBe(players[0]!.id);
+      // Stored as well: a player kept as a Vue proxy made IndexedDB refuse the match.
+      const stored = await listMatches(Number.MAX_SAFE_INTEGER);
+      expect(stored.map((match) => match.config.players.map((player) => player.name))).toEqual([['Bob', 'Ann']]);
+      await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/game'));
+    });
+
+    it('starts with whoever the wheel stops on, once it has stopped', async () => {
+      await twoPlayers();
+      await press(/spin it/i);
+      vi.useFakeTimers();
+      try {
+        vi.spyOn(Math, 'random').mockReturnValue(0.75);
+        await fireEvent.click(screen.getByRole('button', { name: /^spin$/i }));
+        expect((screen.getByRole('button', { name: /start match/i }) as HTMLButtonElement).disabled).toBe(true);
+        await vi.advanceTimersByTimeAsync(5000);
+      } finally {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+      }
+      expect(await screen.findByText(/bob throws first/i)).toBeDefined();
+      await press(/start match/i);
+      expect(useMatchesStore().snapshot!.config.players.map((player) => player.name)).toEqual(['Bob', 'Ann']);
+    });
+
+    it('goes back to the players without starting anything', async () => {
+      await twoPlayers();
+      await press(/back to the players/i);
+      expect(screen.getByRole('heading', { name: /new match/i })).toBeDefined();
+      expect(useMatchesStore().snapshot).toBeNull();
+    });
   });
 });
