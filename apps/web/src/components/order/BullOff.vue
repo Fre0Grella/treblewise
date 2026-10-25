@@ -11,6 +11,10 @@
   player's card beside it, numbered as their dart is on the board, with how
   far from the middle of the bull it landed.
 
+  It sounds as a match does, with the same switches: each dart is heard going
+  in, and the caller calls each player up, names a dart in the bull, and once
+  it is decided calls up whoever throws first (caller/announce.ts).
+
   The camera is the way it is thrown for: on to begin with whenever the board
   has been found, and shown switched off, saying why, until it has. It reads
   each dart beside the ones already in (game/bullReader.ts); a tap puts a
@@ -18,7 +22,12 @@
 -->
 <script setup lang="ts">
 import { formatHit, type Hit, type PlayerConfig, type Point } from '@treblewise/core';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+import { announceBull } from '../../caller/announce.js';
+import { unlockCaller } from '../../caller/caller.js';
+import { hookUpCaller } from '../../caller/hookup.js';
+import { loadSounds, playThud, unlockSounds } from '../../caller/sounds.js';
 
 import { raw } from '../../composables/external.js';
 import { createBullReader } from '../../game/bullReader.js';
@@ -127,9 +136,30 @@ function settle() {
 function record(hit: Hit, pos: Point) {
   const thrower = next.value;
   if (!thrower) return;
+  unlockCaller();
+  unlockSounds();
+  if (settings.settings.soundsEnabled) playThud();
   rounds.value = [...rounds.value.slice(0, -1), [...current.value, { id: thrower.id, hit, pos }]];
   settle();
+  call(hit);
 }
+
+// ---- the caller and the sounds, as in a match ----------------------------------
+
+const voice = hookUpCaller(() => settings.settings.callerEnabled);
+/** Who is up after a dart: the next to throw, or who throws first once it is decided. */
+function call(hit: Hit | null) {
+  const up = decided.value ? nameOf(decided.value[0]!) : (next.value?.name ?? null);
+  voice.heard(announceBull(hit, up, { names: settings.settings.callNames }));
+}
+// The press that opened the bull-off still counts as a gesture: the first
+// player is called at once, and the dart's sound is ready for their dart.
+onMounted(() => {
+  unlockCaller();
+  void loadSounds();
+  call(null);
+});
+onBeforeUnmount(() => voice.hush());
 
 // ---- the camera -------------------------------------------------------------
 
@@ -156,6 +186,9 @@ function undo() {
   rounds.value = [...kept.slice(0, -1), last.slice(0, -1)];
   order.value = null;
   reader.holds(current.value.map((thrown) => thrown.pos));
+  // What was said is no longer true: the one to throw again is called.
+  voice.hush();
+  call(null);
 }
 
 const canUndo = computed(() => rounds.value.some((round) => round.length > 0));

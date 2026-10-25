@@ -1,7 +1,7 @@
-import { parseHit, reduceMatch, dartEvent, type MatchEvent, type X01Config } from '@treblewise/core';
+import { BULL, OUTER_BULL, hit, parseHit, reduceMatch, dartEvent, type MatchEvent, type X01Config } from '@treblewise/core';
 import { describe, expect, it } from 'vitest';
 
-import { announce, bustedBy, type AnnounceOptions } from '@/caller/announce.js';
+import { announce, announceBull, bustedBy, type AnnounceOptions } from '@/caller/announce.js';
 import type { Call } from '@/caller/call.js';
 
 const config: X01Config = {
@@ -101,5 +101,25 @@ describe('announce', () => {
       ['you require one hundred and seventy'],
     ]);
     expect(say(['D20'], { ...config, startScore: 40 }, quiet)).toEqual([['Yes! Game shot, and the match']]);
+  });
+});
+
+describe('the caller in the bull-off', () => {
+  it('calls the first player as it opens', () => {
+    expect(announceBull(null, 'Ann')).toEqual([[{ name: 'Ann' }, 'to throw']]);
+  });
+
+  it('names a dart in the bull, then calls who is up', () => {
+    expect(announceBull(BULL, 'Bob')).toEqual([['Bullseye'], [{ name: 'Bob' }, 'to throw']]);
+    expect(announceBull(OUTER_BULL, 'Bob')).toEqual([['Twenty-five'], [{ name: 'Bob' }, 'to throw']]);
+  });
+
+  it('leaves a dart outside the bull to the screen', () => {
+    expect(announceBull(hit(20, 'single'), 'Bob')).toEqual([[{ name: 'Bob' }, 'to throw']]);
+  });
+
+  it('says nothing of who is up without names, which is all that call says', () => {
+    expect(announceBull(hit(20, 'single'), 'Bob', { names: false })).toEqual([]);
+    expect(announceBull(BULL, 'Bob', { names: false })).toEqual([['Bullseye']]);
   });
 });

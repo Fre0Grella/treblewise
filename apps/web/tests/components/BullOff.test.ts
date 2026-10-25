@@ -15,6 +15,18 @@ vi.mock('@/vision/camera.js', async (original) => ({
   cameraSupported: () => camera.supported,
 }));
 
+// What the caller was given, and the darts heard going in.
+const heard = vi.hoisted(() => ({ calls: [] as unknown[][], thuds: 0 }));
+vi.mock('@/caller/caller.js', async (original) => ({
+  ...(await original<typeof import('@/caller/caller.js')>()),
+  unlockCaller: () => undefined,
+  caller: () => ({ sequence: (calls: unknown[]) => heard.calls.push(calls), say: () => undefined, cancel: () => undefined, available: true }),
+}));
+vi.mock('@/caller/sounds.js', async (original) => ({
+  ...(await original<typeof import('@/caller/sounds.js')>()),
+  playThud: () => (heard.thuds += 1),
+}));
+
 const players: PlayerConfig[] = [
   { id: 'ann', name: 'Ann' },
   { id: 'bob', name: 'Bob' },
@@ -50,7 +62,11 @@ const throwDart = (name: string) => fireEvent.click(screen.getByRole('button', {
 
 describe('throwing for the bull', () => {
   // No calibration in a fresh store: no camera, the darts are tapped in.
-  beforeEach(() => setActivePinia(createPinia()));
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    heard.calls = [];
+    heard.thuds = 0;
+  });
 
   it('takes a dart from each player in turn, and the closest throws first', async () => {
     const order = renderBullOff();
@@ -125,5 +141,25 @@ describe('throwing for the bull', () => {
     await throwDart('near miss');
     await throwDart('closer');
     expect(screen.getByText(/pull the darts out before the first throw/i)).toBeDefined();
+  });
+
+  it('calls each player up, and who throws first, with the sound of each dart', async () => {
+    renderBullOff();
+    expect(heard.calls).toEqual([[[{ name: 'Ann' }, 'to throw']]]);
+    await throwDart('in the bull');
+    expect(heard.thuds).toBe(1);
+    expect(heard.calls.at(-1)).toEqual([['Bullseye'], [{ name: 'Bob' }, 'to throw']]);
+    await throwDart('closer');
+    // Decided: Ann, in the bull, starts the match.
+    expect(heard.calls.at(-1)).toEqual([[{ name: 'Ann' }, 'to throw']]);
+  });
+
+  it('is silent with the caller and the sounds switched off', async () => {
+    const settings = useSettingsStore();
+    settings.settings = { ...settings.settings, callerEnabled: false, soundsEnabled: false };
+    renderBullOff();
+    await throwDart('in the bull');
+    expect(heard.calls).toEqual([]);
+    expect(heard.thuds).toBe(0);
   });
 });

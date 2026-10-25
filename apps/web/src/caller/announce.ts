@@ -5,7 +5,7 @@
  * without a microphone, a browser or a game.
  */
 
-import type { MatchSnapshot } from '@treblewise/core';
+import type { Hit, MatchSnapshot } from '@treblewise/core';
 
 import { strings } from '../i18n/index.js';
 
@@ -88,5 +88,21 @@ export function announce(before: MatchSnapshot | null, after: MatchSnapshot, opt
     else if (names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(playerName(after, next.playerId)));
   }
 
+  return calls;
+}
+
+/**
+ * What the caller says in the bull-off (issue #41), after a dart or, with
+ * `hit` null, as it opens: the bull by name when a dart went in ("Bullseye",
+ * "Twenty-five"), as a caller would, then whoever is `up`: the next to throw,
+ * or once it is decided the one who throws first, the match's opening call.
+ * A dart outside the bull is left to the screen; its distance is not
+ * something a caller says.
+ */
+export function announceBull(hit: Hit | null, up: string | null, options: AnnounceOptions = {}): Call[] {
+  const t = strings();
+  const calls: Call[] = [];
+  if (hit?.ring === 'bull' || hit?.ring === 'outerBull') calls.push([t.caller.hit(hit)]);
+  if (up !== null && (options.names ?? true)) calls.push(t.caller.toThrow(up));
   return calls;
 }
