@@ -25,6 +25,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { unlockCaller } from '../caller/caller.js';
 import BoardOverlay, { type OverlayHandle } from '../components/BoardOverlay.vue';
+import ExposureControl from '../components/ExposureControl.vue';
 import PhoneBattery from '../components/PhoneBattery.vue';
 import QualityMarks from '../components/QualityMarks.vue';
 import SetupCoach from '../components/SetupCoach.vue';
@@ -33,6 +34,7 @@ import Icon from '../components/ui/Icon.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
 import Toggle from '../components/ui/Toggle.vue';
 import { useCamera } from '../composables/useCamera.js';
+import { useExposure } from '../composables/useExposure.js';
 import { useMarkingSession } from '../composables/useMarkingSession.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { backTarget } from '../router/back.js';
@@ -140,7 +142,9 @@ const camera = useCamera({
   },
   // Aligning the board is done on a still photograph: nothing to watch for.
   paused: () => mode.value === 'calibrate',
+  exposure: () => settings.settings.exposure,
 });
+const exposure = useExposure(camera);
 
 const frameSize = computed(() =>
   photo.value && mode.value === 'try'
@@ -551,6 +555,14 @@ const storageLine = computed(() => {
           </div>
 
           <button type="button" class="btn-primary" :disabled="!ready" @click="tryIt">{{ t.capture.tryIt }}</button>
+
+          <ExposureControl
+            v-if="exposure.range.value"
+            :range="exposure.range.value"
+            :value="exposure.value.value"
+            @change="exposure.set"
+          />
+          <p v-else-if="camera.ready.value" class="hint">{{ t.capture.exposureUnsupported }}</p>
 
           <section class="panel">
             <h2>{{ t.capture.stepsTitle }}</h2>

@@ -38,6 +38,19 @@ export const useSettingsStore = defineStore('settings', () => {
     },
     setEntryMode: (mode: Settings['entryMode']) => settings.change('entryMode', mode),
     saveCalibration: (calibration: Settings['calibration']) => settings.change('calibration', calibration),
+    /**
+     * A new brightness makes the board look different from the photo taken
+     * when it was found: a reflection that was blown out shows detail, and
+     * the empty-board and moved-camera checks would see that as a change. So
+     * that photo is no longer compared with until the board is found again
+     * (imageStats `referenceOf`, and the coach asks for it).
+     */
+    setExposure(value: number) {
+      const { exposure, calibration } = state.settings.value;
+      if (value === exposure) return;
+      settings.change('exposure', value);
+      if (calibration?.referenceVersion !== undefined) settings.change('calibration', { ...calibration, referenceVersion: undefined });
+    },
     setKeepFrames: (on: boolean) => settings.change('keepFrames', on),
     setKeepPhotos: (on: boolean) => settings.change('keepPhotos', on),
     setAutoscoreGames: (on: boolean) => settings.change('autoscoreGames', on),

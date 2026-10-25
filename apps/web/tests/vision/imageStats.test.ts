@@ -38,6 +38,40 @@ describe('assessImage', () => {
     expect(assessImage(glary, W, H).glare).toBeGreaterThan(0.04);
   });
 
+  it('does not warn about glare the board already had when it was calibrated', () => {
+    // Lights fixed to the board: the same ~6% blown out in the reference and now.
+    const lit = wires();
+    for (let y = 10; y < 26; y += 1) {
+      for (let x = 10; x < 26; x += 1) lit[y * W + x] = 255;
+    }
+    const quality = assessImage(lit.slice(), W, H, lit);
+    expect(quality.issues).not.toContain('glare');
+    expect(quality.glareBefore).toBeCloseTo(256 / 4096, 6);
+    expect(quality.glareLimit).toBeCloseTo(256 / 4096 + 0.02, 6);
+  });
+
+  it('still warns about a reflection that is new since calibration, and points at only the new part', () => {
+    const lit = wires();
+    for (let y = 10; y < 26; y += 1) {
+      for (let x = 10; x < 26; x += 1) lit[y * W + x] = 255;
+    }
+    const now = lit.slice();
+    for (let y = 40; y < 56; y += 1) {
+      for (let x = 40; x < 56; x += 1) now[y * W + x] = 255;
+    }
+    const quality = assessImage(now, W, H, lit);
+    expect(quality.issues).toContain('glare');
+    expect(quality.glareSpots.length).toBeGreaterThan(0);
+    for (const spot of quality.glareSpots) {
+      expect(spot.x).toBeGreaterThanOrEqual(40 / W);
+      expect(spot.y).toBeGreaterThanOrEqual(40 / H);
+    }
+  });
+
+  it('holds glare to the usual limit without a reference', () => {
+    expect(assessImage(wires(), W, H).glareLimit).toBe(0.04);
+  });
+
   it('spots a blurred picture, where a flat one has no edges at all', () => {
     expect(assessImage(flat(120), W, H).issues).toContain('blurry');
     expect(assessImage(flat(120), W, H).sharpness).toBeCloseTo(0, 6);

@@ -630,7 +630,7 @@ export const en = {
     notCalibrated: 'Tap "Find the board" and drag the four markers onto it.',
     moved: 'The camera has moved. Find the board again.',
     oldReference:
-      'Find the board again: this calibration was saved before an update, and until it is redone the app cannot tell when the camera moves.',
+      'Find the board again: the picture has changed since you found it (a new brightness, or an app update), and until it is redone the app cannot tell when the camera moves or when the darts are out.',
     offFrame: 'The board is cut off — turn the camera',
     offCentre: 'Board is off to one side — point a little',
     tooSmall: 'The board looks small. Move the camera closer, about a metre away.',
@@ -644,7 +644,9 @@ export const en = {
     /** What each picture warning measured, against the limit, and what fixes it. */
     details: {
       glare:
-        "{n}% of the board is pure white, too bright to see a dart in (fine under {limit}%): usually a lamp or a window reflecting in it. Marked in yellow on the preview. Tilt the lamp, or move the camera a little to one side, until the yellow goes.",
+        "{n}% of the board is pure white, too bright to see a dart in (fine under {limit}%): usually a lamp or a window reflecting in it. Marked in yellow on the preview. Tilt the lamp, or move the camera a little to one side, until the yellow goes. If it is a light fixed to the board, turn the camera's brightness down in camera setup (where the phone allows it), then find the board again: glare that is there when you find it is not warned about.",
+      glareMore:
+        '{n}% of the board is pure white, more than the {before}% there was when you found the board (fine under {limit}%): a new reflection, a lamp moved or a window catching the sun. The new part is marked in yellow on the preview.',
       moved:
         '{n}% of the board looks different from the photo taken when you found it (fine under {limit}%). A knocked camera does this, and so can a big change in the light. The parts that changed are marked in red on the preview. If the camera is where you want it, find the board again: that takes a fresh photo.',
       dark: 'Brightness {n} out of 255 (needs {limit} or more). Light the board, not the room: a lamp pointed at it from the front.',
@@ -696,6 +698,13 @@ export const en = {
     photoTime: 'last photo {ms} ms, {dropped} dropped',
     videoSent: 'phone sends {size}',
     videoHeldBack: 'phone sends {size}, held back by {reason}',
+    exposureTitle: 'Camera brightness',
+    exposureValue: '{value} stops',
+    exposureReset: 'Reset',
+    exposureIgnored: 'The camera says it is still at {value}: it has not taken this setting.',
+    exposureHelp:
+      "If lights on the board blow part of it out to white (marked in yellow on the preview), turn this down until the yellow goes, or nearly. 0 is the camera's own choice. Find the board again afterwards: the board looks different at a new brightness.",
+    exposureUnsupported: "This camera does not let the app change its brightness (an iPhone, or most laptop cameras). Glare that is there when you find the board is not warned about.",
     foldAbout: 'How this works',
     foldMarking: 'How to mark',
     foldAutoscorer: 'About the autoscorer',

@@ -18,6 +18,7 @@ import { unlockCaller } from '../caller/caller.js';
 import { unlockSounds } from '../caller/sounds.js';
 import { raw, useExternal } from '../composables/external.js';
 import { useCamera } from '../composables/useCamera.js';
+import { useExposure } from '../composables/useExposure.js';
 import type { GameVisit } from '../game/gameVisit.js';
 import { openReport, saveReport, type OpenedReport } from '../game/report.js';
 import { fill, useStrings } from '../i18n/index.js';
@@ -133,7 +134,10 @@ const camera = useCamera({
   // While a report is open nothing is photographed: a new photograph redrew
   // the card under the finger placing a marker, and flickered.
   paused: () => props.report !== null,
+  exposure: () => settings.settings.exposure,
 });
+// A phone paired since camera setup is told its brightness here.
+useExposure(camera);
 
 // A dart entered by hand has no photograph of its own: it was not read, so
 // most likely it did not change the picture enough to be photographed (one

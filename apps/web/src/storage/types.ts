@@ -129,6 +129,12 @@ export interface Settings {
   /** The last calibration, so a session survives a reload. */
   calibration: Calibration | null;
   /**
+   * The camera's exposure compensation (vision/exposure.ts), for the camera
+   * that films: in paired mode the phone's, sent to it. Null leaves the
+   * camera's own automatic exposure alone.
+   */
+  exposure: number | null;
+  /**
    * Whether the profile list has been seeded from matches played before
    * profiles existed. It is a one-shot: without it, deleting every profile on
    * purpose would bring them all back on the next load. The data migration in
@@ -147,5 +153,6 @@ export const DEFAULT_SETTINGS: Settings = {
   keepPhotos: false,
   autoscoreGames: false,
   calibration: null,
+  exposure: null,
   profilesSeeded: false,
 };

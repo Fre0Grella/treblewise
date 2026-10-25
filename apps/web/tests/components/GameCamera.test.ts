@@ -45,6 +45,7 @@ vi.mock('@/composables/useCamera.js', async () => {
         change: vueRef(0),
         photo: vueShallowRef(null),
         quality: vueShallowRef(null),
+        exposure: vueShallowRef(null),
         capture: async () => hooks.capture,
         sampleThumbnail: () => null,
       };

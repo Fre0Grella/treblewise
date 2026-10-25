@@ -3822,6 +3822,25 @@ input:focus-visible {
   accent-color: var(--accent);
 }
 
+.exposure-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.exposure-slider {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.exposure-value {
+  min-width: 3.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .leg-trend-foot {
   margin: 0;
   text-align: right;

@@ -25,6 +25,13 @@ export interface ImageQuality {
   brightness: number;
   /** Fraction of the board that is blown out, 0–1. */
   glare: number;
+  /**
+   * How much glare is too much: the threshold, or a little over what the board
+   * already had when it was calibrated, whichever is more (see `assessImage`).
+   */
+  glareLimit: number;
+  /** The fraction blown out in the calibration reference, 0–1; 0 without one. */
+  glareBefore: number;
   /** Variance of the Laplacian: high on a board full of wires, low on mush. */
   sharpness: number;
   /** Fraction of blocks that differ from the calibration reference, 0–1. */
@@ -84,6 +91,8 @@ export const IMAGE_THRESHOLDS = {
   dark: 45,
   washedOut: 215,
   glare: 0.04,
+  /** How much more of the board than at calibration may blow out before it counts as a new reflection. */
+  glareMargin: 0.02,
   sharpness: 25,
   drift: 0.35,
   blockDifference: 14,
@@ -184,23 +193,36 @@ function changedBlocks(
 /** A pixel this bright is blown out: no detail left to see a dart in. */
 const BLOWN = 245;
 
+function blownFraction(pixels: Uint8Array): number {
+  let blown = 0;
+  for (const value of pixels) if (value > BLOWN) blown += 1;
+  return pixels.length === 0 ? 0 : blown / pixels.length;
+}
+
+/** Whether the cell of `cell` pixels at (cx, cy) is mostly blown out. */
+function cellBlown(pixels: Uint8Array, width: number, height: number, cx: number, cy: number, cell: number): boolean {
+  let blown = 0;
+  let count = 0;
+  for (let y = cy; y < Math.min(cy + cell, height); y += 1) {
+    for (let x = cx; x < Math.min(cx + cell, width); x += 1) {
+      if (pixels[y * width + x]! > BLOWN) blown += 1;
+      count += 1;
+    }
+  }
+  return count > 0 && blown / count >= 0.5;
+}
+
 /**
  * The patches that are mostly blown out, in cells of `cell` pixels: the
  * reflection itself, rather than every lone white pixel of a number ring.
+ * Given the calibration reference, only the patches that were not blown out
+ * in it: the new reflection, not the board lights that were always there.
  */
-function blownSpots(pixels: Uint8Array, width: number, height: number, cell = 4): Spot[] {
+function blownSpots(pixels: Uint8Array, width: number, height: number, before: Uint8Array | null, cell = 4): Spot[] {
   const spots: Spot[] = [];
   for (let cy = 0; cy < height; cy += cell) {
     for (let cx = 0; cx < width; cx += cell) {
-      let blown = 0;
-      let count = 0;
-      for (let y = cy; y < Math.min(cy + cell, height); y += 1) {
-        for (let x = cx; x < Math.min(cx + cell, width); x += 1) {
-          if (pixels[y * width + x]! > BLOWN) blown += 1;
-          count += 1;
-        }
-      }
-      if (count > 0 && blown / count >= 0.5) {
+      if (cellBlown(pixels, width, height, cx, cy, cell) && !(before && cellBlown(before, width, height, cx, cy, cell))) {
         spots.push({
           x: cx / width,
           y: cy / height,
@@ -272,6 +294,14 @@ export function boardLooksEmpty(
   return true;
 }
 
+/**
+ * Judges the picture. Given the calibration reference, glare is judged
+ * against it: lights fixed to the board (a ring light, say) blow out the same
+ * patch of it in every frame, there is nothing to be done about them, and a
+ * warning that never goes away hid every other warning behind it. What still
+ * counts is a reflection that was not there when the board was found: a
+ * window in the afternoon, a lamp that was moved.
+ */
 export function assessImage(
   pixels: Uint8Array,
   width: number,
@@ -279,14 +309,13 @@ export function assessImage(
   reference?: Uint8Array | null,
 ): ImageQuality {
   let total = 0;
-  let blown = 0;
-  for (const value of pixels) {
-    total += value;
-    if (value > BLOWN) blown += 1;
-  }
+  for (const value of pixels) total += value;
 
   const brightness = pixels.length === 0 ? 0 : total / pixels.length;
-  const glare = pixels.length === 0 ? 0 : blown / pixels.length;
+  const glare = blownFraction(pixels);
+  const before = reference && reference.length === pixels.length ? reference : null;
+  const glareBefore = before ? blownFraction(before) : 0;
+  const glareLimit = Math.max(IMAGE_THRESHOLDS.glare, glareBefore + IMAGE_THRESHOLDS.glareMargin);
   const sharpness = laplacianVariance(pixels, width, height);
   const { changed, blocks } = reference
     ? changedBlocks(pixels, reference, width, height)
@@ -296,17 +325,19 @@ export function assessImage(
   const issues: ImageIssueCode[] = [];
   if (brightness < IMAGE_THRESHOLDS.dark) issues.push('dark');
   else if (brightness > IMAGE_THRESHOLDS.washedOut) issues.push('washedOut');
-  if (glare > IMAGE_THRESHOLDS.glare) issues.push('glare');
+  if (glare > glareLimit) issues.push('glare');
   if (sharpness < IMAGE_THRESHOLDS.sharpness) issues.push('blurry');
   if (drift > IMAGE_THRESHOLDS.drift) issues.push('moved');
 
   return {
     brightness,
     glare,
+    glareLimit,
+    glareBefore,
     sharpness,
     drift,
     issues,
-    glareSpots: issues.includes('glare') ? blownSpots(pixels, width, height) : [],
+    glareSpots: issues.includes('glare') ? blownSpots(pixels, width, height, before) : [],
     changedSpots: issues.includes('moved') ? changed : [],
   };
 }
