@@ -1642,6 +1642,24 @@ input:focus-visible {
 }
 
 /* A passing note at the foot of the screen ("Saved for training"). */
+/* Its own width, not half the screen's: a fixed box at left 50% is otherwise
+   squeezed into what is left of the screen to the right of that. */
+.update-prompt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: max-content;
+}
+
+.lobby-install:empty {
+  display: none;
+}
+
+.install-ios {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .toast {
   position: fixed;
   left: 50%;

@@ -22,6 +22,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import LobbyArt, { type LobbyArtKind } from '../components/art/LobbyArt.vue';
+import InstallEntry from '../components/InstallEntry.vue';
 import { shownBattery } from '../components/batteryLevel.js';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import { fill, useStrings } from '../i18n/index.js';
@@ -228,6 +229,7 @@ const keep = (index: number) => (element: unknown) => {
           </li>
         </ul>
       </nav>
+      <div class="lobby-install"><InstallEntry /></div>
     </div>
   </div>
 </template>

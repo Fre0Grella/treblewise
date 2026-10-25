@@ -11,7 +11,7 @@ was needed.
 **Order changed, 2026-09-22.** The deploy half of A7 moved ahead of A4: a browser
 refuses camera access outside a secure context, so the capture lab cannot collect
 a single frame until the app is served over HTTPS. It is live at
-<https://fre0grella.github.io/treblewise/>; the PWA half of A7 is still outstanding.
+<https://fre0grella.github.io/treblewise/>. The PWA half of A7 followed (issue #13).
 
 ## Track A — the app
 
@@ -77,11 +77,17 @@ and an export of the numbers themselves.
 Grammar + parser in core, Web Speech adapter with contextual biasing, push-to-talk
 UI, caller echo of every voice score.
 
-### A7. PWA and deploy — deploy done
+### A7. PWA and deploy — done
 GitHub Pages deploy from CI on every push to main, tests gating the deploy.
 
-**Outstanding**: service worker, offline, installable, and the cross-device
-layout pass (phone portrait, laptop, and a TV-sized scoreboard).
+Installable and offline (issue #13): a web app manifest and a Workbox service
+worker (`vite-plugin-pwa`, configured in `apps/web/vite.config.ts`). After one
+visit a whole match plays with no connection, caller included; the autoscorer's
+model and ONNX Runtime are cached the first time the camera uses them. A new
+deploy waits for the player to choose "Reload", never in the middle of a match.
+
+**Outstanding**: the cross-device layout pass (phone portrait, laptop, and a
+TV-sized scoreboard).
 
 ## Track B — vision
 

@@ -310,7 +310,7 @@ export const en = {
       {
         when: 'Now',
         title: 'Scoring, the caller, statistics and the camera',
-        body: 'All working today, in a new interface: a match screen you can read from the oche, a card at the end of every leg, and your average against your usual one. The camera already scores with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong.',
+        body: 'All working today, in a new interface: a match screen you can read from the oche, a card at the end of every leg, and your average against your usual one. The camera already scores with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong. And it installs as an app on a phone or a computer, and works with no connection.',
       },
       {
         when: 'Next',
@@ -348,6 +348,14 @@ export const en = {
     ],
     // Not required by the voice's licence (MIT), but owed all the same (docs/08).
     voiceCredit: 'Caller voice: Chatterbox by Resemble AI.',
+  },
+  /** The installed app (issue #13): installing it, and a new version waiting. */
+  pwa: {
+    install: 'Install app',
+    iosHint: 'To install it on an iPhone or iPad: Share, then Add to Home Screen.',
+    updateReady: 'A new version is ready.',
+    reload: 'Reload',
+    later: 'Later',
   },
   footer: {
     // AGPL: the source is one click away wherever the footer is.
