@@ -8,6 +8,7 @@
  * lobby told, so going to camera setup and back never drops the phone.
  */
 
+import { LINK_LIMITS, linkHealth, steadyHealth, type LinkHealth, type LinkReadings } from '../pairing/link.js';
 import type { PairState, PairingConnection, SendingStats } from '../pairing/session.js';
 import type { Exposure } from '../vision/exposure.js';
 
@@ -42,6 +43,8 @@ export interface LobbySessionState {
   remoteStream: MediaStream | null;
   pairState: PairState | null;
   phone: PhoneStatus | null;
+  /** How the connection to the phone is doing (pairing/link.ts): the light, and the numbers behind it. */
+  link: { health: LinkHealth; readings: LinkReadings } | null;
 }
 
 export interface LobbySessionActions {
@@ -63,6 +66,9 @@ export interface LobbySessionActions {
  * open across the rename still finds it.
  */
 const SESSION_KEY = 'oche.session';
+
+/** How often the connection to the phone is looked at. */
+const LINK_EVERY_MS = 2000;
 
 function remember(session: PlayMode | null): void {
   try {
@@ -86,14 +92,47 @@ export function recallLobbySession(): Pick<LobbySessionState, 'session' | 'mode'
 }
 
 export function createLobbySession(state: Slice<LobbySessionState>): LobbySessionActions {
+  let stopWatchingLink: (() => void) | null = null;
+
+  /** Looks at the connection every couple of seconds, for as long as this phone is the one paired. */
+  function watchLink(pairing: PairingConnection) {
+    stopWatchingLink?.();
+    const pairedAt = Date.now();
+    let pending: LinkHealth | null = null;
+    const look = async () => {
+      let seen: LinkReadings;
+      try {
+        seen = await pairing.linkStats();
+      } catch {
+        return; // a closed connection, or one that cannot say
+      }
+      if ( state.get().pairing !== pairing || state.get().pairState !== 'connected') return;
+      // The phone's estimate starts low on every connection and climbs.
+      const estimate = state.get().phone?.sending?.estimateKbps;
+      const readings: LinkReadings = {
+        ...seen,
+        ...(estimate !== undefined && Date.now() - pairedAt >= LINK_LIMITS.startUpMs ? { estimateKbps: estimate } : {}),
+      };
+      const was = state.get().link?.health ?? null;
+      const steady = steadyHealth(was, pending, linkHealth(readings));
+      pending = steady.pending;
+      if (steady.shown !== was) console.info(`[treblewise] the connection to the phone is ${steady.shown}:`, readings);
+      state.set({ link: steady.shown ? { health: steady.shown, readings } : null });
+    };
+    const timer = setInterval(() => void look(), LINK_EVERY_MS);
+    stopWatchingLink = () => clearInterval(timer);
+  }
+
   const clearPairing = () => {
+    stopWatchingLink?.();
+    stopWatchingLink = null;
     const { pairing } = state.get();
     if (pairing) {
       pairing.onState = null;
       pairing.onMessage = null;
       pairing.close();
     }
-    state.set({ pairing: null, remoteStream: null, pairState: null, phone: null });
+    state.set({ pairing: null, remoteStream: null, pairState: null, phone: null, link: null });
   };
 
   return {
@@ -103,7 +142,8 @@ export function createLobbySession(state: Slice<LobbySessionState>): LobbySessio
     },
 
     setPairing(pairing, remoteStream) {
-      state.set({ pairing, remoteStream, mode: 'paired', pairState: pairing.state, phone: null });
+      state.set({ pairing, remoteStream, mode: 'paired', pairState: pairing.state, phone: null, link: null });
+      watchLink(pairing);
       // A connection that has since been replaced or cleared is no longer
       // ours, and must not overwrite the one that is.
       const current = () => state.get().pairing === pairing;

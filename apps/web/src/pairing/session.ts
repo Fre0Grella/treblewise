@@ -15,6 +15,7 @@
 import type { GrabbedFrame } from '../vision/camera.js';
 import type { Exposure } from '../vision/exposure.js';
 import { encodePayload, decodePayload, expectRole, type PairingRole } from './payload.js';
+import { middle, type LinkReadings } from './link.js';
 import { PHOTO_CHUNK_BYTES, PhotoAssembler, chunks, type PhotoMessage } from './photo.js';
 import { encodeShortCode, decodeShortCode, readAnswer, rebuildAnswer } from './shortcode.js';
 
@@ -38,12 +39,14 @@ export interface ControlMessage {
 
 /**
  * The video as the phone sends it: its size, and what is holding it back
- * (`qualityLimitationReason`: 'none', 'cpu', 'bandwidth' or 'other').
+ * (`qualityLimitationReason`: 'none', 'cpu', 'bandwidth' or 'other'), and how
+ * fast the phone reckons it can send, in kbit/s, when the browser says.
  */
 export interface SendingStats {
   width: number;
   height: number;
   limitation: string;
+  estimateKbps?: number;
 }
 
 /** How long to wait for a browser to finish listing its local addresses. */
@@ -144,6 +147,8 @@ export class PairingConnection {
   private photoWaiters = new Map<number, (frame: GrabbedFrame | null) => void>();
   /** One photograph at a time: two sets of chunks interleaved would be one corrupt JPEG. */
   private photoQueue: Promise<void> = Promise.resolve();
+  /** The laptop's side: how long the last few photographs took to come over, ms. */
+  private photoTimes: number[] = [];
 
   constructor(readonly role: PairingRole) {
     // max-bundle puts the video and the control channel on one transport, so
@@ -283,6 +288,7 @@ export class PairingConnection {
     if (channel.readyState !== 'open') return null;
 
     const id = this.nextPhotoId++;
+    const asked = performance.now();
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.photoAssembler.reset();
@@ -290,6 +296,7 @@ export class PairingConnection {
       }, PHOTO_TIMEOUT_MS);
       this.photoWaiters.set(id, (frame) => {
         clearTimeout(timer);
+        this.photoTimes = [...this.photoTimes, performance.now() - asked].slice(-3);
         resolve(frame);
       });
       channel.send(JSON.stringify({ type: 'request', id } satisfies PhotoMessage));
@@ -299,13 +306,39 @@ export class PairingConnection {
   /** The phone's side: the video as it is being sent, or null before it is. */
   async sendingStats(): Promise<SendingStats | null> {
     const stats = await this.pc.getStats();
+    const estimate = selectedPair(stats)?.availableOutgoingBitrate;
     for (const report of stats.values()) {
       const r = report as { type: string; kind?: string; frameWidth?: number; frameHeight?: number; qualityLimitationReason?: string };
       if (r.type === 'outbound-rtp' && r.kind === 'video' && r.frameWidth) {
-        return { width: r.frameWidth, height: r.frameHeight ?? 0, limitation: r.qualityLimitationReason ?? 'none' };
+        return {
+          width: r.frameWidth,
+          height: r.frameHeight ?? 0,
+          limitation: r.qualityLimitationReason ?? 'none',
+          ...(estimate !== undefined ? { estimateKbps: Math.round(estimate / 1000) } : {}),
+        };
       }
     }
     return null;
+  }
+
+  /**
+   * The laptop's side: what the connection light is judged on, as far as the
+   * laptop can see it. The phone's bandwidth estimate comes in its status.
+   */
+  async linkStats(): Promise<LinkReadings> {
+    const stats = await this.pc.getStats();
+    const rtt = selectedPair(stats)?.currentRoundTripTime;
+    let fps: number | undefined;
+    for (const report of stats.values()) {
+      const r = report as { type: string; kind?: string; framesPerSecond?: number };
+      if (r.type === 'inbound-rtp' && r.kind === 'video' && r.framesPerSecond !== undefined) fps = r.framesPerSecond;
+    }
+    const photoMs = middle(this.photoTimes);
+    return {
+      ...(rtt !== undefined ? { rttMs: Math.round(rtt * 1000) } : {}),
+      ...(fps !== undefined ? { fps: Math.round(fps) } : {}),
+      ...(photoMs !== undefined ? { photoMs: Math.round(photoMs) } : {}),
+    };
   }
 
   close(): void {
@@ -404,4 +437,22 @@ export class PairingConnection {
     // room has a camera to read the picture with.
     return { connection, code: answerCode, shortCode: encodeShortCode(readAnswer(answerSdp)) };
   }
+}
+
+/** The pair of addresses the connection is using, from a stats report, if it says. */
+function selectedPair(
+  stats: RTCStatsReport,
+): { availableOutgoingBitrate?: number; currentRoundTripTime?: number } | undefined {
+  type Pair = { type: string; id: string; state?: string; nominated?: boolean; availableOutgoingBitrate?: number; currentRoundTripTime?: number };
+  let chosen: string | undefined;
+  for (const report of stats.values()) {
+    const r = report as { type: string; selectedCandidatePairId?: string };
+    if (r.type === 'transport' && r.selectedCandidatePairId) chosen = r.selectedCandidatePairId;
+  }
+  for (const report of stats.values()) {
+    const r = report as Pair;
+    if (r.type !== 'candidate-pair') continue;
+    if (chosen ? r.id === chosen : r.nominated && r.state === 'succeeded') return r;
+  }
+  return undefined;
 }

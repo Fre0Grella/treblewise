@@ -12,6 +12,7 @@ function held(): Slice<LobbySessionState> {
     remoteStream: null,
     pairState: null,
     phone: null,
+    link: null,
   };
   return { get: () => state, set: (patch) => (state = { ...state, ...patch }) };
 }
@@ -23,6 +24,7 @@ function fakePhone() {
     onState: null as ((state: PairState) => void) | null,
     onMessage: null as ((message: ControlMessage) => void) | null,
     close: vi.fn(),
+    linkStats: vi.fn(async () => ({})),
   };
 }
 
@@ -100,4 +102,48 @@ describe('the lobby session', () => {
     expect(phone.close).toHaveBeenCalled();
     expect(state.get()).toMatchObject({ session: null, mode: 'solo', pairing: null });
   });
+
+  it('lights the connection from what the laptop and the phone see, steadily', async () => {
+    vi.useFakeTimers();
+    try {
+      const state = held();
+      const phone = fakePhone();
+      phone.linkStats = vi.fn(async () => ({ rttMs: 5, fps: 30, photoMs: 150 }));
+      const lobby = createLobbySession(state);
+      lobby.setPairing(phone as unknown as PairingConnection, video);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(state.get().link).toEqual({ health: 'good', readings: { rttMs: 5, fps: 30, photoMs: 150 } });
+
+      // Photographs crawling: red, but only once it is seen twice running.
+      phone.linkStats = vi.fn(async () => ({ rttMs: 5, fps: 30, photoMs: 4100 }));
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(state.get().link?.health).toBe('good');
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(state.get().link?.health).toBe('bad');
+
+      lobby.clearPairing();
+      expect(state.get().link).toBeNull();
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(state.get().link).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not hold the phone’s estimate against it while it is still climbing', async () => {
+    vi.useFakeTimers();
+    try {
+      const state = held();
+      const phone = fakePhone();
+      createLobbySession(state).setPairing(phone as unknown as PairingConnection, video);
+      phone.onMessage!({ type: 'status', sending: { width: 720, height: 1280, limitation: 'none', estimateKbps: 300 } });
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(state.get().link).toBeNull();
+      await vi.advanceTimersByTimeAsync(14_000);
+      expect(state.get().link?.health).toBe('bad');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
+

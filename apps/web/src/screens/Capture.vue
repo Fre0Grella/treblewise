@@ -27,6 +27,7 @@ import { unlockCaller } from '../caller/caller.js';
 import BoardOverlay, { type OverlayHandle } from '../components/BoardOverlay.vue';
 import ExposureControl from '../components/ExposureControl.vue';
 import PhoneBattery from '../components/PhoneBattery.vue';
+import PhoneLink from '../components/PhoneLink.vue';
 import QualityMarks from '../components/QualityMarks.vue';
 import SetupCoach from '../components/SetupCoach.vue';
 import Fold from '../components/ui/Fold.vue';
@@ -461,6 +462,7 @@ const storageLine = computed(() => {
           </template>
         </p>
         <PhoneBattery />
+        <PhoneLink />
 
         <div v-if="mode === 'try'" class="capture-actions">
           <div class="controls">
