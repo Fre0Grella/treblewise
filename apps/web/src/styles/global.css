@@ -2605,6 +2605,13 @@ input:focus-visible {
   margin-top: var(--space-1);
 }
 
+.phone-link-numbers {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .phone-battery {
   font-size: var(--text-xs);
   color: var(--text-dim);

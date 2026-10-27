@@ -30,6 +30,7 @@ import { squareAround } from '../vision/crop.js';
 import { referenceOf } from '../vision/imageStats.js';
 import BoardOverlay from './BoardOverlay.vue';
 import PhoneBattery from './PhoneBattery.vue';
+import PhoneLink from './PhoneLink.vue';
 import PhotoStage from './PhotoStage.vue';
 import QualityMarks from './QualityMarks.vue';
 import SetupCoach from './SetupCoach.vue';
@@ -257,14 +258,19 @@ function toggleAutoscore() {
 }
 const autoscoreOn = computed({ get: () => autoscore.value, set: () => toggleAutoscore() });
 
+/** The paired phone's connection is too slow to read the board through (pairing/link.ts). */
+const slowLink = computed(() => lobby.mode === 'paired' && lobby.pairState === 'connected' && lobby.link?.health === 'bad');
+
 /**
  * The badge's state (issue #15): quiet while the autoscorer can work, a
  * reflection included; 'bad' only when it cannot (no calibration, the board
- * moved or cut off). The full story is in the panel's coach line.
+ * moved or cut off, a connection to the phone too slow to see the board
+ * through). The full story is in the panel.
  */
 const status = computed<'ok' | 'off' | 'bad'>(() => {
   if (!keepFrames.value) return 'off';
   if (!calibration.value) return 'bad';
+  if (slowLink.value) return 'bad';
   if (camera.quality.value?.issues.includes('moved')) return 'bad';
   if (view.value?.issues.some((issue) => issue.code === 'offFrame')) return 'bad';
   return 'ok';
@@ -273,6 +279,7 @@ const statusLabel = computed(() => {
   if (status.value === 'off') return t.report.badgeOff;
   if (status.value === 'ok') return t.report.badgeReady;
   if (!calibration.value) return t.report.badgeNotCalibrated;
+  if (slowLink.value) return t.report.badgeSlowLink;
   return camera.quality.value?.issues.includes('moved') ? t.report.badgeMoved : t.report.badgeCutOff;
 });
 
@@ -349,6 +356,7 @@ const attachVideo = (element: unknown) => {
       <p v-if="!keepFrames" class="hint">{{ t.report.noFrame }}</p>
       <p v-else-if="!usable && latest !== null" class="hint">{{ t.capture.noCalibration }}</p>
       <PhoneBattery v-if="keepFrames" />
+      <PhoneLink v-if="keepFrames" />
       <div class="camera-panel-actions">
         <button type="button" :class="status === 'bad' ? 'btn-primary' : ''" @click="router.push(`${PATHS.camera}?from=game`)">
           {{ calibration ? t.report.cameraSetup : t.capture.calibrate }}

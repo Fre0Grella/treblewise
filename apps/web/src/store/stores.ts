@@ -107,6 +107,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     remoteStream: null,
     pairState: null,
     phone: null,
+    link: null,
   });
   const lobby = createLobbySession(refSlice(state));
   return {

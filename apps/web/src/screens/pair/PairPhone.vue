@@ -125,7 +125,14 @@ watch(step, (now, _, onCleanup) => {
   const watchSending = async () => {
     const now = await connection?.sendingStats().catch(() => null);
     if (cancelled || !now) return;
-    if (now.width !== sent?.width || now.height !== sent?.height || now.limitation !== sent?.limitation) void report();
+    // The estimate is said again when it moves by a fifth: it is what the
+    // laptop's connection light is judged on, and it changes all the time.
+    const estimateMoved =
+      (now.estimateKbps === undefined) !== (sent?.estimateKbps === undefined) ||
+      Math.abs((now.estimateKbps ?? 0) - (sent?.estimateKbps ?? 0)) > 0.2 * (sent?.estimateKbps ?? 0);
+    if (now.width !== sent?.width || now.height !== sent?.height || now.limitation !== sent?.limitation || estimateMoved) {
+      void report();
+    }
   };
   void report();
   const timer = setInterval(() => void report(), 30_000);

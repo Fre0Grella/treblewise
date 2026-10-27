@@ -674,6 +674,10 @@ export const en = {
   },
   camera: {
     batteryLow: 'The phone is at {n}% and not charging: plug it in before it stops filming.',
+    link: { good: 'Connection to the phone: good', slow: 'Connection to the phone: slow', bad: 'Connection to the phone: bad' },
+    linkBad:
+      'The connection to the phone is too slow: the picture is blurry and photos take seconds, so darts are read late and the darts coming out are not seen. End the pairing and pair again.',
+    linkNumbers: 'phone can send {kbps} kbit/s · round trip {rtt} ms · {fps} frames/s · photos take {photo} ms',
     title: 'Camera mode',
     subtitle: 'Point this phone at your computer’s pairing code.',
     liveSubtitle: 'Leave the phone where it is. The computer is doing the rest.',
@@ -886,6 +890,7 @@ export const en = {
     badgeNotCalibrated: 'Camera not set up',
     badgeMoved: 'Board moved',
     badgeCutOff: 'Board cut off',
+    badgeSlowLink: 'Phone connection slow',
     showCamera: '{status}. Show the camera.',
     cameraSwitch: 'Camera',
     cameraNote: 'Photograph every throw.',
