@@ -242,11 +242,13 @@ in the middle of the bed, and the UI asks.
 A **camera setup screen with a practice round in it**, built and usable during
 ordinary practice:
 
-1. **Calibrate once per camera position.** Drag four markers onto the outer edge
-   of the double ring on the centre lines of the 20, 6, 3 and 11. Those four
-   landmarks were chosen because a person can find them without a diagram and
-   hit them within a millimetre or two — "the upper-left corner of the 20
-   segment" is a guess on a phone screen. The app then draws the whole board
+1. **Calibrate once per camera position.** Drag four markers onto the corners
+   where the outer double wire meets the wires between the 20 and the 1, the 6
+   and the 10, the 3 and the 19, and the 11 and the 14, with a lens magnifying
+   the photograph under the marker being dragged. They used to be the centre
+   lines of the 20, 6, 3 and 11, but nothing marks a segment's centre: the
+   markers were guessed, 2 to 7 mm out, and the treble ring was drawn a band
+   away from the real one. A corner is drawn by the wires. The app then draws the whole board
    through the resulting homography, over the photograph: if the drawn wires sit
    on the real ones the calibration is right, and if they drift you can see
    exactly where. It also reports the fit in pixels.
