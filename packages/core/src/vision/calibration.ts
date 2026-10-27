@@ -26,10 +26,10 @@ export interface CalibrationLandmark {
  * (right), the 3 (bottom) and the 11 (left).
  */
 export const CALIBRATION_LANDMARKS: readonly CalibrationLandmark[] = [
-  { id: 'top', board: { x: 0, y: BOARD.doubleOuterRadius }, sector: 20 },
-  { id: 'right', board: { x: BOARD.doubleOuterRadius, y: 0 }, sector: 6 },
-  { id: 'bottom', board: { x: 0, y: -BOARD.doubleOuterRadius }, sector: 3 },
-  { id: 'left', board: { x: -BOARD.doubleOuterRadius, y: 0 }, sector: 11 },
+  { id: 'top', board: { x: 0, y: BOARD.doubleEdgeRadius }, sector: 20 },
+  { id: 'right', board: { x: BOARD.doubleEdgeRadius, y: 0 }, sector: 6 },
+  { id: 'bottom', board: { x: 0, y: -BOARD.doubleEdgeRadius }, sector: 3 },
+  { id: 'left', board: { x: -BOARD.doubleEdgeRadius, y: 0 }, sector: 11 },
 ];
 
 export const CALIBRATION_BOARD_POINTS: readonly Point[] = CALIBRATION_LANDMARKS.map((l) => l.board);
@@ -92,7 +92,7 @@ export function boardRegion(
   frame: { width: number; height: number },
   marginMm = 25,
 ): Rect | null {
-  const radius = BOARD.doubleOuterRadius + marginMm;
+  const radius = BOARD.doubleEdgeRadius + marginMm;
   const corners: Point[] = [];
   for (let angle = 0; angle < 360; angle += 15) {
     const rad = (angle * Math.PI) / 180;

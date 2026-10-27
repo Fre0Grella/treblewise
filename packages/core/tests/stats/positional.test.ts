@@ -132,8 +132,8 @@ describe('the aiming map', () => {
   });
 
   it('sends a wide player somewhere else entirely — the paper’s whole point', () => {
-    const tight = expectedScoreMap(6, 6, 4);
-    const wide = expectedScoreMap(45, 45, 4);
+    const tight = expectedScoreMap(6, 6, 2);
+    const wide = expectedScoreMap(45, 45, 2);
 
     expect(scoreAt(tight.best.point).sector).toBe(20);
     expect(scoreAt(wide.best.point).sector).not.toBe(20);

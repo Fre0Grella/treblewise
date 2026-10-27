@@ -87,7 +87,7 @@ export function assessBoardView(
   toImage: Matrix3,
   frame: { width: number; height: number },
 ): ViewAssessment {
-  const outline = ring(toImage, BOARD.doubleOuterRadius);
+  const outline = ring(toImage, BOARD.doubleEdgeRadius);
   const centre = applyHomography(toImage, { x: 0, y: 0 });
   const issues: ViewIssue[] = [];
 
@@ -165,10 +165,10 @@ export function assessBoardView(
   // Which side is nearer the camera: that half of the board is drawn larger.
   let cameraSide: Direction | null = null;
   if (tilt >= 8) {
-    const leftEdge = applyHomography(toImage, { x: -BOARD.doubleOuterRadius, y: 0 });
-    const rightEdge = applyHomography(toImage, { x: BOARD.doubleOuterRadius, y: 0 });
-    const topEdge = applyHomography(toImage, { x: 0, y: BOARD.doubleOuterRadius });
-    const bottomEdge = applyHomography(toImage, { x: 0, y: -BOARD.doubleOuterRadius });
+    const leftEdge = applyHomography(toImage, { x: -BOARD.doubleEdgeRadius, y: 0 });
+    const rightEdge = applyHomography(toImage, { x: BOARD.doubleEdgeRadius, y: 0 });
+    const topEdge = applyHomography(toImage, { x: 0, y: BOARD.doubleEdgeRadius });
+    const bottomEdge = applyHomography(toImage, { x: 0, y: -BOARD.doubleEdgeRadius });
 
     const horizontal = Math.hypot(rightEdge.x - centre.x, rightEdge.y - centre.y) -
       Math.hypot(leftEdge.x - centre.x, leftEdge.y - centre.y);

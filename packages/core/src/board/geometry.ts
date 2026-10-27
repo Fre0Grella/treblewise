@@ -17,7 +17,21 @@
  *   - inner bull (50) diameter                            12.7 mm
  *   - outer bull (25) diameter                            31.8 mm
  *   - 20 equal sectors                                       18°
+ *
+ * The 107 and 170 are to the outside of a wire, and the 8 mm is between the
+ * wires, so each bed's inside wire is a wire and a bed further in. The rings
+ * were once put at 107 − 8 and 170 − 8, which drew and scored the inside
+ * wires about 1.5 mm outside the real ones: a dart in the treble just inside
+ * its wire was a single. Every ring below is the centre of its wire.
  */
+
+/** Across one of the spider's wires: about a millimetre on today's thin-wire boards. */
+const WIRE = 1;
+/** The treble and double beds' inside width, between their wires. */
+const BED = 8;
+/** Centre bull to the outside of the treble wire, and of the double wire. */
+const TREBLE_EDGE = 107;
+const DOUBLE_EDGE = 170;
 
 /** Radii, in millimetres from the centre of the bull. */
 export const BOARD = {
@@ -26,13 +40,18 @@ export const BOARD = {
   /** Outer bull ("25"), worth 25. */
   outerBullRadius: 15.9,
   /** Inside wire of the treble bed. */
-  trebleInnerRadius: 99,
+  trebleInnerRadius: TREBLE_EDGE - WIRE - BED - WIRE / 2,
   /** Outside wire of the treble bed. */
-  trebleOuterRadius: 107,
+  trebleOuterRadius: TREBLE_EDGE - WIRE / 2,
   /** Inside wire of the double bed. */
-  doubleInnerRadius: 162,
+  doubleInnerRadius: DOUBLE_EDGE - WIRE - BED - WIRE / 2,
   /** Outside wire of the double bed; beyond this a dart scores nothing. */
-  doubleOuterRadius: 170,
+  doubleOuterRadius: DOUBLE_EDGE - WIRE / 2,
+  /**
+   * The outside of the double wire: the board's edge as a person sees it,
+   * where the calibration markers go, and the scale of the views built on it.
+   */
+  doubleEdgeRadius: DOUBLE_EDGE,
   /** Physical edge of the board, for drawing only. */
   boardRadius: 225.5,
 } as const;

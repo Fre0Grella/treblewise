@@ -52,6 +52,16 @@ describe('sector layout', () => {
 });
 
 describe('scoreAt', () => {
+  it('puts the inside treble and double wires a wire and a bed inside the outside ones', () => {
+    // 107 and 170 mm are to the outside of the wires, and the beds 8 mm
+    // between them: the inside wires sit near 97.5 and 160.5 mm, not 99 and 162.
+    expect(formatHit(scoreAt(mm(0, 98)))).toBe('T20');
+    expect(formatHit(scoreAt(mm(0, 161)))).toBe('D20');
+    expect(formatHit(scoreAt(mm(0, 97)))).toBe('S20');
+    expect(formatHit(scoreAt(mm(0, 160)))).toBe('S20');
+    expect(formatHit(scoreAt(mm(0, 169.8)))).toBe('MISS');
+  });
+
   it('scores the bulls', () => {
     expect(scoreAt(mm(0, 0))).toEqual(BULL);
     expect(scoreAt(mm(0, 5))).toEqual(BULL);
@@ -92,7 +102,8 @@ describe('wireMargin', () => {
   it('is zero on a wire and largest in the middle of a bed', () => {
     expect(wireMargin(mm(0, BOARD.trebleOuterRadius))).toBeCloseTo(0, 6);
     expect(wireMargin(mm(0, BOARD.doubleInnerRadius))).toBeCloseTo(0, 6);
-    expect(wireMargin(targetPoint(hit(20, 'treble')))).toBeCloseTo(4, 1);
+    // The bed is 8 mm between the wires, 9 mm between their centres.
+    expect(wireMargin(targetPoint(hit(20, 'treble')))).toBeCloseTo(4.5, 1);
   });
 
   it('measures the distance to a sector wire as an arc length', () => {

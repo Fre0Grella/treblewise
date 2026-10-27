@@ -354,7 +354,7 @@ export function expectedScoreMap(sigmaX: number, sigmaY: number, step = 4, half 
   return {
     ...expected,
     best,
-    trebleTwenty: sampleGrid(expected, { x: 0, y: 103 }),
+    trebleTwenty: sampleGrid(expected, { x: 0, y: (BOARD.trebleInnerRadius + BOARD.trebleOuterRadius) / 2 }),
     sigma: { along: sigmaX, across: sigmaY },
   };
 }

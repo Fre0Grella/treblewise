@@ -61,7 +61,7 @@ def test_solve_homography_recovers_a_known_warp():
 
 def test_wire_distance():
     assert wire_distance(0, 50) == pytest.approx(50 * math.sin(math.radians(9)))  # middle of the 20
-    assert wire_distance(0, 103) == pytest.approx(4)  # middle of the treble bed
+    assert wire_distance(0, 102) == pytest.approx(4.5)  # middle of the treble bed, between wire centres
     wire = math.radians(81)
     assert wire_distance(60 * math.cos(wire), 60 * math.sin(wire)) == pytest.approx(0, abs=1e-9)
 

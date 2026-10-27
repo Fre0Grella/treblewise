@@ -111,8 +111,11 @@ Each label entry holds:
   reported            what the app believed when the frame was reported as wrong,
                       with the dart event ids it refers to
 
-Board millimetres follow the standard steel-tip board: the outer edge of the
-double ring is at 170 mm, the treble ring at 107 mm, the outer bull at 15.9 mm.
+Board millimetres follow the standard steel-tip board: the outside of the
+double wire is at 170 mm, of the treble wire at 107 mm, the beds are 8 mm
+between the wires, the outer bull is at 15.9 mm. Scores written before
+2026-10-27 put the inside wires at 99 and 162 mm; later ones at the centres
+of the real wires, 97.5 and 160.5 mm.
 `;
 
 interface ExportedFrame {
