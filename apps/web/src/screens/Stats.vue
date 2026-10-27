@@ -139,7 +139,8 @@ const aim = computed(() => {
   // One symmetric spread rather than pretending to know how the group's own
   // axes line up with the board's.
   const sigma = Math.sqrt(Math.max(spread.value.along, 1) * Math.max(spread.value.across, 1));
-  return expectedScoreMap(sigma, sigma, 4);
+  // 2 mm: on a 4 mm grid the treble 20 and 19 are a rounding apart, and a tight thrower was sent to the 19.
+  return expectedScoreMap(sigma, sigma, 2);
 });
 
 const ranked = computed(() =>

@@ -38,7 +38,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .board import DOUBLE_OUTER_RADIUS, SECTORS, apply_h, solve_homography
+from .board import DOUBLE_EDGE_RADIUS, SECTORS, apply_h, solve_homography
 from .capture_export import CALIBRATION_BOARD
 from .samples import Sample
 
@@ -115,7 +115,7 @@ def load_dartscribe(root: str | Path, max_fit_px: float = 3.0) -> tuple[list[Sam
             counts["dart without a position"] += 1
             continue
         scale = data["board"]["double_outer_diameter"] / 2
-        if abs(scale - DOUBLE_OUTER_RADIUS) > 1:
+        if abs(scale - DOUBLE_EDGE_RADIUS) > 1:
             raise ValueError(f"{label}: a board with a {scale} mm double ring is not a standard board")
         tips_board = np.array(
             [[t["hit"]["board_position"]["x"] * scale, t["hit"]["board_position"]["y"] * scale] for t in throws],

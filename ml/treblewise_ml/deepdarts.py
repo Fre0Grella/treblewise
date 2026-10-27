@@ -34,10 +34,10 @@ from pathlib import Path
 
 import numpy as np
 
-from .board import DOUBLE_OUTER_RADIUS, solve_homography
+from .board import DOUBLE_EDGE_RADIUS, solve_homography
 from .samples import Sample
 
-_R = DOUBLE_OUTER_RADIUS
+_R = DOUBLE_EDGE_RADIUS
 _S = math.sin(math.radians(9))
 _C = math.cos(math.radians(9))
 
