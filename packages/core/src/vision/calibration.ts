@@ -2,11 +2,13 @@
  * Calibration landmarks and the board wireframe.
  *
  * Calibration means: which four points on the photo are which four points on a
- * real board. They have to be landmarks a person can find without a diagram and
- * hit within a millimetre or two, which rules out anything described as "the
- * corner of the 20 segment" — on a phone screen at arm's length that is a
- * guess. The four cardinal points of the double ring are unambiguous, easy to
- * name, and as far apart as points on a board can be, which is what keeps the
+ * real board. They have to be points a person can see and hit within a
+ * millimetre. They used to be the outer edge of the double on the centre line
+ * of the 20, 6, 3 and 11, but no line marks a segment's centre: it was
+ * guessed, and a marker guessed a few millimetres along the ring turns the
+ * whole board drawn from it. Where a sector wire meets the outer double wire
+ * is a corner the wires themselves draw. The four used are a quarter turn
+ * apart, as far apart as points on a board can be, which is what keeps the
  * homography well conditioned.
  */
 
@@ -17,19 +19,26 @@ export interface CalibrationLandmark {
   id: 'top' | 'right' | 'bottom' | 'left';
   /** Where it is in board millimetres. */
   board: Point;
-  /** The sector whose centre line it sits on. */
-  sector: number;
+  /** The two sectors whose dividing wire it sits on, the first one clockwise from it. */
+  between: readonly [number, number];
+}
+
+/** A point on the outside of the double wire, `degrees` anticlockwise from the 6. */
+function onDoubleEdge(degrees: number): Point {
+  const rad = (degrees * Math.PI) / 180;
+  return { x: BOARD.doubleEdgeRadius * Math.cos(rad), y: BOARD.doubleEdgeRadius * Math.sin(rad) };
 }
 
 /**
- * The outer edge of the double ring, on the centre line of the 20 (top), the 6
- * (right), the 3 (bottom) and the 11 (left).
+ * The outer edge of the double ring, where the wire between the 20 and the 1
+ * meets it (top), the 6 and the 10 (right), the 3 and the 19 (bottom), and
+ * the 11 and the 14 (left): each 9° clockwise of the segment's centre.
  */
 export const CALIBRATION_LANDMARKS: readonly CalibrationLandmark[] = [
-  { id: 'top', board: { x: 0, y: BOARD.doubleEdgeRadius }, sector: 20 },
-  { id: 'right', board: { x: BOARD.doubleEdgeRadius, y: 0 }, sector: 6 },
-  { id: 'bottom', board: { x: 0, y: -BOARD.doubleEdgeRadius }, sector: 3 },
-  { id: 'left', board: { x: -BOARD.doubleEdgeRadius, y: 0 }, sector: 11 },
+  { id: 'top', board: onDoubleEdge(81), between: [20, 1] },
+  { id: 'right', board: onDoubleEdge(-9), between: [6, 10] },
+  { id: 'bottom', board: onDoubleEdge(-99), between: [3, 19] },
+  { id: 'left', board: onDoubleEdge(171), between: [11, 14] },
 ];
 
 export const CALIBRATION_BOARD_POINTS: readonly Point[] = CALIBRATION_LANDMARKS.map((l) => l.board);

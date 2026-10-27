@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { scoreAt, type Point } from '../../src/board/geometry.js';
-import { CALIBRATION_BOARD_POINTS, boardWireframe } from '../../src/vision/calibration.js';
+import { CALIBRATION_BOARD_POINTS, CALIBRATION_LANDMARKS, boardWireframe } from '../../src/vision/calibration.js';
 import {
   applyHomography,
   invertHomography,
@@ -117,5 +117,23 @@ describe('boardWireframe', () => {
     const h = solveHomography(board, board.map((p) => applyHomography(CAMERA, p)))!;
     const projected = boardWireframe().flat().map((p) => applyHomography(h, p));
     expect(projected.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+  });
+});
+
+describe('calibration landmarks', () => {
+  it('sit on the outer double wire, on the wire between their two sectors', () => {
+    for (const { board, between } of CALIBRATION_LANDMARKS) {
+      expect(Math.hypot(board.x, board.y)).toBeCloseTo(170, 9);
+      const angle = Math.atan2(board.y, board.x);
+      // A millimetre inside the double, either side of the wire.
+      const side = (turn: number) => {
+        const a = angle + turn / 166;
+        return scoreAt({ x: 166 * Math.cos(a), y: 166 * Math.sin(a) });
+      };
+      expect([side(-1), side(1)]).toEqual([
+        expect.objectContaining({ sector: between[1], ring: 'double' }),
+        expect.objectContaining({ sector: between[0], ring: 'double' }),
+      ]);
+    }
   });
 });

@@ -24,9 +24,11 @@ import numpy as np
 from .board import DOUBLE_EDGE_RADIUS, RINGS_BEFORE_WIRES, apply_h, score_at, to_matrix
 from .samples import Sample
 
-# The four landmarks the user drags onto the board, in this order
-# (packages/core/src/vision/calibration.ts): the outer edge of the double ring
-# on the centre lines of the 20, 6, 3 and 11.
+# The four landmarks the app first had the user drag onto the board, in this
+# order: the outer edge of the double ring on the centre lines of the 20, 6, 3
+# and 11. The app has moved them since (packages/core/src/vision/calibration.ts),
+# so an export's landmarks are read from its own homography (`load_export`);
+# these stay as the synthetic side views' landmarks (dartscribe.py).
 CALIBRATION_BOARD = np.array(
     [[0, DOUBLE_EDGE_RADIUS], [DOUBLE_EDGE_RADIUS, 0], [0, -DOUBLE_EDGE_RADIUS], [-DOUBLE_EDGE_RADIUS, 0]],
     dtype=np.float64,
@@ -141,6 +143,11 @@ def load_export(path: str | Path, tolerance_mm: float = 0.05) -> tuple[list[Samp
             report.skip("score disagrees with board.score_at", f"{frame['id']}: {wrong}")
             continue
 
+        # Where the tapped points are on the board, from the photograph's own
+        # homography: right whichever landmarks the app asked for when it was taken.
+        calib_image = np.array([[p["x"], p["y"]] for p in calibration["imagePoints"]], dtype=np.float64)
+        calib_board = apply_h(to_board, calib_image)
+
         samples.append(
             Sample(
                 key=f"oche:{frame['id']}",
@@ -148,8 +155,8 @@ def load_export(path: str | Path, tolerance_mm: float = 0.05) -> tuple[list[Samp
                 group=groups[frame["id"]],
                 image_path=_image_path(base, frame["file"]),
                 image_to_board=to_board,
-                calib_image=np.array([[p["x"], p["y"]] for p in calibration["imagePoints"]], dtype=np.float64),
-                calib_board=CALIBRATION_BOARD.copy(),
+                calib_image=calib_image,
+                calib_board=calib_board,
                 tips_image=tips,
                 meta={
                     "ts": frame["ts"],

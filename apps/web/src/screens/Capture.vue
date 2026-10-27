@@ -19,7 +19,7 @@
   camera, calibrates, and renders the session.
 -->
 <script setup lang="ts">
-import { CALIBRATION_BOARD_POINTS, assessBoardView, boardRegion, formatHit, type Point } from '@treblewise/core';
+import { CALIBRATION_BOARD_POINTS, applyHomography, assessBoardView, boardRegion, formatHit, type Point } from '@treblewise/core';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -188,8 +188,12 @@ async function startCalibration() {
   if (!grabbed) return;
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
   frozen.value = { url: URL.createObjectURL(grabbed.jpeg), width: grabbed.width, height: grabbed.height };
-  draft.value =
-    calibration.value && !staleCalibration.value ? calibration.value.imagePoints : defaultHandles(grabbed.width, grabbed.height);
+  // From where the current calibration puts the landmarks, not from the
+  // points tapped for it: those may be landmarks that have since moved.
+  const current = calibration.value && !staleCalibration.value ? calibration.value : null;
+  draft.value = current
+    ? CALIBRATION_BOARD_POINTS.map((point) => applyHomography(current.toImage, point))
+    : defaultHandles(grabbed.width, grabbed.height);
   mode.value = 'calibrate';
 }
 

@@ -63,6 +63,37 @@ def test_a_rejected_proposal_is_kept_as_a_board_with_nothing_new(tmp_path):
     assert report.kept == 3
 
 
+def test_landmarks_come_from_each_photographs_own_homography(synthetic_export, tmp_path):
+    """The app moved its landmarks to the wire corners; an export tapped on them must warp the same."""
+    import json
+    import zipfile
+
+    from treblewise_ml.board import DOUBLE_EDGE_RADIUS
+    from treblewise_ml.dataset import rect_warp
+
+    from .conftest import TO_IMAGE
+
+    corners = np.radians([81, -9, -99, 171])
+    moved = DOUBLE_EDGE_RADIUS * np.stack([np.cos(corners), np.sin(corners)], 1)
+    with zipfile.ZipFile(synthetic_export) as z:
+        labels = json.loads(z.read("labels.json"))
+        files = {name: z.read(name) for name in z.namelist() if name != "labels.json"}
+    for frame in labels["frames"]:
+        frame["calibration"]["imagePoints"] = [{"x": x, "y": y} for x, y in apply_h(TO_IMAGE, moved)]
+    archive = tmp_path / "corners.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        for name, data in files.items():
+            z.writestr(name, data)
+        z.writestr("labels.json", json.dumps(labels))
+
+    before, _ = load_export(synthetic_export)
+    after, _ = load_export(archive)
+    assert np.allclose(after[0].calib_board, moved, atol=1e-6)
+    warp_before = rect_warp(before[0]) / rect_warp(before[0])[2, 2]
+    warp_after = rect_warp(after[0]) / rect_warp(after[0])[2, 2]
+    assert np.allclose(warp_before, warp_after, atol=1e-6)
+
+
 def test_rectified_tips_land_where_the_board_says(synthetic_export):
     samples, _ = load_export(synthetic_export)
     dataset = TipDataset(samples, train=False)
