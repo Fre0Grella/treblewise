@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .board import DOUBLE_OUTER_RADIUS, apply_h, score_at, to_matrix
+from .board import DOUBLE_EDGE_RADIUS, RINGS_BEFORE_WIRES, apply_h, score_at, to_matrix
 from .samples import Sample
 
 # The four landmarks the app first had the user drag onto the board, in this
@@ -30,7 +30,7 @@ from .samples import Sample
 # so an export's landmarks are read from its own homography (`load_export`);
 # these stay as the synthetic side views' landmarks (dartscribe.py).
 CALIBRATION_BOARD = np.array(
-    [[0, DOUBLE_OUTER_RADIUS], [DOUBLE_OUTER_RADIUS, 0], [0, -DOUBLE_OUTER_RADIUS], [-DOUBLE_OUTER_RADIUS, 0]],
+    [[0, DOUBLE_EDGE_RADIUS], [DOUBLE_EDGE_RADIUS, 0], [0, -DOUBLE_EDGE_RADIUS], [-DOUBLE_EDGE_RADIUS, 0]],
     dtype=np.float64,
 )
 
@@ -129,11 +129,16 @@ def load_export(path: str | Path, tolerance_mm: float = 0.05) -> tuple[list[Samp
             report.skip("homography disagrees with the labels", f"{frame['id']}: {error:.3f} mm")
             continue
 
-        wrong = [
-            (d["hit"], score_at(*b))
-            for d, b in zip(darts, boards)
-            if (d["hit"]["ring"], d["hit"]["value"]) != (score_at(*b).ring, score_at(*b).value)
-        ]
+        # The score the app wrote, against the board position: with today's
+        # rings, or with the ones it scored with before they were put on the
+        # wires (an older export). Training reads only the positions.
+        def agrees(hit: dict, x: float, y: float) -> bool:
+            return any(
+                (hit["ring"], hit["value"]) == (score.ring, score.value)
+                for score in (score_at(x, y), score_at(x, y, RINGS_BEFORE_WIRES))
+            )
+
+        wrong = [(d["hit"], score_at(*b)) for d, b in zip(darts, boards) if not agrees(d["hit"], *b)]
         if wrong:
             report.skip("score disagrees with board.score_at", f"{frame['id']}: {wrong}")
             continue

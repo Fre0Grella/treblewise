@@ -23,10 +23,10 @@ export interface CalibrationLandmark {
   between: readonly [number, number];
 }
 
-/** A point on the outer edge of the double ring, `degrees` anticlockwise from the 6. */
+/** A point on the outside of the double wire, `degrees` anticlockwise from the 6. */
 function onDoubleEdge(degrees: number): Point {
   const rad = (degrees * Math.PI) / 180;
-  return { x: BOARD.doubleOuterRadius * Math.cos(rad), y: BOARD.doubleOuterRadius * Math.sin(rad) };
+  return { x: BOARD.doubleEdgeRadius * Math.cos(rad), y: BOARD.doubleEdgeRadius * Math.sin(rad) };
 }
 
 /**
@@ -101,7 +101,7 @@ export function boardRegion(
   frame: { width: number; height: number },
   marginMm = 25,
 ): Rect | null {
-  const radius = BOARD.doubleOuterRadius + marginMm;
+  const radius = BOARD.doubleEdgeRadius + marginMm;
   const corners: Point[] = [];
   for (let angle = 0; angle < 360; angle += 15) {
     const rad = (angle * Math.PI) / 180;

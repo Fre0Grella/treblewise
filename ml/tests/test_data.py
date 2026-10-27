@@ -68,13 +68,13 @@ def test_landmarks_come_from_each_photographs_own_homography(synthetic_export, t
     import json
     import zipfile
 
-    from treblewise_ml.board import DOUBLE_OUTER_RADIUS
+    from treblewise_ml.board import DOUBLE_EDGE_RADIUS
     from treblewise_ml.dataset import rect_warp
 
     from .conftest import TO_IMAGE
 
     corners = np.radians([81, -9, -99, 171])
-    moved = DOUBLE_OUTER_RADIUS * np.stack([np.cos(corners), np.sin(corners)], 1)
+    moved = DOUBLE_EDGE_RADIUS * np.stack([np.cos(corners), np.sin(corners)], 1)
     with zipfile.ZipFile(synthetic_export) as z:
         labels = json.loads(z.read("labels.json"))
         files = {name: z.read(name) for name in z.namelist() if name != "labels.json"}

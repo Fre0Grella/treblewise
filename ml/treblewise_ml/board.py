@@ -17,11 +17,21 @@ import numpy as np
 
 BULL_RADIUS = 6.35
 OUTER_BULL_RADIUS = 15.9
-TREBLE_INNER_RADIUS = 99.0
-TREBLE_OUTER_RADIUS = 107.0
-DOUBLE_INNER_RADIUS = 162.0
-DOUBLE_OUTER_RADIUS = 170.0
+# 107 and 170 mm are to the outside of the treble and double wires, and the
+# beds are 8 mm between the wires: every ring is the centre of its wire, for a
+# wire a millimetre across (see geometry.ts).
+WIRE = 1.0
+BED = 8.0
+DOUBLE_EDGE_RADIUS = 170.0  # the outside of the double wire: calibration points, the rectified view's scale
+TREBLE_INNER_RADIUS = 107.0 - WIRE - BED - WIRE / 2
+TREBLE_OUTER_RADIUS = 107.0 - WIRE / 2
+DOUBLE_INNER_RADIUS = DOUBLE_EDGE_RADIUS - WIRE - BED - WIRE / 2
+DOUBLE_OUTER_RADIUS = DOUBLE_EDGE_RADIUS - WIRE / 2
 BOARD_RADIUS = 225.5
+
+# The rings the app scored with until 2026-10-27, at 107 − 8 and 170 − 8: the
+# scores in exports written before then (capture_export.py).
+RINGS_BEFORE_WIRES = (99.0, 107.0, 162.0, 170.0)
 
 SECTORS = (20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5)
 SECTOR_ARC = 360.0 / len(SECTORS)
@@ -56,18 +66,29 @@ def sector_at_angle(deg: float) -> int:
     return SECTORS[index]
 
 
-def score_at(x: float, y: float) -> Hit:
+def score_at(
+    x: float,
+    y: float,
+    rings: tuple[float, float, float, float] = (
+        TREBLE_INNER_RADIUS,
+        TREBLE_OUTER_RADIUS,
+        DOUBLE_INNER_RADIUS,
+        DOUBLE_OUTER_RADIUS,
+    ),
+) -> Hit:
+    """The score at a point. `rings`: treble inside and outside, double inside and outside."""
+    treble_inner, treble_outer, double_inner, double_outer = rings
     r = math.hypot(x, y)
     if r <= BULL_RADIUS:
         return BULL
     if r <= OUTER_BULL_RADIUS:
         return OUTER_BULL
-    if r > DOUBLE_OUTER_RADIUS:
+    if r > double_outer:
         return MISS
     sector = sector_at_angle(math.degrees(math.atan2(y, x)))
-    if TREBLE_INNER_RADIUS <= r <= TREBLE_OUTER_RADIUS:
+    if treble_inner <= r <= treble_outer:
         return Hit(sector, "treble", sector * 3)
-    if r >= DOUBLE_INNER_RADIUS:
+    if r >= double_inner:
         return Hit(sector, "double", sector * 2)
     return Hit(sector, "single", sector)
 
