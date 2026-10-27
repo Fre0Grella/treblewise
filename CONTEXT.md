@@ -41,7 +41,7 @@ The moment the board goes still after moving, when one photograph is taken; a se
 _Avoid_: capture, trigger
 
 **Empty board**:
-A settle whose board looks like a reference photograph with no darts in it: the empty board seen just before this visit's first dart, or the one taken at calibration.
+A settle whose board looks like a reference photograph with no darts in it: one of the empty boards seen lately (just before a visit's first settle, or seen empty since), or the one taken at calibration.
 
 **Visit photo**:
 The latest photograph showing exactly the **darts in the board**: what a report opens on, and, in the **capture lab**, what the change gate compares a new photograph against. In a game the change gate compares with the settle before, as the game was played and proven on a real board.

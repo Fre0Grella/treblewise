@@ -54,3 +54,40 @@ describe('BoardOverlay', () => {
     expect(onDartMove.mock.lastCall?.[0]).toBe(1);
   });
 });
+
+describe('calibration markers', () => {
+  function markers(lensSrc: string | null = 'blob:photo') {
+    const onHandleMove = vi.fn();
+    const handles = [{ point: { x: 200, y: 300 }, label: 'Top', hint: '' }];
+    const { container } = render(BoardOverlay, { props: { width: W, height: H, handles, onHandleMove, lensSrc } });
+    const svg = container.querySelector('svg')!;
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H, right: W, bottom: H, x: 0, y: 0, toJSON: () => ({}) });
+    svg.setPointerCapture = () => undefined;
+    return { svg, container, onHandleMove };
+  }
+
+  it('moves by as much as the finger does, rather than jumping under it', () => {
+    const { svg, onHandleMove } = markers();
+    // Grabbed 10 px to the right of its point and dragged 5 px up.
+    drag(svg, { x: 210, y: 300 }, { x: 210, y: 295 });
+    expect(onHandleMove.mock.lastCall).toEqual([0, { x: 200, y: 295 }]);
+  });
+
+  it('shows the photograph magnified in a lens while it is dragged, and not after', async () => {
+    const { svg, container } = markers();
+    expect(container.querySelector('.board-overlay-lens')).toBeNull();
+    svg.dispatchEvent(new MouseEvent('pointerdown', { clientX: 200, clientY: 300, bubbles: true }));
+    await Promise.resolve();
+    expect(container.querySelector('.board-overlay-lens image')?.getAttribute('href')).toBe('blob:photo');
+    svg.dispatchEvent(new MouseEvent('pointerup', { clientX: 200, clientY: 300, bubbles: true }));
+    await Promise.resolve();
+    expect(container.querySelector('.board-overlay-lens')).toBeNull();
+  });
+
+  it('has no lens without a photograph to magnify', async () => {
+    const { svg, container } = markers(null);
+    svg.dispatchEvent(new MouseEvent('pointerdown', { clientX: 200, clientY: 300, bubbles: true }));
+    await Promise.resolve();
+    expect(container.querySelector('.board-overlay-lens')).toBeNull();
+  });
+});

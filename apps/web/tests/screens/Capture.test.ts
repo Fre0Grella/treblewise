@@ -16,6 +16,7 @@ const HEIGHT = 480;
 /** What the mocks expose to the test: the settle callback, and what was stored. */
 const hooks = vi.hoisted(() => ({
   settle: undefined as ((frame: GrabbedFrame, thumbnail?: Uint8Array) => void) | undefined,
+  still: undefined as ((thumbnail: Uint8Array) => void) | undefined,
   stored: [] as CapturedFrame[],
   detectorLoads: 0,
   /** What the model finds on the next photograph, in board millimetres. */
@@ -31,8 +32,12 @@ const hooks = vi.hoisted(() => ({
 vi.mock('@/composables/useCamera.js', async () => {
   const { ref, shallowRef } = await import('vue');
   return {
-    useCamera: (options: { onSettle?: (frame: GrabbedFrame, thumbnail?: Uint8Array) => void }) => {
+    useCamera: (options: {
+      onSettle?: (frame: GrabbedFrame, thumbnail?: Uint8Array) => void;
+      onStill?: (thumbnail: Uint8Array) => void;
+    }) => {
       hooks.settle = options.onSettle;
+      hooks.still = options.onStill;
       return {
         video: ref(null),
         ready: ref(true),
@@ -264,6 +269,24 @@ describe('the capture lab saves only what a person confirmed', () => {
     await settle(EMPTY);
     expect(screen.queryByText(/pull them all out/i)).toBeNull();
     expect(screen.getByText(/i am watching the board/i)).toBeDefined();
+    hooks.found = [{ x: 20, y: -40 }];
+    await settle();
+    expect(screen.getByRole('button', { name: /right — save it/i })).toBeDefined();
+  });
+
+  it('sees the darts are out on a still board between settles, as a game does', async () => {
+    for (const n of [1, 2, 3]) {
+      hooks.found = [1, 2, 3].slice(0, n).map((k) => ({ x: k * 5, y: 103 }));
+      await settle();
+      await press(/right — save it/i);
+    }
+    // The settle after the pull was spoilt: it still looked as if the darts were in.
+    await settle();
+    expect(screen.getByText(/pull them all out/i)).toBeDefined();
+    expect(screen.getByText(/empty board \d+\.\d \(empty under 8\)/i)).toBeDefined();
+    hooks.still!(EMPTY);
+    await nextTick();
+    expect(screen.queryByText(/pull them all out/i)).toBeNull();
     hooks.found = [{ x: 20, y: -40 }];
     await settle();
     expect(screen.getByRole('button', { name: /right — save it/i })).toBeDefined();

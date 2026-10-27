@@ -132,6 +132,9 @@ const oldReference = computed(() => !!calibration.value?.reference && reference.
 const camera = useCamera({
   active: () => cameraOn.value || paired.value,
   onSettle,
+  onStill(thumbnail) {
+    if (mode.value === 'try') session.still(thumbnail);
+  },
   captureOnSettle: () => mode.value === 'try' && calibration.value !== null,
   region,
   reference,
@@ -440,6 +443,9 @@ const storageLine = computed(() => {
           <template v-if="camera.photo.value">
             · {{ fill(t.capture.photoTime, { ms: camera.photo.value.ms, dropped: camera.photo.value.dropped }) }}
           </template>
+          <template v-if="pullingOut && marking.emptyCheck">
+            · {{ fill(t.capture.emptyCheck, { score: marking.emptyCheck.score.toFixed(1), limit: marking.emptyCheck.limit }) }}
+          </template>
           <template v-if="sending">
             ·
             {{
@@ -612,6 +618,7 @@ const storageLine = computed(() => {
             :to-image="overlayToImage"
             :handles="mode === 'calibrate' ? handles : []"
             :on-handle-move="moveHandle"
+            :lens-src="mode === 'calibrate' ? frozen?.url : null"
             :darts="overlayDarts"
             :on-dart-move="session.move"
             :on-tap="tap"

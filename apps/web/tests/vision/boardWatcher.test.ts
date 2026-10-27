@@ -17,6 +17,9 @@ const EMPTY = Uint8Array.from({ length: 64 * 64 }, (_, i) => 100 + ((i * 7919) %
 const DARTS = EMPTY.map((value, i) => (i % 64 > 30 && i % 64 < 36 && i < 40 * 64 ? 20 : value));
 /** Another empty board, seen in other light: what the calibration's reference does not match. */
 const ELSEWHERE = EMPTY.map((value) => value - 60).map((value, i) => (i % 64 < 20 ? 250 : value));
+/** That board with a dart in it, and with a second one beside it. */
+const ELSEWHERE_ONE = ELSEWHERE.map((value, i) => (i % 64 > 30 && i % 64 < 36 && i < 20 * 64 ? 5 : value));
+const ELSEWHERE_TWO = ELSEWHERE_ONE.map((value, i) => (i % 64 > 40 && i % 64 < 46 && i > 40 * 64 ? 5 : value));
 
 const calibration: Calibration = {
   imagePoints: [],
@@ -101,6 +104,46 @@ describe('settle', () => {
     expect(watcher.settle(photo(), ELSEWHERE, null).kind).toBe('throw');
   });
 
+  it("does not take a board with a dart the model missed for the empty board", () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    // In today's light the calibration's reference no longer matches. The
+    // visit's first settle remembers the board just before it.
+    expect(watcher.settle(photo(), ELSEWHERE_ONE, ELSEWHERE).kind).toBe('throw');
+    // The model missed that dart, so none is held at the second settle; the
+    // board before it has the first dart in it.
+    expect(watcher.settle(photo(), ELSEWHERE_TWO, ELSEWHERE_ONE).kind).toBe('throw');
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), ELSEWHERE, null).kind).toBe('emptied');
+  });
+
+  it('keeps comparing with earlier empty boards after one it cannot match', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    expect(watcher.settle(photo(), ELSEWHERE_ONE, ELSEWHERE).kind).toBe('throw');
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), ELSEWHERE, null).kind).toBe('emptied');
+    // The next visit's first settle comes with a bad "before": still empty against the earlier ones.
+    watcher.settle(photo(), ELSEWHERE_TWO, ELSEWHERE_TWO);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), ELSEWHERE, null).kind).toBe('emptied');
+  });
+
+  it('says during the pull-out phase how far the board is from an empty one', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.state().emptyCheck).toBeNull();
+    watcher.settle(photo(), DARTS, null);
+    expect(watcher.state().emptyCheck!.score).toBeGreaterThan(watcher.state().emptyCheck!.limit);
+    watcher.settle(photo(), EMPTY, null);
+    expect(watcher.state().emptyCheck).toBeNull();
+  });
+
   it('reads nothing during the pull-out phase, and ends it at an empty board', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);
@@ -121,6 +164,37 @@ describe('settle', () => {
     watcher.dartsOut();
     expect(watcher.state().pullingOut).toBe(false);
     expect(watcher.settle(photo(), DARTS, null).kind).toBe('throw');
+  });
+
+  it('keeps the board a person said was empty, once the darts are gone from it', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    // Nothing matches today's empty board, so the phase never ends by itself.
+    watcher.settle(photo(), ELSEWHERE_TWO, null);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), ELSEWHERE_TWO, null).kind).toBe('pull-out');
+    expect(watcher.still(ELSEWHERE)).toBe(false);
+    // The next player's dart lands before anyone says the darts are out.
+    expect(watcher.settle(photo(), ELSEWHERE_ONE, null).kind).toBe('pull-out');
+    watcher.dartsOut();
+    // The emptiest board of the phase is now an empty board: the next pull-out ends by itself.
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), ELSEWHERE, null).kind).toBe('emptied');
+  });
+
+  it('does not keep a board as empty when the darts were never pulled from it', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    watcher.settle(photo(), ELSEWHERE_TWO, null);
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    watcher.settle(photo(), ELSEWHERE_TWO, null);
+    watcher.dartsOut();
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    expect(watcher.settle(photo(), ELSEWHERE_TWO, null).kind).toBe('pull-out');
   });
 
   it('starts the pull-out phase once per visit, however often it is told the visit is over', () => {

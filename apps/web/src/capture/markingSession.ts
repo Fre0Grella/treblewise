@@ -98,6 +98,8 @@ export interface MarkingSessionState {
   leaving: { exit: Exit; asking: boolean } | null;
   /** The board watcher's pull-out phase: no photograph opens until the darts are out. */
   pullingOut: boolean;
+  /** During the pull-out phase, how far the board last looked from an empty one (the board watcher's). */
+  emptyCheck: BoardWatcherState['emptyCheck'];
   /** The model the site ships, and whether it is in use (the board watcher's). */
   model: BoardWatcherState['model'];
 }
@@ -135,6 +137,12 @@ export interface MarkingSession {
    * the calibration does not fit is dropped, not even kept waiting.
    */
   settle(photo: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null): void;
+  /**
+   * The board's thumbnail while it is still, between settles: an empty one
+   * ends the pull-out phase. A settle is one look at the board, and if that
+   * one look was spoilt the darts were never seen to be out.
+   */
+  still(thumbnail: Uint8Array): void;
   /** Taps a dart at a point of the photograph, in image pixels; the score is called. */
   mark(point: Point): void;
   /** Drags the mark at `index` to a point of the photograph, in image pixels. */
@@ -267,6 +275,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
       tally,
       leaving,
       pullingOut: watching.pullingOut,
+      emptyCheck: watching.emptyCheck,
       model: watching.model,
     };
   };
@@ -279,7 +288,13 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
   };
   watcher.subscribe(() => {
     const watching = watcher.state();
-    if (watching.pullingOut !== current.pullingOut || watching.model !== current.model) publish();
+    if (
+      watching.pullingOut !== current.pullingOut ||
+      watching.emptyCheck !== current.emptyCheck ||
+      watching.model !== current.model
+    ) {
+      publish();
+    }
   });
 
   const call = (hit: Hit) => {
@@ -481,6 +496,11 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
       if (worthSaving(photo)) waiting = settled;
       else open(settled);
       publish();
+    },
+
+    still(thumbnail) {
+      // The watcher says when the phase ends, and the session hears it as a change of state.
+      watcher.still(thumbnail);
     },
 
     mark(point) {
