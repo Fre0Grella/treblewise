@@ -39,7 +39,7 @@ function fakeWatcher() {
   const told: string[] = [];
   const reads: { photo: GrabbedFrame; answer: (reading: Reading) => Promise<void> }[] = [];
   let shows: Settled = { kind: 'throw' };
-  let state: BoardWatcherState = { pullingOut: false, reading: false, model: { status: 'off', manifest: MANIFEST } };
+  let state: BoardWatcherState = { pullingOut: false, emptyCheck: null, reading: false, model: { status: 'off', manifest: MANIFEST } };
   const listeners = new Set<() => void>();
   const watcher: BoardWatcher = {
     setCalibration: () => undefined,

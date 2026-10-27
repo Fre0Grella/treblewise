@@ -8,10 +8,17 @@
   Drawing the board's wires through the calibration is what makes a
   calibration checkable by eye: if the drawn wires sit on the real ones, the
   homography is right, and if they drift the person can see exactly where.
+
+  A calibration marker has to sit on the double wire to a millimetre, and a
+  whole frame on a laptop shows a millimetre of board as half a screen pixel:
+  markers placed by eye were 3 to 6 mm out, which put the treble ring a band
+  away from where it is. So a marker moves by as much as the finger does,
+  rather than jumping under it, and while it is dragged a lens shows the
+  photograph around it magnified, with the board drawn over it.
 -->
 <script setup lang="ts">
 import { applyHomography, boardWireframe, type Matrix3, type Point } from '@treblewise/core';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 
 export interface OverlayHandle {
   point: Point;
@@ -46,8 +53,10 @@ const props = withDefaults(
     /** Tapping empty space, in image pixels. */
     onTap?: (point: Point) => void;
     dim?: boolean;
+    /** The photograph under the overlay: given, a marker being dragged shows it magnified in a lens. */
+    lensSrc?: string | null;
   }>(),
-  { toImage: null, handles: () => [], darts: () => [], dim: false },
+  { toImage: null, handles: () => [], darts: () => [], dim: false, lensSrc: null },
 );
 
 /** The overlay's colours live in global.css, with the rest of the palette. */
@@ -60,6 +69,12 @@ const MARK_COLOUR = {
 
 const svg = ref<SVGSVGElement | null>(null);
 let drag: { kind: 'handle' | 'dart'; index: number } | null = null;
+/** From the finger to the marker it grabbed: the marker moves with the finger, not under it. */
+let grab: Point = { x: 0, y: 0 };
+/** The marker being dragged, for the lens. */
+const dragged = ref<number | null>(null);
+// Unique per instance: two overlays on one page would otherwise share a lens clip.
+const clipId = `overlay-lens-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
 
 // A phone reports a finger a hundred and more times a second, and every report
 // re-renders the screen that owns the markers. Only the latest position
@@ -117,6 +132,34 @@ onBeforeUnmount(() => {
 const px = (n: number) => (scale.value > 0 ? n / scale.value : (n * Math.max(props.width, props.height)) / 600);
 const unit = computed(() => px(6));
 
+/** The lens's radius, in screen pixels. */
+const LENS_RADIUS = 72;
+/** Screen pixels per image pixel in the lens: about four per millimetre of board, on the usual setup. */
+const LENS_DETAIL = 4;
+
+/**
+ * The lens over a marker being dragged: above it, clear of the finger, or
+ * below it when there is no room above; its centre shows the marker's point.
+ */
+const lens = computed(() => {
+  const index = dragged.value;
+  const at = index === null ? undefined : props.handles[index]?.point;
+  if (!at || !props.lensSrc) return null;
+  const radius = px(LENS_RADIUS);
+  const gap = px(28);
+  const magnification = Math.min(12, Math.max(2, LENS_DETAIL * px(1)));
+  const above = at.y - 2 * radius - gap > 0;
+  const cx = Math.min(Math.max(at.x, radius), props.width - radius);
+  const cy = above ? at.y - radius - gap : at.y + radius + gap;
+  return {
+    cx,
+    cy,
+    radius,
+    magnification,
+    transform: `translate(${cx} ${cy}) scale(${magnification}) translate(${-at.x} ${-at.y})`,
+  };
+});
+
 function toImageSpace(event: PointerEvent): Point | null {
   const rect = svg.value?.getBoundingClientRect();
   if (!rect || rect.width === 0 || rect.height === 0) return null;
@@ -153,6 +196,9 @@ function down(event: PointerEvent) {
   const handleIndex = near(props.handles.map((handle) => ({ img: handle.point })));
   if (handleIndex >= 0 && props.onHandleMove) {
     drag = { kind: 'handle', index: handleIndex };
+    const at = props.handles[handleIndex]!.point;
+    grab = { x: at.x - point.x, y: at.y - point.y };
+    dragged.value = handleIndex;
   } else {
     const dartIndex = near(props.darts);
     drag = dartIndex >= 0 && props.onDartMove ? { kind: 'dart', index: dartIndex } : null;
@@ -162,8 +208,9 @@ function down(event: PointerEvent) {
 
 function move(event: PointerEvent) {
   if (!drag) return;
-  const point = toImageSpace(event);
-  if (!point) return;
+  const finger = toImageSpace(event);
+  if (!finger) return;
+  const point = drag.kind === 'handle' ? { x: finger.x + grab.x, y: finger.y + grab.y } : finger;
   pendingMove = { kind: drag.kind, index: drag.index, point };
   if (!moveFrame) moveFrame = requestAnimationFrame(flushMove);
 }
@@ -171,10 +218,16 @@ function move(event: PointerEvent) {
 function up(event: PointerEvent) {
   const wasDragging = drag !== null;
   drag = null;
+  dragged.value = null;
   flushMove(); // the marker ends where the finger left it, not one frame short
   if (wasDragging) return;
   const point = toImageSpace(event);
   if (point) props.onTap?.(point);
+}
+
+function cancel() {
+  drag = null;
+  dragged.value = null;
 }
 
 /** A thin cross with a gap in the middle, so the tip itself stays visible under the mark: placing it is lining the gap up on the tip. */
@@ -197,7 +250,7 @@ function ticks({ x, y }: Point) {
     @pointerdown="down"
     @pointermove="move"
     @pointerup="up"
-    @pointercancel="drag = null"
+    @pointercancel="cancel"
   >
     <g fill="none" stroke="var(--overlay-wire)" :stroke-width="px(1)" :opacity="0.85">
       <polyline v-for="(points, index) in wires" :key="index" :points="points" />
@@ -247,6 +300,28 @@ function ticks({ x, y }: Point) {
       >
         {{ dart.label }}
       </text>
+    </g>
+
+    <g v-if="lens" class="board-overlay-lens" pointer-events="none">
+      <clipPath :id="clipId">
+        <circle :cx="lens.cx" :cy="lens.cy" :r="lens.radius" />
+      </clipPath>
+      <circle :cx="lens.cx" :cy="lens.cy" :r="lens.radius + px(2)" fill="var(--mark-shade-strong)" stroke="var(--overlay-handle)" :stroke-width="px(2)" />
+      <g :clip-path="`url(#${clipId})`">
+        <g :transform="lens.transform">
+          <image :href="lensSrc ?? undefined" x="0" y="0" :width="width" :height="height" preserveAspectRatio="none" />
+          <g fill="none" stroke="var(--overlay-wire)" :stroke-width="px(1) / lens.magnification" :opacity="0.85">
+            <polyline v-for="(points, index) in wires" :key="index" :points="points" />
+          </g>
+        </g>
+        <!-- The marker's point is the lens's centre, left clear so the wire under it shows. -->
+        <g stroke="var(--overlay-handle)" :stroke-width="px(1.5)">
+          <line :x1="lens.cx - lens.radius" :y1="lens.cy" :x2="lens.cx - px(6)" :y2="lens.cy" />
+          <line :x1="lens.cx + px(6)" :y1="lens.cy" :x2="lens.cx + lens.radius" :y2="lens.cy" />
+          <line :x1="lens.cx" :y1="lens.cy - lens.radius" :x2="lens.cx" :y2="lens.cy - px(6)" />
+          <line :x1="lens.cx" :y1="lens.cy + px(6)" :x2="lens.cx" :y2="lens.cy + lens.radius" />
+        </g>
+      </g>
     </g>
   </svg>
 </template>

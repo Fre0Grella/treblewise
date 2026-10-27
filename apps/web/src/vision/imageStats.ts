@@ -239,9 +239,9 @@ function blownSpots(pixels: Uint8Array, width: number, height: number, before: U
 const EMPTY_SHIFT = 2;
 
 /**
- * Whether the board looks as it did in `reference` (an empty board), with
- * nothing in it: no block of the thumbnail differs from the reference by as
- * much as the capture trigger counts as a dart landing.
+ * How far the thumbnail is from `reference` (an empty board), block by block:
+ * `worst` is the block that differs most, `mean` the average over all of
+ * them. Null when the two cannot be compared.
  *
  * The overall brightness is taken out first: a room that got a little darker
  * moves every block the same way, while a dart moves one or two.
@@ -256,17 +256,20 @@ const EMPTY_SHIFT = 2;
  * The blocks overlap by half, as the capture trigger's do, so a dart on a
  * block boundary still fills most of one.
  */
-export function boardLooksEmpty(
+export function emptyBoardScore(
   current: Uint8Array,
   reference: Uint8Array,
   width: number,
   height: number,
   blockSize = 8,
-): boolean {
-  if (current.length !== reference.length || current.length !== width * height) return false;
+): { worst: number; mean: number } | null {
+  if (current.length !== reference.length || current.length !== width * height) return null;
 
   const shift = brightnessShift(current, reference);
 
+  let worst = 0;
+  let sum = 0;
+  let blocks = 0;
   const step = Math.max(1, Math.floor(blockSize / 2));
   for (let by = 0; by + 1 < height; by += step) {
     for (let bx = 0; bx + 1 < width; bx += step) {
@@ -288,10 +291,29 @@ export function boardLooksEmpty(
           if (count > 0) best = Math.min(best, total / count);
         }
       }
-      if (best >= IMAGE_THRESHOLDS.emptyBlockDifference) return false;
+      if (best === Infinity) continue;
+      worst = Math.max(worst, best);
+      sum += best;
+      blocks += 1;
     }
   }
-  return true;
+  return { worst, mean: blocks === 0 ? 0 : sum / blocks };
+}
+
+/**
+ * Whether the board looks as it did in `reference` (an empty board), with
+ * nothing in it: no block of the thumbnail differs from the reference by as
+ * much as the capture trigger counts as a dart landing (see `emptyBoardScore`).
+ */
+export function boardLooksEmpty(
+  current: Uint8Array,
+  reference: Uint8Array,
+  width: number,
+  height: number,
+  blockSize = 8,
+): boolean {
+  const score = emptyBoardScore(current, reference, width, height, blockSize);
+  return score !== null && score.worst < IMAGE_THRESHOLDS.emptyBlockDifference;
 }
 
 /**

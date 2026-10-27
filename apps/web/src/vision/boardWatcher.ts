@@ -4,8 +4,8 @@
  *
  * The capture lab and a game watch the board the same way. A settle is a hand
  * as often as a dart, so each one is first asked whether the board looks
- * empty — against the empty board seen just before this visit's first dart,
- * and against the one taken at calibration — and what that means depends on
+ * empty — against the empty boards seen lately, and against the one taken at
+ * calibration — and what that means depends on
  * where the visit is: during the pull-out phase an empty board ends it; with
  * darts in the board it is an early pull; with none, nothing was thrown. And
  * both read a photograph for a new dart the same way (vision/autoscore.ts),
@@ -27,7 +27,7 @@ import type { Calibration } from '../storage/types.js';
 import { newDarts } from './autoscore.js';
 import { THUMB_SIZE, type GrabbedFrame } from './camera.js';
 import { loadDetector, loadManifest, type Detection, type Detector, type ModelManifest } from './detector.js';
-import { boardLooksEmpty, referenceOf } from './imageStats.js';
+import { emptyBoardScore, IMAGE_THRESHOLDS, referenceOf } from './imageStats.js';
 
 /** A dart in the board. Entered by number, it has no position. */
 export interface BoardDart {
@@ -78,6 +78,12 @@ export type ModelStatus = 'none' | 'off' | 'loading' | 'ready' | 'unavailable';
 
 export interface BoardWatcherState {
   pullingOut: boolean;
+  /**
+   * During the pull-out phase, how far the board last looked from an empty
+   * one: its most changed block, in grey levels. Under `limit` it is empty.
+   * For the capture lab's readout, so a phase that never ends says why.
+   */
+  emptyCheck: { score: number; limit: number } | null;
   /** A photograph is being read. */
   reading: boolean;
   /** The model the site ships (known from its manifest), and whether it is in use. */
@@ -118,6 +124,8 @@ export interface BoardWatcher {
   /**
    * A person says the darts are out: the pull-out phase ends, and the darts in
    * the board are forgotten. Outside the pull-out phase there is nothing to end.
+   * The board that looked emptiest during the phase is kept as an empty board:
+   * none of the others matched it, which is why a person had to say so.
    */
   dartsOut(): void;
   /**
@@ -151,6 +159,11 @@ export interface BoardWatcher {
 
 const DEFAULT_DEPS: BoardWatcherDeps = { loadManifest, loadDetector, newDarts };
 
+/** How many of the empty boards seen lately are kept to compare with, besides the calibration's. */
+const EMPTIES_KEPT = 4;
+/** How often a still board's empty check is written to the console during the pull-out phase. */
+const STILL_LOG_MS = 3000;
+
 export interface BoardWatcherOptions {
   /**
    * How many darts a visit holds: three in a match. Throwing for the bull
@@ -163,8 +176,23 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
   const perVisit = options.dartsPerVisit ?? DARTS_PER_VISIT;
   let calibration: Calibration | null = null;
   let calibrationReference: Uint8Array | null = null;
-  /** The empty board as it looked just before this visit's first dart. */
-  let recentEmpty: Uint8Array | null = null;
+  /**
+   * Empty boards seen lately, newest first: seconds or minutes old and in
+   * today's light, better references than the calibration's. Only a board
+   * known to be empty goes in. It used to be one board, taken just before
+   * whichever settle came with no darts held; when the model missed a visit's
+   * first dart, that was a board with the dart in it, the darts were never
+   * seen to be out, the next visit's first dart landed unread during the
+   * pull-out phase, and the same happened again, visit after visit.
+   */
+  let empties: Uint8Array[] = [];
+  /** The board just before a settle is taken as an empty board once per visit, at its first settle. */
+  let takeBefore = true;
+  /** The board that looked emptiest during this pull-out phase, for `dartsOut`. */
+  let emptiest: { thumbnail: Uint8Array; mean: number } | null = null;
+  /** The board at the last settle read for a dart: with the visit's darts in it, once it is over. */
+  let lastThrow: Uint8Array | null = null;
+  let stillLoggedAt = Number.NEGATIVE_INFINITY;
   let darts: readonly BoardDart[] = [];
   let visitPhoto: GrabbedFrame | null = null;
   /** Bumped whenever the darts in the board change, so a reading can tell it is stale. */
@@ -184,12 +212,18 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
   }
   let queued: Asked | null = null;
 
-  let current: BoardWatcherState = { pullingOut: false, reading: false, model: { status: 'off', manifest: null } };
+  let current: BoardWatcherState = {
+    pullingOut: false,
+    emptyCheck: null,
+    reading: false,
+    model: { status: 'off', manifest: null },
+  };
   const listeners = new Set<() => void>();
   const update = (change: Partial<BoardWatcherState>) => {
     const next = { ...current, ...change };
     if (
       next.pullingOut === current.pullingOut &&
+      next.emptyCheck?.score === current.emptyCheck?.score &&
       next.reading === current.reading &&
       next.model.status === current.model.status &&
       next.model.manifest === current.model.manifest
@@ -200,17 +234,61 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
     listeners.forEach((listener) => listener());
   };
 
+  /** The darts are out: the pull-out phase, if any, is over. */
   const clearBoard = () => {
     darts = [];
     visitPhoto = null;
     board += 1;
+    takeBefore = true;
+    emptiest = null;
+    update({ pullingOut: false, emptyCheck: null });
   };
 
-  const looksEmpty = (thumbnail: Uint8Array | undefined) =>
-    thumbnail !== undefined &&
-    [recentEmpty, calibrationReference].some(
-      (reference) => reference !== null && boardLooksEmpty(thumbnail, reference, THUMB_SIZE, THUMB_SIZE),
-    );
+  const keepEmpty = (thumbnail: Uint8Array | null | undefined) => {
+    if (!thumbnail || empties.includes(thumbnail)) return;
+    empties = [thumbnail, ...empties].slice(0, EMPTIES_KEPT);
+  };
+
+  /** How close the thumbnail comes to an empty board: the best of every reference. */
+  function emptyScore(thumbnail: Uint8Array | undefined): { worst: number; mean: number } | null {
+    if (!thumbnail) return null;
+    let best: { worst: number; mean: number } | null = null;
+    for (const reference of [...empties, calibrationReference]) {
+      const score = reference ? emptyBoardScore(thumbnail, reference, THUMB_SIZE, THUMB_SIZE) : null;
+      if (!score) continue;
+      best = best ? { worst: Math.min(best.worst, score.worst), mean: Math.min(best.mean, score.mean) } : score;
+    }
+    return best;
+  }
+
+  const looksEmpty = (thumbnail: Uint8Array | undefined) => {
+    const score = emptyScore(thumbnail);
+    return score !== null && score.worst < IMAGE_THRESHOLDS.emptyBlockDifference;
+  };
+
+  /**
+   * Whether the board is empty, during the pull-out phase. Says how close it
+   * came, and remembers the board that came closest: a hand or a dart left in
+   * adds to the mean, so the emptiest is the board after the darts came out.
+   */
+  function pulledOut(thumbnail: Uint8Array | undefined, seenBy: 'settle' | 'still'): boolean {
+    const score = emptyScore(thumbnail);
+    if (!thumbnail || !score) return false;
+    const limit = IMAGE_THRESHOLDS.emptyBlockDifference;
+    const empty = score.worst < limit;
+    if (!emptiest || score.mean < emptiest.mean) emptiest = { thumbnail, mean: score.mean };
+    update({ emptyCheck: { score: Math.round(score.worst * 10) / 10, limit } });
+    const now = Date.now();
+    if (seenBy === 'settle' || empty || now - stillLoggedAt >= STILL_LOG_MS) {
+      if (seenBy === 'still') stillLoggedAt = now;
+      console.info(
+        `[treblewise] pull-out, ${seenBy}: most changed block ${score.worst.toFixed(1)} (empty under ${limit}),` +
+          ` mean ${score.mean.toFixed(1)}, against ${empties.length} recent empty board(s)` +
+          `${calibrationReference ? ' and the calibration' : ''}`,
+      );
+    }
+    return empty;
+  }
 
   async function run(photo: GrabbedFrame): Promise<Reading> {
     const model = current.model.status === 'ready' ? detector : null;
@@ -237,7 +315,10 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
   async function next({ photo, done, afterRead }: Asked): Promise<void> {
     busy = true;
     update({ reading: true });
+    const started = performance.now();
     const reading = await run(photo);
+    // The capture lab and a game read the same way; this says how long it took in each.
+    console.info(`[treblewise] read in ${Math.round(performance.now() - started)} ms: ${reading.kind}`);
     afterRead?.();
     done(reading);
     const waiting = queued;
@@ -252,6 +333,12 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
 
   return {
     setCalibration(next) {
+      // Another calibration looks at another part of the picture: the empty
+      // boards seen under the old one are thumbnails of something else.
+      if (String(next?.toImage) !== String(calibration?.toImage)) {
+        empties = [];
+        takeBefore = true;
+      }
       calibration = next;
       calibrationReference = referenceOf(next);
     },
@@ -275,52 +362,71 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
       ended = true;
       const pulled = pulledEarly;
       pulledEarly = false;
-      if (!pulled) update({ pullingOut: true });
+      if (!pulled) {
+        emptiest = null;
+        update({ pullingOut: true });
+      }
     },
 
     visitResumed() {
       ended = false;
-      update({ pullingOut: false });
+      update({ pullingOut: false, emptyCheck: null });
     },
 
     dartsOut() {
       if (!current.pullingOut) return;
+      // Only if the darts are gone from it: pressed before they were pulled,
+      // the emptiest board is the one with the darts still in.
+      const gone =
+        emptiest !== null &&
+        lastThrow !== null &&
+        (emptyBoardScore(emptiest.thumbnail, lastThrow, THUMB_SIZE, THUMB_SIZE)?.worst ?? 0) >=
+          IMAGE_THRESHOLDS.emptyBlockDifference;
+      if (gone) keepEmpty(emptiest?.thumbnail);
       clearBoard();
-      update({ pullingOut: false });
     },
 
     settle(photo, thumbnail, before) {
       if (!calibration || calibration.width !== photo.width || calibration.height !== photo.height) {
         return { kind: 'unfit' };
       }
-      const empty = looksEmpty(thumbnail);
 
       if (current.pullingOut) {
-        if (!empty) return { kind: 'pull-out' };
+        if (!pulledOut(thumbnail, 'settle')) return { kind: 'pull-out' };
+        keepEmpty(thumbnail);
         clearBoard();
-        update({ pullingOut: false });
         return { kind: 'emptied' };
       }
 
+      const empty = looksEmpty(thumbnail);
       if (darts.length > 0 && darts.length < perVisit && empty) {
         const missed = perVisit - darts.length;
+        keepEmpty(thumbnail);
         clearBoard();
         pulledEarly = true;
         return { kind: 'early-pull', missed };
       }
       if (darts.length >= perVisit || darts.some((dart) => !dart.board)) return { kind: 'unreadable' };
       if (darts.length === 0) {
-        // Seconds old and in today's light: a better empty board than the calibration's.
-        if (before) recentEmpty = before;
-        if (empty) return { kind: 'empty' };
+        // The board just before the visit's first settle has nothing of this
+        // visit in it. Before a later one it may hold a dart the model missed.
+        if (takeBefore && before) {
+          keepEmpty(before);
+          takeBefore = false;
+        }
+        if (empty) {
+          keepEmpty(thumbnail);
+          return { kind: 'empty' };
+        }
       }
+      lastThrow = thumbnail ?? null;
       return { kind: 'throw' };
     },
 
     still(thumbnail) {
-      if (!current.pullingOut || !calibration || !looksEmpty(thumbnail)) return false;
+      if (!current.pullingOut || !calibration || !pulledOut(thumbnail, 'still')) return false;
+      keepEmpty(thumbnail);
       clearBoard();
-      update({ pullingOut: false });
       return true;
     },
 

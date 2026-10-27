@@ -768,6 +768,7 @@ export const en = {
     photoTime: 'last photo {ms} ms, {dropped} dropped',
     videoSent: 'phone sends {size}',
     videoHeldBack: 'phone sends {size}, held back by {reason}',
+    emptyCheck: 'empty board {score} (empty under {limit})',
     exposureTitle: 'Camera brightness',
     exposureValue: '{value} stops',
     exposureReset: 'Reset',
