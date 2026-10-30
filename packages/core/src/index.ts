@@ -10,3 +10,4 @@ export * from './vision/homography.js';
 export * from './vision/calibration.js';
 export * from './vision/quality.js';
 export * from './vision/tips.js';
+export * from './vision/boardFinder/index.js';

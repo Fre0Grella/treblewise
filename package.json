@@ -18,10 +18,13 @@
     "preview": "npm run preview --workspace @treblewise/web",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "vue-tsc --build --force"
+    "typecheck": "vue-tsc --build --force",
+    "eval:find-board": "vite-node packages/core/scripts/eval-find-board.ts --"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "fflate": "^0.8.3",
+    "jpeg-js": "^0.4.4",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

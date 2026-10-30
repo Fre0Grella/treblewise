@@ -58,7 +58,7 @@ export function invertHomography(h: Matrix3): Matrix3 | null {
 }
 
 /** Solves `A x = b` by Gaussian elimination with partial pivoting. */
-function solveLinear(a: number[][], b: number[]): number[] | null {
+export function solveLinear(a: number[][], b: number[]): number[] | null {
   const n = b.length;
   const m = a.map((row, index) => [...row, b[index]!]);
 
