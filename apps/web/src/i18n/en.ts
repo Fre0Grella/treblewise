@@ -911,6 +911,7 @@ export const en = {
     badgeReady: 'Camera ready',
     badgeOff: 'Camera off',
     badgeNotCalibrated: 'Camera not set up',
+    followed: 'Board moved {mm} mm: followed',
     badgeMoved: 'Board moved',
     badgeCutOff: 'Board cut off',
     badgeSlowLink: 'Phone connection slow',

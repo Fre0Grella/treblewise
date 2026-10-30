@@ -38,6 +38,12 @@ export interface Calibration {
   reference?: number[];
   /** How `reference` was made (vision/camera.ts THUMB_VERSION); missing on the first kind. */
   referenceVersion?: number;
+  /**
+   * The board finder's own fit when this calibration was made, before any
+   * marker was dragged: what following the board compares a new fit with
+   * (vision/boardDrift.ts). Missing when the board was placed by hand.
+   */
+  found?: Matrix3;
 }
 
 export interface LabelledDart {

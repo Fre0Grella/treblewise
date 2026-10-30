@@ -156,6 +156,39 @@ describe('settle', () => {
     expect(watcher.settle(photo(), EMPTY, null).kind).toBe('empty');
   });
 
+  it('hands on each photograph of an empty board, and says when a dart has gone in since', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    const heard: Array<{ photo: GrabbedFrame; quiet: () => boolean }> = [];
+    watcher.onEmptyBoard((shown, quiet) => heard.push({ photo: shown, quiet }));
+
+    watcher.holds([at(0, 0), at(10, 0), at(20, 0)]);
+    watcher.visitOver();
+    watcher.settle(photo(), DARTS, null); // still pulling out: not empty
+    expect(heard).toHaveLength(0);
+    const emptied = photo();
+    watcher.settle(emptied, EMPTY, null);
+    expect(heard).toHaveLength(1);
+    expect(heard[0]!.photo).toBe(emptied);
+    expect(heard[0]!.quiet()).toBe(true);
+
+    // The next visit's first dart: the board is no longer the one photographed.
+    watcher.holds([at(5, 5)]);
+    expect(heard[0]!.quiet()).toBe(false);
+  });
+
+  it('hands on an early pull too, quiet even once the misses are entered', () => {
+    const watcher = createBoardWatcher(fakes().deps);
+    watcher.setCalibration(calibration);
+    const heard: Array<() => boolean> = [];
+    watcher.onEmptyBoard((_shown, quiet) => heard.push(quiet));
+    watcher.holds([at(0, 0)]);
+    expect(watcher.settle(photo(), EMPTY, null).kind).toBe('early-pull');
+    watcher.holds([]);
+    expect(heard).toHaveLength(1);
+    expect(heard[0]!()).toBe(true);
+  });
+
   it('ends the pull-out phase when a person says the darts are out', () => {
     const watcher = createBoardWatcher(fakes().deps);
     watcher.setCalibration(calibration);

@@ -98,6 +98,8 @@ export interface GameVisit {
   subscribe(listener: () => void): () => void;
   /** Hears each signal as it happens. */
   listen(listener: (signal: GameVisitSignal) => void): () => void;
+  /** Hears each photograph of an empty board between visits (the board watcher's `onEmptyBoard`). */
+  onEmptyBoard: BoardWatcher['onEmptyBoard'];
 }
 
 const fits = (photo: GrabbedFrame | null, calibration: Calibration | null): photo is GrabbedFrame =>
@@ -341,5 +343,7 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): Gam
       signals.add(listener);
       return () => signals.delete(listener);
     },
+
+    onEmptyBoard: (listener) => watcher.onEmptyBoard(listener),
   };
 }

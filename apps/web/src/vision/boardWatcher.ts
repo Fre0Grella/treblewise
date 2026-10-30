@@ -142,6 +142,14 @@ export interface BoardWatcher {
    */
   still(thumbnail: Uint8Array): boolean;
   /**
+   * Hears each settled photograph that shows an empty board: the one that
+   * ends a pull-out, an empty board, an early pull. `quiet`, asked later, says
+   * whether the board is still as it was then: no dart in since, and no
+   * pull-out begun. The board can be found again on such a photograph and the
+   * calibration moved with it, between visits and never during one.
+   */
+  onEmptyBoard(listener: (photo: GrabbedFrame, quiet: () => boolean) => void): () => void;
+  /**
    * Reads a photograph for a new dart beside the darts in the board. One runs
    * at a time; of those asked for meanwhile, only the newest waits, and it is
    * read against the board as it is when its turn comes. `afterRead` runs the
@@ -219,6 +227,9 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
     model: { status: 'off', manifest: null },
   };
   const listeners = new Set<() => void>();
+  const emptyListeners = new Set<(photo: GrabbedFrame, quiet: () => boolean) => void>();
+  /** How many times a dart has gone in: an empty board stays quiet until the next one. */
+  let dartsIn = 0;
   const update = (change: Partial<BoardWatcherState>) => {
     const next = { ...current, ...change };
     if (
@@ -331,6 +342,44 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
     update({ reading: false });
   }
 
+  /** What a settled photograph shows (see `settle`). */
+  function judge(photo: GrabbedFrame, thumbnail: Uint8Array | undefined, before: Uint8Array | null | undefined): Settled {
+    if (!calibration || calibration.width !== photo.width || calibration.height !== photo.height) {
+      return { kind: 'unfit' };
+    }
+
+    if (current.pullingOut) {
+      if (!pulledOut(thumbnail, 'settle')) return { kind: 'pull-out' };
+      keepEmpty(thumbnail);
+      clearBoard();
+      return { kind: 'emptied' };
+    }
+
+    const empty = looksEmpty(thumbnail);
+    if (darts.length > 0 && darts.length < perVisit && empty) {
+      const missed = perVisit - darts.length;
+      keepEmpty(thumbnail);
+      clearBoard();
+      pulledEarly = true;
+      return { kind: 'early-pull', missed };
+    }
+    if (darts.length >= perVisit || darts.some((dart) => !dart.board)) return { kind: 'unreadable' };
+    if (darts.length === 0) {
+      // The board just before the visit's first settle has nothing of this
+      // visit in it. Before a later one it may hold a dart the model missed.
+      if (takeBefore && before) {
+        keepEmpty(before);
+        takeBefore = false;
+      }
+      if (empty) {
+        keepEmpty(thumbnail);
+        return { kind: 'empty' };
+      }
+    }
+    lastThrow = thumbnail ?? null;
+    return { kind: 'throw' };
+  }
+
   return {
     setCalibration(next) {
       // Another calibration looks at another part of the picture: the empty
@@ -345,6 +394,7 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
 
     holds(next) {
       if (next.length > darts.length) {
+        dartsIn += 1;
         pulledEarly = false;
         ended = false;
         if (current.pullingOut) update({ pullingOut: false });
@@ -387,40 +437,13 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
     },
 
     settle(photo, thumbnail, before) {
-      if (!calibration || calibration.width !== photo.width || calibration.height !== photo.height) {
-        return { kind: 'unfit' };
+      const settled = judge(photo, thumbnail, before);
+      if (settled.kind === 'emptied' || settled.kind === 'empty' || settled.kind === 'early-pull') {
+        const at = dartsIn;
+        const quiet = () => dartsIn === at && darts.length === 0 && !current.pullingOut;
+        emptyListeners.forEach((listener) => listener(photo, quiet));
       }
-
-      if (current.pullingOut) {
-        if (!pulledOut(thumbnail, 'settle')) return { kind: 'pull-out' };
-        keepEmpty(thumbnail);
-        clearBoard();
-        return { kind: 'emptied' };
-      }
-
-      const empty = looksEmpty(thumbnail);
-      if (darts.length > 0 && darts.length < perVisit && empty) {
-        const missed = perVisit - darts.length;
-        keepEmpty(thumbnail);
-        clearBoard();
-        pulledEarly = true;
-        return { kind: 'early-pull', missed };
-      }
-      if (darts.length >= perVisit || darts.some((dart) => !dart.board)) return { kind: 'unreadable' };
-      if (darts.length === 0) {
-        // The board just before the visit's first settle has nothing of this
-        // visit in it. Before a later one it may hold a dart the model missed.
-        if (takeBefore && before) {
-          keepEmpty(before);
-          takeBefore = false;
-        }
-        if (empty) {
-          keepEmpty(thumbnail);
-          return { kind: 'empty' };
-        }
-      }
-      lastThrow = thumbnail ?? null;
-      return { kind: 'throw' };
+      return settled;
     },
 
     still(thumbnail) {
@@ -476,6 +499,11 @@ export function createBoardWatcher(deps: BoardWatcherDeps = DEFAULT_DEPS, option
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+
+    onEmptyBoard(listener) {
+      emptyListeners.add(listener);
+      return () => emptyListeners.delete(listener);
     },
   };
 }

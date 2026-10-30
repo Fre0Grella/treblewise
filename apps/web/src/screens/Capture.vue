@@ -44,6 +44,7 @@ import Fold from '../components/ui/Fold.vue';
 import Icon from '../components/ui/Icon.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
 import Toggle from '../components/ui/Toggle.vue';
+import { useBoardDrift } from '../composables/useBoardDrift.js';
 import { useBoardFinder } from '../composables/useBoardFinder.js';
 import { useCamera, withoutMoved } from '../composables/useCamera.js';
 import { useExposure } from '../composables/useExposure.js';
@@ -170,6 +171,8 @@ const coachQuality = computed(() => {
   const quality = camera.quality.value;
   return quality && mode.value === 'calibrate' ? withoutMoved(quality) : quality;
 });
+// Between visits, on the empty board, the calibration follows the board when it has moved.
+const { followed } = useBoardDrift(session, camera);
 
 // Sent here by a game's "Find the board again": the camera on, and the board
 // found as soon as there is a picture.
@@ -267,10 +270,13 @@ function finishCalibration(save: boolean) {
   if (save && made) {
     const boardRect = boardRegion(made.toImage, { width: made.width, height: made.height });
     const thumb = camera.sampleThumbnail(boardRect);
+    const found = finderResult.value && !('notFound' in finderResult.value) ? finderResult.value.toImage : null;
     settings.saveCalibration({
       ...made,
       ts: Date.now(),
       ...(thumb ? { reference: Array.from(thumb), referenceVersion: THUMB_VERSION } : {}),
+      // Plain numbers, as everything stored must be: what following the board compares with.
+      ...(found ? { found: [...found] as unknown as Matrix3 } : {}),
     });
   }
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
@@ -517,6 +523,7 @@ const storageLine = computed(() => {
           <template v-if="camera.photo.value">
             · {{ fill(t.capture.photoTime, { ms: camera.photo.value.ms, dropped: camera.photo.value.dropped }) }}
           </template>
+          <template v-if="followed">· {{ fill(t.report.followed, { mm: followed.shiftMm.toFixed(1) }) }}</template>
           <template v-if="pullingOut && marking.emptyCheck">
             · {{ fill(t.capture.emptyCheck, { score: marking.emptyCheck.score.toFixed(1), limit: marking.emptyCheck.limit }) }}
           </template>

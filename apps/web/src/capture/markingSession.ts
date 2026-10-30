@@ -177,6 +177,8 @@ export interface MarkingSession {
   switchModel(on: boolean): Promise<void>;
   state(): MarkingSessionState;
   subscribe(listener: () => void): () => void;
+  /** Hears each photograph of an empty board between visits (the board watcher's `onEmptyBoard`). */
+  onEmptyBoard: BoardWatcher['onEmptyBoard'];
 }
 
 /**
@@ -609,5 +611,7 @@ export function createMarkingSession(deps: MarkingSessionDeps = realDeps()): Mar
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+
+    onEmptyBoard: (listener) => watcher.onEmptyBoard(listener),
   };
 }

@@ -69,6 +69,7 @@ function fakeWatcher() {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    onEmptyBoard: () => () => undefined,
   };
   return {
     watcher,

@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router';
 import { unlockCaller } from '../caller/caller.js';
 import { unlockSounds } from '../caller/sounds.js';
 import { raw, useExternal } from '../composables/external.js';
+import { useBoardDrift } from '../composables/useBoardDrift.js';
 import { useCamera } from '../composables/useCamera.js';
 import { useExposure } from '../composables/useExposure.js';
 import type { GameVisit } from '../game/gameVisit.js';
@@ -137,6 +138,9 @@ const camera = useCamera({
   paused: () => props.report !== null,
   exposure: () => settings.settings.exposure,
 });
+// Between visits, on the empty board, the calibration follows the board
+// when it has moved (vision/boardDrift.ts).
+const { followed } = useBoardDrift(props.gameVisit, camera);
 // A phone paired since camera setup is told its brightness here.
 useExposure(camera);
 
@@ -357,6 +361,7 @@ const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
         :quality="camera.quality.value"
         :on-find-again="findAgain"
       />
+      <p v-if="keepFrames && followed" class="hint">{{ fill(t.report.followed, { mm: followed.shiftMm.toFixed(1) }) }}</p>
       <p v-if="!keepFrames" class="hint">{{ t.report.noFrame }}</p>
       <p v-else-if="!usable && latest !== null" class="hint">{{ t.capture.noCalibration }}</p>
       <PhoneBattery v-if="keepFrames" />
