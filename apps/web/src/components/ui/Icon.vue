@@ -26,7 +26,8 @@ export type IconName =
   | 'wheel'
   | 'undo'
   | 'expand'
-  | 'shrink';
+  | 'shrink'
+  | 'signal';
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 20 });
 
@@ -53,6 +54,7 @@ const PATHS: Record<IconName, string> = {
   undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
+  signal: 'M4 20v-3M9 20v-7M14 20v-11M19 20V4',
 };
 </script>
 

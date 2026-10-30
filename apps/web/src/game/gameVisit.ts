@@ -100,7 +100,17 @@ export interface GameVisit {
   listen(listener: (signal: GameVisitSignal) => void): () => void;
   /** Hears each photograph of an empty board between visits (the board watcher's `onEmptyBoard`). */
   onEmptyBoard: BoardWatcher['onEmptyBoard'];
+  /**
+   * The board is being found again on a photograph of the empty board
+   * (vision/boardDrift.ts). A turn passing meanwhile is signalled once the
+   * check is over, or after BOARD_WAIT_MS at most: the beep means the board is
+   * checked and the next player can throw.
+   */
+  awaitBoard(check: Promise<unknown>): void;
 }
+
+/** The longest the turn's signal waits for the board to be found again: a stuck check must not silence the game. */
+export const BOARD_WAIT_MS = 3000;
 
 const fits = (photo: GrabbedFrame | null, calibration: Calibration | null): photo is GrabbedFrame =>
   photo !== null && calibration !== null && photo.width === calibration.width && photo.height === calibration.height;
@@ -156,7 +166,22 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): Gam
   };
   const listeners = new Set<() => void>();
   const signals = new Set<(signal: GameVisitSignal) => void>();
-  const signal = (what: GameVisitSignal) => signals.forEach((listener) => listener(what));
+  /** The board check running on the empty board, if one is. */
+  let boardCheck: Promise<unknown> | null = null;
+  const emit = (what: GameVisitSignal) => signals.forEach((listener) => listener(what));
+  const signal = (what: GameVisitSignal) => {
+    const check = boardCheck;
+    if (what !== 'turn-passed' || !check) {
+      emit(what);
+      return;
+    }
+    let waited: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<void>((resolve) => (waited = setTimeout(resolve, BOARD_WAIT_MS)));
+    void Promise.race([check.then(() => undefined, () => undefined), late]).then(() => {
+      clearTimeout(waited);
+      emit(what);
+    });
+  };
 
   const visitOf = (match: MatchSnapshot | null): Visit | null => match?.legs.at(-1)?.visits.at(-1) ?? null;
   const canThrow = () => snapshot !== null && snapshot.current !== null && snapshot.winnerId === null;
@@ -345,5 +370,13 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): Gam
     },
 
     onEmptyBoard: (listener) => watcher.onEmptyBoard(listener),
+
+    awaitBoard(check) {
+      boardCheck = check;
+      const clear = () => {
+        if (boardCheck === check) boardCheck = null;
+      };
+      check.then(clear, clear);
+    },
   };
 }

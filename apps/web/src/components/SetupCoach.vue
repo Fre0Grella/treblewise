@@ -27,12 +27,14 @@ const props = withDefaults(
     showNumbers?: boolean;
     /** Only the picture's own problems, and nothing at all while there are none: beside another coach line. */
     imageOnly?: boolean;
+    /** Every problem, the view's included, but nothing while there are none: beside another coach line. */
+    problemsOnly?: boolean;
     /** Offers "Show where" for a warning the preview can point at. */
     onShowWhere?: () => void;
     /** Offers "Find the board again" when the camera has moved. */
     onFindAgain?: () => void;
   }>(),
-  { oldReference: false, showNumbers: false, imageOnly: false, onShowWhere: undefined, onFindAgain: undefined },
+  { oldReference: false, showNumbers: false, imageOnly: false, problemsOnly: false, onShowWhere: undefined, onFindAgain: undefined },
 );
 
 const t = useStrings();
@@ -60,7 +62,7 @@ const said = computed<Said | null>(() => {
   const centre = viewIssue('offCentre');
   if (centre) return { status: 'warn', message: `${t.coach.offCentre} ${direction(centre.direction)}` };
   if (imageIssue('washedOut')) return { status: 'warn', message: t.coach.washedOut, image: 'washedOut' };
-  return props.imageOnly ? null : { status: 'ready', message: t.coach.ready };
+  return props.imageOnly || props.problemsOnly ? null : { status: 'ready', message: t.coach.ready };
 });
 
 /** What a picture warning measured, against the limit it is held to, and what fixes it. */

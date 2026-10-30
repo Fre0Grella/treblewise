@@ -56,6 +56,9 @@
   --player-a: var(--beige-300);
   --player-b: #9aa4b2;
   --warn: var(--beige-300);
+  /* The board being found again: neither fine nor wrong, busy. */
+  --busy: #4cc3d9;
+  --tint-busy: rgb(76 195 217 / 14%);
   --danger: var(--red-400);
   --tint-live: rgb(0 113 60 / 18%);
   --tint-warn: rgb(234 207 117 / 10%);
@@ -718,6 +721,17 @@ input:focus-visible {
 
 .status-warn .status-dot {
   background: var(--warn);
+}
+
+.status-busy {
+  border-color: var(--busy);
+  background: var(--tint-busy);
+  color: var(--text);
+}
+
+.status-busy .status-dot {
+  background: var(--busy);
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
 .status-bad {
@@ -1591,6 +1605,40 @@ input:focus-visible {
   border-color: var(--danger);
   background: var(--tint-danger);
   color: var(--text);
+}
+
+.status-btn.status-busy {
+  border-color: var(--busy);
+  background: var(--tint-busy);
+  color: var(--text);
+}
+
+/* A badge that is an icon and a chevron, no words: the icon takes the colour. */
+.status-icon {
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+}
+
+.status-icon.status-ok {
+  color: var(--live);
+}
+
+.status-icon.status-warn {
+  color: var(--warn);
+}
+
+.status-icon.status-bad {
+  color: var(--danger);
+}
+
+.connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.popover-link {
+  left: var(--space-6);
 }
 
 /* The camera's own panel: the live picture and what is wrong. Out of the

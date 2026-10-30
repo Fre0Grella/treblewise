@@ -1,10 +1,11 @@
 <!--
-  Camera setup, and the practice round that proves it works.
+  The capture lab: the camera pointed at the board, and the practice round
+  that proves it works.
 
-  Three steps, once: point the camera, find the board, then **try it**. Try-it
-  is the heart of this screen. You throw a dart, the app photographs the board
-  the moment it settles, you tap the dart in the picture, and it calls the score
-  back at you. That single loop does three jobs at once:
+  It opens on the live picture, ready to throw at. You throw a dart, the app
+  photographs the board the moment it settles, you tap the dart in the
+  picture, and it calls the score back at you. That single loop does three
+  jobs at once:
 
    - it shows you whether the camera is set up properly, because a wrong
      calibration gives a wrong score and you will hear it;
@@ -13,10 +14,13 @@
    - one throw is one labelled sample, so the count going up is the training
      set being built.
 
-  The darts are not pulled between throws, because a model has to learn the
-  second and third dart of a visit with the first ones in the way. That loop is
-  the marking session (capture/markingSession.ts); this screen sets up the
-  camera, calibrates, and renders the session.
+  Finding the board is a button, not a step: after a confirmation, the board
+  finder runs on a frozen photograph over the same view, the markers are
+  checked and saved, and the lab is back on the live picture. The darts are
+  not pulled between throws, because a model has to learn the second and
+  third dart of a visit with the first ones in the way. That loop is the
+  marking session (capture/markingSession.ts); this screen finds the board
+  and renders the session.
 -->
 <script setup lang="ts">
 import {
@@ -31,7 +35,6 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { unlockCaller } from '../caller/caller.js';
 import BoardFit from '../components/BoardFit.vue';
 import BoardOverlay, { type OverlayHandle } from '../components/BoardOverlay.vue';
 import ExposureControl from '../components/ExposureControl.vue';
@@ -60,7 +63,8 @@ import { cropFrameStyle, squareAround } from '../vision/crop.js';
 import type { FinderResult } from '../vision/findBoard.js';
 import { referenceOf, THUMB_VERSION } from '../vision/imageStats.js';
 
-type Mode = 'setup' | 'calibrate' | 'try';
+/** The lab itself, or finding the board over it. */
+type Mode = 'lab' | 'calibrate';
 
 function download(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
@@ -93,8 +97,11 @@ const lobby = useLobbyStore();
 const calibration = computed(() => settings.settings.calibration);
 const fromGame = computed(() => route.query.from === 'game');
 
-const cameraOn = ref(false);
-const mode = ref<Mode>('setup');
+// The camera starts with the lab: there is no setting up before it.
+const cameraOn = ref(true);
+const mode = ref<Mode>('lab');
+/** "Find the board" asked to be sure the phone is where it will stay: the scan starts the moment it is confirmed. */
+const confirming = ref(false);
 // Shallow, like everything that ends up stored: a deep ref makes each point a
 // Vue proxy, the calibration carries them, and IndexedDB refuses to store it.
 const draft = shallowRef<Point[]>([]);
@@ -136,7 +143,7 @@ onMounted(refreshStats);
 
 /** A settled photograph goes to the marking session, in try-it only. Nothing is ever saved here (issue #3). */
 function onSettle(grabbed: GrabbedFrame, thumbnail?: Uint8Array, before?: Uint8Array | null) {
-  if (mode.value === 'try') session.settle(grabbed, thumbnail, before);
+  if (mode.value === 'lab') session.settle(grabbed, thumbnail, before);
 }
 
 const region = computed(() => {
@@ -150,9 +157,9 @@ const camera = useCamera({
   active: () => cameraOn.value || paired.value,
   onSettle,
   onStill(thumbnail) {
-    if (mode.value === 'try') session.still(thumbnail);
+    if (mode.value === 'lab') session.still(thumbnail);
   },
-  captureOnSettle: () => mode.value === 'try' && calibration.value !== null,
+  captureOnSettle: () => mode.value === 'lab' && calibration.value !== null,
   region,
   reference,
   stream: () => (paired.value ? lobby.remoteStream : null),
@@ -174,24 +181,12 @@ const coachQuality = computed(() => {
 // Between visits, on the empty board, the calibration follows the board when it has moved.
 const { followed } = useBoardDrift(session, camera);
 
-// Sent here by a game's "Find the board again": the camera on, and the board
-// found as soon as there is a picture.
-if (route.query.find === '1') {
-  if (lobby.mode !== 'paired') cameraOn.value = true;
-  let asked = false;
-  watch(
-    () => camera.ready.value,
-    (ready) => {
-      if (!ready || asked) return;
-      asked = true;
-      void startCalibration();
-    },
-    { immediate: true },
-  );
-}
+// Sent here by a match's "Find the board again": the confirmation open, as
+// the phone may need turning first.
+if (route.query.find === '1') confirming.value = true;
 
 const frameSize = computed(() =>
-  photo.value && mode.value === 'try'
+  photo.value && mode.value === 'lab'
     ? { width: photo.value.grabbed.width, height: photo.value.grabbed.height }
     : mode.value === 'calibrate' && frozen.value
       ? { width: frozen.value.width, height: frozen.value.height }
@@ -208,7 +203,7 @@ const staleCalibration = computed(
 // Marking darts needs the board, not the wall around it: once calibrated, only
 // the square around the board is shown. Calibrating needs the lot.
 const crop = computed(() =>
-  mode.value === 'try' && region.value && !staleCalibration.value && calibration.value?.width === frameSize.value.width
+  mode.value === 'lab' && region.value && !staleCalibration.value && calibration.value?.width === frameSize.value.width
     ? squareAround(region.value, frameSize.value)
     : null,
 );
@@ -226,7 +221,12 @@ const view = computed(() => {
   return source ? assessBoardView(source.toImage, { width: source.width, height: source.height }) : null;
 });
 
+function askScan() {
+  confirming.value = true;
+}
+
 async function startCalibration() {
+  confirming.value = false;
   const grabbed = await camera.capture();
   if (!grabbed) return;
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
@@ -284,7 +284,7 @@ function finishCalibration(save: boolean) {
   draft.value = [];
   cancelFinding();
   finderResult.value = null;
-  mode.value = save ? 'try' : 'setup';
+  mode.value = 'lab';
 }
 onBeforeUnmount(() => {
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
@@ -305,7 +305,7 @@ function moveHandle(index: number, point: Point) {
 
 watch(calibration, (next) => session.setCalibration(next), { immediate: true });
 watch(() => settings.settings.callerEnabled, (on) => session.setCaller(on), { immediate: true });
-watch(mode, (now) => now === 'try' && void session.findModel(), { immediate: true });
+watch(mode, (now) => now === 'lab' && void session.findModel(), { immediate: true });
 // The runtime and the model are only fetched once proposals are switched on.
 watch(proposing, (on) => void session.switchModel(on), { immediate: true });
 // It could not be loaded here: say so by switching back off.
@@ -319,7 +319,7 @@ watch(
 // Leaving try-it ends the visit: by the time anyone comes back the darts may be
 // out, or the camera recalibrated, and a mark of a dart in the board would be a
 // ghost. Unmounting cannot ask, so it saves nothing: Back asks first.
-watch(mode, (now) => now !== 'try' && session.end());
+watch(mode, (now) => now !== 'lab' && session.end());
 onBeforeUnmount(() => session.end());
 
 // Done and Back go once the session lets them: straight away, or after the
@@ -328,8 +328,7 @@ watch(
   () => marking.value.leaving,
   (leaving) => {
     if (!leaving || leaving.asking) return;
-    if (leaving.exit === 'done') mode.value = 'setup';
-    else void router.push(backTarget(route, lobby.session !== null));
+    if (leaving.exit === 'back') void router.push(backTarget(route, lobby.session !== null));
   },
 );
 
@@ -368,11 +367,6 @@ async function captureNow() {
   if (grabbed) onSettle(grabbed);
 }
 
-function tryIt() {
-  unlockCaller();
-  mode.value = 'try';
-}
-
 // ---- export ----------------------------------------------------------------
 
 async function exportAll() {
@@ -408,16 +402,18 @@ const overlayToImage = computed(() =>
 );
 const overlayDarts = computed(() => {
   const shown = photo.value;
-  if (mode.value !== 'try' || !shown) return [];
+  if (mode.value !== 'lab' || !shown) return [];
   return shown.darts.map((dart, index) => ({
     img: dart.img,
     label: dart.by === 'model' ? `${formatHit(dart.hit)}?` : formatHit(dart.hit),
     kind: index < shown.inBoard ? ('inBoard' as const) : dart.by === 'model' ? ('proposed' as const) : ('new' as const),
   }));
 });
-const tap = (point: Point) => mode.value === 'try' && session.mark(point);
+const tap = (point: Point) => mode.value === 'lab' && session.mark(point);
 
 const ready = computed(() => (cameraOn.value || paired.value) && calibration.value !== null && !staleCalibration.value);
+/** The coach says the camera has moved, with its own "Find the board again": no second one. */
+const moved = computed(() => camera.quality.value?.issues.includes('moved') ?? false);
 
 const coachMessage = computed(() => {
   const shown = photo.value;
@@ -445,16 +441,9 @@ const attachVideo = (element: unknown) => {
 };
 const supported = cameraSupported();
 
-// Setting up, the picture only has to show the camera is pointed right: kept
-// short enough that the steps and the buttons fit without scrolling, which a
-// phone filming upright otherwise made impossible. Calibrating and marking keep
-// the big picture, for dragging markers onto the board.
 const stageStyle = computed(() => {
   const { width, height } = frameSize.value;
-  return {
-    aspectRatio: crop.value ? '1 / 1' : `${width} / ${height}`,
-    ...(mode.value === 'setup' ? { maxWidth: `calc(45vh * ${(width / height).toFixed(4)})`, alignSelf: 'center' } : {}),
-  };
+  return { aspectRatio: crop.value ? '1 / 1' : `${width} / ${height}` };
 });
 const storageLine = computed(() => {
   const { bytes } = stats.value;
@@ -464,11 +453,11 @@ const storageLine = computed(() => {
 </script>
 
 <template>
-  <div :class="['screen', 'screen-capture', { 'screen-capture-try': mode === 'try' }]">
-    <!-- One tree in every mode, so the video element is never remounted (it
-         would lose its stream). The layout changes in CSS: in try-it on a wide
-         screen the side column holds everything to read and press, and the
-         board sits beside it; elsewhere it all stacks, board under the coach. -->
+  <div class="screen screen-capture">
+    <!-- One tree in both modes, so the video element is never remounted (it
+         would lose its stream). On a wide screen the side column holds
+         everything to read and press, and the board sits beside it; on a
+         phone it all stacks, board under the coach. -->
     <div class="capture-work capture-work-split">
       <div class="capture-side">
         <header class="screen-head">
@@ -477,14 +466,14 @@ const storageLine = computed(() => {
             <Icon name="back" /> {{ fromGame ? t.capture.backToMatch : t.capture.back }}
           </button>
           <h1>{{ t.capture.title }}</h1>
-          <Fold id="capture-about" :summary="t.capture.foldAbout">
-            <p>{{ mode === 'try' ? t.capture.trySubtitle : t.capture.subtitle }}</p>
+          <Fold id="capture-about" closed :summary="t.capture.foldAbout">
+            <p>{{ t.capture.trySubtitle }}</p>
           </Fold>
         </header>
 
         <p v-if="!supported" class="warning">{{ t.capture.noCamera }}</p>
         <p v-if="camera.error.value" class="warning">{{ camera.error.value }}</p>
-        <p v-if="staleCalibration && mode !== 'calibrate'" class="warning">
+        <p v-if="staleCalibration && mode === 'lab'" class="warning">
           {{
             fill(t.capture.calibrateStale, {
               old: `${calibration!.width}×${calibration!.height}`,
@@ -493,143 +482,47 @@ const storageLine = computed(() => {
           }}
         </p>
 
+        <!-- Finding the board: the view the markers are judged on. -->
         <SetupCoach
-          v-if="(cameraOn || paired) && mode !== 'try'"
-          :calibrated="mode === 'calibrate' ? draftCalibration !== null : calibration !== null"
-          :old-reference="mode !== 'calibrate' && oldReference"
+          v-if="(cameraOn || paired) && mode === 'calibrate'"
+          :calibrated="draftCalibration !== null"
           :view="view"
           :quality="coachQuality"
           show-numbers
-          :on-find-again="mode === 'setup' ? startCalibration : undefined"
         />
+        <template v-if="mode === 'lab'">
+          <div v-if="ready" :class="`coach ${photo || pullingOut ? 'coach-warn' : 'coach-ready'}`" role="status">
+            <span class="coach-dot" aria-hidden="true" />
+            <span class="coach-message">{{ coachMessage }}</span>
+          </div>
+          <!-- Only what is wrong: the board not found yet, moved, cut off, or a
+               picture too dark or blurry. A photograph taken through a moved
+               camera is labelled against the wrong board. -->
+          <SetupCoach
+            v-if="cameraOn || paired"
+            problems-only
+            :calibrated="calibration !== null && !staleCalibration"
+            :old-reference="oldReference"
+            :view="view"
+            :quality="camera.quality.value"
+            :on-find-again="confirming ? undefined : askScan"
+          />
+        </template>
 
-        <div v-if="mode === 'try'" :class="`coach ${photo || pullingOut ? 'coach-warn' : 'coach-ready'}`" role="status">
-          <span class="coach-dot" aria-hidden="true" />
-          <span class="coach-message">{{ coachMessage }}</span>
+        <div v-if="confirming && mode === 'lab'" class="panel" role="alertdialog" :aria-label="t.capture.calibrate">
+          <p>{{ t.capture.scanConfirm }}</p>
+          <div class="controls">
+            <button type="button" class="btn-primary" :disabled="!camera.ready.value" @click="startCalibration">{{ t.capture.scan }}</button>
+            <button type="button" class="btn-sm" @click="confirming = false">{{ t.capture.notNow }}</button>
+          </div>
         </div>
-        <!-- The picture's own problems matter while marking too: a photograph
-             taken through a moved camera is labelled against the wrong board. -->
-        <SetupCoach
-          v-if="mode === 'try' && (cameraOn || paired)"
-          image-only
-          :calibrated="calibration !== null"
-          :view="null"
-          :quality="camera.quality.value"
-        />
 
-        <p v-if="mode === 'try' && (cameraOn || paired)" class="capture-status">
-          {{ camera.moving.value ? t.capture.moving : t.capture.waiting }} · {{ camera.motion.value.toFixed(1) }} /
-          {{ camera.change.value.toFixed(1) }} · {{ fill(t.capture.photoSize, { size: `${camera.width.value}×${camera.height.value}` }) }}
-          <template v-if="camera.photo.value">
-            · {{ fill(t.capture.photoTime, { ms: camera.photo.value.ms, dropped: camera.photo.value.dropped }) }}
-          </template>
-          <template v-if="followed">· {{ fill(t.report.followed, { mm: followed.shiftMm.toFixed(1) }) }}</template>
-          <template v-if="pullingOut && marking.emptyCheck">
-            · {{ fill(t.capture.emptyCheck, { score: marking.emptyCheck.score.toFixed(1), limit: marking.emptyCheck.limit }) }}
-          </template>
-          <template v-if="sending">
-            ·
-            {{
-              fill(sending.limitation === 'none' ? t.capture.videoSent : t.capture.videoHeldBack, {
-                size: `${sending.width}×${sending.height}`,
-                reason: sending.limitation,
-              })
-            }}
-          </template>
-        </p>
         <PhoneBattery />
         <PhoneLink />
 
-        <div v-if="mode === 'try'" class="capture-actions">
-          <div class="controls">
-            <button type="button" class="btn-primary" :disabled="!marking.canSave" @click="save">{{ saveLabel }}</button>
-            <button type="button" class="btn-sm" :disabled="!photo" @click="session.skip()">{{ t.capture.skipPhoto }}</button>
-            <button v-if="photo && photo.proposed > 0 && !photo.edited" type="button" class="btn-sm" @click="noNewDart">
-              {{ t.capture.noNewDart }}
-            </button>
-            <!-- Also the way out when the empty-board check cannot see the darts
-                 are gone (a shadow that was not there at calibration). -->
-            <button
-              type="button"
-              class="btn-sm"
-              :disabled="inBoard.length === 0 && (!photo || photo.inBoard === 0) && !pullingOut"
-              @click="session.boardCleared()"
-            >
-              {{ t.capture.boardCleared }}
-            </button>
-            <button type="button" class="btn-sm" :disabled="!camera.ready.value" @click="captureNow">{{ t.capture.captureNow }}</button>
-            <button type="button" class="btn-sm" :disabled="!marking.canUndo" @click="undo">{{ t.capture.undo }}</button>
-            <button type="button" class="btn-sm" @click="session.leave('done')">{{ t.capture.doneTrying }}</button>
-          </div>
-
-          <div v-if="askingKeep" class="panel" role="alertdialog" :aria-label="t.capture.askKeep">
-            <p>{{ t.capture.askKeep }}</p>
-            <div class="controls">
-              <button type="button" class="btn-primary" @click="keepAndSave">{{ t.capture.askKeepYes }}</button>
-              <button type="button" class="btn-sm" @click="askingKeep = null">{{ t.capture.askKeepNo }}</button>
-            </div>
-          </div>
-
-          <div v-if="marking.leaving?.asking" class="panel" role="alertdialog" :aria-label="t.capture.unsavedTitle">
-            <p>{{ t.capture.unsavedTitle }}</p>
-            <div class="controls">
-              <button type="button" class="btn-primary" @click="answer('save')">{{ t.capture.unsavedSave }}</button>
-              <button type="button" class="btn-sm" @click="answer('discard')">{{ t.capture.unsavedDiscard }}</button>
-              <button type="button" class="btn-sm" @click="session.answer('stay')">{{ t.capture.unsavedStay }}</button>
-            </div>
-          </div>
-
-          <ThrowStrip
-            v-if="marking.marked.length > 0"
-            :who="fill(t.capture.markedCount, { n: marking.marked.length })"
-            :darts="marking.marked.slice(-4)"
-          />
-
-          <Fold id="capture-marking" :summary="t.capture.foldMarking">
-            <p class="hint">
-              <b>{{ t.capture.markEveryDart }}</b> {{ t.capture.tryHelp }}
-            </p>
-          </Fold>
-          <p v-if="marking.saved" class="hint">
-            {{ fill(t.capture.savedNote, { n: marking.saved.length, hits: marking.saved.map((dart) => formatHit(dart.hit)).join(', ') }) }}
-          </p>
-          <p v-if="marking.waiting" class="warning">{{ t.capture.photoWaiting }}</p>
-
-          <section v-if="modelInfo" class="panel">
-            <div class="controls">
-              <button type="button" :class="['btn-sm', { 'toggle-on': proposing }]" :aria-pressed="proposing" @click="proposing = !proposing">
-                {{ proposing ? (marking.model.status === 'ready' ? t.capture.proposingOn : t.capture.proposingLoading) : t.capture.proposingOff }}
-              </button>
-            </div>
-            <p v-if="photo?.blind" class="hint">{{ t.capture.blindFrame }}</p>
-            <Fold id="capture-autoscorer" :summary="t.capture.foldAutoscorer">
-              <p class="hint">{{ proposing ? t.capture.proposingHelp : t.capture.proposingOffHelp }}</p>
-            </Fold>
-            <p v-if="marking.tally.letStand + marking.tally.corrected > 0" class="hint">
-              {{ fill(t.capture.verdicts, { right: marking.tally.letStand, n: marking.tally.letStand + marking.tally.corrected }) }}
-            </p>
-            <p class="hint">
-              {{ fill(t.capture.modelName, { name: modelInfo.name }) }}
-              <template v-if="modelInfo.deepdarts">{{ ` ${t.capture.deepdartsCredit}` }}</template>
-              <template v-if="modelInfo.dartscribe">{{ ` ${t.capture.dartscribeCredit}` }}</template>
-            </p>
-          </section>
-        </div>
-        <div class="capture-more">
         <section v-if="mode === 'calibrate'" class="panel">
           <h2>{{ t.capture.calibrateTitle }}</h2>
           <BoardFit v-if="finderResult" :result="finderResult" :adjusted="adjusted" />
-          <p class="hint">
-            {{ finderResult && !('notFound' in finderResult) ? t.capture.calibrateHelpFound : t.capture.calibrateHelp }}
-          </p>
-          <ul class="landmark-list">
-            <li v-for="handle in handles" :key="handle.label">
-              <b>{{ handle.label }}</b> {{ handle.hint }}
-            </li>
-          </ul>
-          <p v-if="!finderResult || 'notFound' in finderResult" class="hint">
-            {{ t.capture.calibrateError }}: <b>{{ draftCalibration ? `${draftCalibration.error.toFixed(1)} px` : '—' }}</b>
-          </p>
           <div class="controls">
             <button
               type="button"
@@ -644,54 +537,160 @@ const storageLine = computed(() => {
             </button>
             <button type="button" class="btn-sm" @click="finishCalibration(false)">{{ t.capture.calibrateCancel }}</button>
           </div>
-          <p class="hint">{{ t.capture.findAgainHelp }}</p>
+          <Fold id="capture-calibrate-help" closed :summary="t.capture.foldCalibrate">
+            <p class="hint">
+              {{ finderResult && !('notFound' in finderResult) ? t.capture.calibrateHelpFound : t.capture.calibrateHelp }}
+            </p>
+            <ul class="landmark-list">
+              <li v-for="handle in handles" :key="handle.label">
+                <b>{{ handle.label }}</b> {{ handle.hint }}
+              </li>
+            </ul>
+            <p v-if="!finderResult || 'notFound' in finderResult" class="hint">
+              {{ t.capture.calibrateError }}: <b>{{ draftCalibration ? `${draftCalibration.error.toFixed(1)} px` : '—' }}</b>
+            </p>
+            <p class="hint">{{ t.capture.findAgainHelp }}</p>
+          </Fold>
         </section>
 
-        <template v-if="mode === 'setup'">
-          <div class="controls">
-            <span v-if="paired" class="status status-ok"><span class="status-dot" aria-hidden="true" />{{ t.capture.phoneCamera }}</span>
-            <Toggle v-else v-model="cameraOn" :label="cameraOn ? t.capture.stop : t.capture.start" />
-            <button type="button" class="btn-sm" :disabled="!camera.ready.value" @click="startCalibration">
-              {{ calibration ? t.capture.recalibrate : t.capture.calibrate }}
-            </button>
+        <div v-if="mode === 'lab'" class="capture-actions">
+          <button v-if="!ready && !confirming" type="button" class="btn-primary" :disabled="!camera.ready.value" @click="askScan">
+            {{ t.capture.calibrate }}
+          </button>
+
+          <template v-if="ready">
+            <div class="controls">
+              <button type="button" class="btn-primary" :disabled="!marking.canSave" @click="save">{{ saveLabel }}</button>
+              <button type="button" class="btn-sm" :disabled="!photo" @click="session.skip()">{{ t.capture.skipPhoto }}</button>
+              <button v-if="photo && photo.proposed > 0 && !photo.edited" type="button" class="btn-sm" @click="noNewDart">
+                {{ t.capture.noNewDart }}
+              </button>
+              <!-- Also the way out when the empty-board check cannot see the darts
+                   are gone (a shadow that was not there at calibration). -->
+              <button
+                type="button"
+                class="btn-sm"
+                :disabled="inBoard.length === 0 && (!photo || photo.inBoard === 0) && !pullingOut"
+                @click="session.boardCleared()"
+              >
+                {{ t.capture.boardCleared }}
+              </button>
+              <button type="button" class="btn-sm" :disabled="!camera.ready.value" @click="captureNow">{{ t.capture.captureNow }}</button>
+              <button type="button" class="btn-sm" :disabled="!marking.canUndo" @click="undo">{{ t.capture.undo }}</button>
+              <button v-if="!moved && !confirming" type="button" class="btn-sm" @click="askScan">{{ t.capture.recalibrate }}</button>
+            </div>
+
+            <div v-if="askingKeep" class="panel" role="alertdialog" :aria-label="t.capture.askKeep">
+              <p>{{ t.capture.askKeep }}</p>
+              <div class="controls">
+                <button type="button" class="btn-primary" @click="keepAndSave">{{ t.capture.askKeepYes }}</button>
+                <button type="button" class="btn-sm" @click="askingKeep = null">{{ t.capture.askKeepNo }}</button>
+              </div>
+            </div>
+
+            <ThrowStrip
+              v-if="marking.marked.length > 0"
+              :who="fill(t.capture.markedCount, { n: marking.marked.length })"
+              :darts="marking.marked.slice(-4)"
+            />
+
+            <Fold id="capture-marking" closed :summary="t.capture.foldMarking">
+              <p class="hint">
+                <b>{{ t.capture.markEveryDart }}</b> {{ t.capture.tryHelp }}
+              </p>
+            </Fold>
+            <p v-if="marking.saved" class="hint">
+              {{ fill(t.capture.savedNote, { n: marking.saved.length, hits: marking.saved.map((dart) => formatHit(dart.hit)).join(', ') }) }}
+            </p>
+            <p v-if="marking.waiting" class="warning">{{ t.capture.photoWaiting }}</p>
+
+            <section v-if="modelInfo" class="panel">
+              <div class="controls">
+                <button type="button" :class="['btn-sm', { 'toggle-on': proposing }]" :aria-pressed="proposing" @click="proposing = !proposing">
+                  {{ proposing ? (marking.model.status === 'ready' ? t.capture.proposingOn : t.capture.proposingLoading) : t.capture.proposingOff }}
+                </button>
+              </div>
+              <p v-if="photo?.blind" class="hint">{{ t.capture.blindFrame }}</p>
+              <p v-if="marking.tally.letStand + marking.tally.corrected > 0" class="hint">
+                {{ fill(t.capture.verdicts, { right: marking.tally.letStand, n: marking.tally.letStand + marking.tally.corrected }) }}
+              </p>
+              <Fold id="capture-autoscorer" closed :summary="t.capture.foldAutoscorer">
+                <p class="hint">{{ proposing ? t.capture.proposingHelp : t.capture.proposingOffHelp }}</p>
+                <p class="hint">
+                  {{ fill(t.capture.modelName, { name: modelInfo.name }) }}
+                  <template v-if="modelInfo.deepdarts">{{ ` ${t.capture.deepdartsCredit}` }}</template>
+                  <template v-if="modelInfo.dartscribe">{{ ` ${t.capture.dartscribeCredit}` }}</template>
+                </p>
+              </Fold>
+            </section>
+          </template>
+
+          <!-- Back with marks nobody saved: asked whatever else is showing. -->
+          <div v-if="marking.leaving?.asking" class="panel" role="alertdialog" :aria-label="t.capture.unsavedTitle">
+            <p>{{ t.capture.unsavedTitle }}</p>
+            <div class="controls">
+              <button type="button" class="btn-primary" @click="answer('save')">{{ t.capture.unsavedSave }}</button>
+              <button type="button" class="btn-sm" @click="answer('discard')">{{ t.capture.unsavedDiscard }}</button>
+              <button type="button" class="btn-sm" @click="session.answer('stay')">{{ t.capture.unsavedStay }}</button>
+            </div>
           </div>
+        </div>
 
-          <button type="button" class="btn-primary" :disabled="!ready" @click="tryIt">{{ t.capture.tryIt }}</button>
-
-          <ExposureControl
-            v-if="exposure.range.value"
-            :range="exposure.range.value"
-            :value="exposure.value.value"
-            @change="exposure.set"
-          />
-          <p v-else-if="camera.ready.value" class="hint">{{ t.capture.exposureUnsupported }}</p>
+        <div class="capture-more">
+          <Fold id="capture-camera" closed :summary="t.capture.foldCamera">
+            <div class="controls">
+              <span v-if="paired" class="status status-ok"><span class="status-dot" aria-hidden="true" />{{ t.capture.phoneCamera }}</span>
+              <Toggle v-else v-model="cameraOn" :label="cameraOn ? t.capture.stop : t.capture.start" />
+            </div>
+            <ExposureControl
+              v-if="exposure.range.value"
+              :range="exposure.range.value"
+              :value="exposure.value.value"
+              @change="exposure.set"
+            />
+            <p v-else-if="camera.ready.value" class="hint">{{ t.capture.exposureUnsupported }}</p>
+            <p v-if="cameraOn || paired" class="capture-status">
+              {{ camera.moving.value ? t.capture.moving : t.capture.waiting }} · {{ camera.motion.value.toFixed(1) }} /
+              {{ camera.change.value.toFixed(1) }} · {{ fill(t.capture.photoSize, { size: `${camera.width.value}×${camera.height.value}` }) }}
+              <template v-if="camera.photo.value">
+                · {{ fill(t.capture.photoTime, { ms: camera.photo.value.ms, dropped: camera.photo.value.dropped }) }}
+              </template>
+              <template v-if="followed">· {{ fill(t.report.followed, { mm: followed.shiftMm.toFixed(1) }) }}</template>
+              <template v-if="pullingOut && marking.emptyCheck">
+                · {{ fill(t.capture.emptyCheck, { score: marking.emptyCheck.score.toFixed(1), limit: marking.emptyCheck.limit }) }}
+              </template>
+              <template v-if="sending">
+                ·
+                {{
+                  fill(sending.limitation === 'none' ? t.capture.videoSent : t.capture.videoHeldBack, {
+                    size: `${sending.width}×${sending.height}`,
+                    reason: sending.limitation,
+                  })
+                }}
+              </template>
+            </p>
+          </Fold>
 
           <section class="panel">
-            <h2>{{ t.capture.stepsTitle }}</h2>
-            <ol class="steps">
-              <li v-for="(line, index) in t.capture.steps" :key="line"><span class="step-n" aria-hidden="true">{{ index + 1 }}</span><span>{{ line }}</span></li>
-            </ol>
+            <h2>{{ t.capture.frames }}</h2>
+            <p><b>{{ stats.labelled }}</b> {{ t.capture.labelled }} · {{ storageLine }}</p>
+            <div class="controls">
+              <Toggle v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
+            </div>
+            <Fold id="capture-privacy" closed :summary="t.capture.foldPrivacy">
+              <p class="hint">{{ t.capture.privacy }}</p>
+              <p v-if="!keepPhotos" class="hint">{{ t.capture.keepPhotosOffHelp }}</p>
+            </Fold>
+            <div class="controls">
+              <button type="button" class="btn-sm" :disabled="busy || stats.total === 0" @click="exportAll">
+                {{ stats.total === 0 ? t.capture.exportEmpty : t.capture.export }}
+              </button>
+              <button type="button" class="btn-sm" :disabled="stats.total === 0" @click="router.push(PATHS.review)">{{ t.review.open }}</button>
+              <button type="button" :class="['btn-sm', confirmDelete ? 'btn-danger-solid' : 'btn-danger']" :disabled="stats.total === 0" @click="deleteAll">
+                {{ confirmDelete ? t.capture.deleteAllConfirm : t.capture.deleteAll }}
+              </button>
+            </div>
           </section>
-        </template>
-
-        <section class="panel">
-          <h2>{{ t.capture.frames }}</h2>
-          <p><b>{{ stats.labelled }}</b> {{ t.capture.labelled }} · {{ storageLine }}</p>
-          <p class="hint">{{ t.capture.privacy }}</p>
-          <div class="controls">
-            <Toggle v-model="keepPhotos" :label="keepPhotos ? t.capture.keepPhotosOn : t.capture.keepPhotosOff" />
-          </div>
-          <p v-if="!keepPhotos" class="hint">{{ t.capture.keepPhotosOffHelp }}</p>
-          <div class="controls">
-            <button type="button" class="btn-sm" :disabled="busy || stats.total === 0" @click="exportAll">
-              {{ stats.total === 0 ? t.capture.exportEmpty : t.capture.export }}
-            </button>
-            <button type="button" class="btn-sm" :disabled="stats.total === 0" @click="router.push(PATHS.review)">{{ t.review.open }}</button>
-            <button type="button" :class="['btn-sm', confirmDelete ? 'btn-danger-solid' : 'btn-danger']" :disabled="stats.total === 0" @click="deleteAll">
-              {{ confirmDelete ? t.capture.deleteAllConfirm : t.capture.deleteAll }}
-            </button>
-          </div>
-        </section>
         </div>
       </div>
 
@@ -699,14 +698,14 @@ const storageLine = computed(() => {
         <div class="stage-frame" :style="cropFrameStyle(crop, frameSize)">
           <video :ref="attachVideo" class="stage-video" playsinline muted />
           <QualityMarks
-            v-if="mode !== 'calibrate'"
+            v-if="mode === 'lab'"
             :width="frameSize.width"
             :height="frameSize.height"
             :region="region ?? { x: 0, y: 0, width: frameSize.width, height: frameSize.height }"
             :quality="camera.quality.value"
           />
           <img v-if="mode === 'calibrate' && frozen" class="stage-frozen" :src="frozen.url" alt="" />
-          <img v-if="mode === 'try' && photo" class="stage-frozen" :src="photo.url" alt="" />
+          <img v-if="mode === 'lab' && photo" class="stage-frozen" :src="photo.url" alt="" />
 
           <BoardOverlay
             :width="frameSize.width"

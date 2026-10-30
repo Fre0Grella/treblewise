@@ -31,7 +31,7 @@ import { squareAround } from '../vision/crop.js';
 import { referenceOf } from '../vision/imageStats.js';
 import BoardOverlay from './BoardOverlay.vue';
 import PhoneBattery from './PhoneBattery.vue';
-import PhoneLink from './PhoneLink.vue';
+import ConnectionBadge from './ConnectionBadge.vue';
 import PhotoStage from './PhotoStage.vue';
 import QualityMarks from './QualityMarks.vue';
 import SetupCoach from './SetupCoach.vue';
@@ -140,8 +140,8 @@ const camera = useCamera({
 });
 // Between visits, on the empty board, the calibration follows the board
 // when it has moved (vision/boardDrift.ts).
-const { followed } = useBoardDrift(props.gameVisit, camera);
-// A phone paired since camera setup is told its brightness here.
+const { checking, lost, followed } = useBoardDrift(props.gameVisit, camera);
+// A phone paired since the capture lab is told its brightness here.
 useExposure(camera);
 
 // A dart entered by hand has no photograph of its own: it was not read, so
@@ -263,18 +263,20 @@ function toggleAutoscore() {
 const autoscoreOn = computed({ get: () => autoscore.value, set: () => toggleAutoscore() });
 
 /** The paired phone's connection is too slow to read the board through (pairing/link.ts). */
-const slowLink = computed(() => lobby.mode === 'paired' && lobby.pairState === 'connected' && lobby.link?.health === 'bad');
 
 /**
  * The badge's state (issue #15): quiet while the autoscorer can work, a
- * reflection included; 'bad' only when it cannot (no calibration, the board
- * moved or cut off, a connection to the phone too slow to see the board
- * through). The full story is in the panel.
+ * reflection included; 'busy' (cyan) while the board is being found again
+ * between visits; 'bad' only when it cannot work, or works on a calibration
+ * the board may have drifted from (the board lost at the last check, moved,
+ * cut off). The connection to the phone has its own badge. The full story is
+ * in the panel.
  */
-const status = computed<'ok' | 'off' | 'bad'>(() => {
+const status = computed<'ok' | 'off' | 'busy' | 'bad'>(() => {
   if (!keepFrames.value) return 'off';
   if (!calibration.value) return 'bad';
-  if (slowLink.value) return 'bad';
+  if (checking.value) return 'busy';
+  if (lost.value) return 'bad';
   if (camera.quality.value?.issues.includes('moved')) return 'bad';
   if (view.value?.issues.some((issue) => issue.code === 'offFrame')) return 'bad';
   return 'ok';
@@ -282,10 +284,13 @@ const status = computed<'ok' | 'off' | 'bad'>(() => {
 const statusLabel = computed(() => {
   if (status.value === 'off') return t.report.badgeOff;
   if (status.value === 'ok') return t.report.badgeReady;
+  if (status.value === 'busy') return t.report.badgeChecking;
   if (!calibration.value) return t.report.badgeNotCalibrated;
-  if (slowLink.value) return t.report.badgeSlowLink;
+  if (lost.value) return t.report.badgeLost;
   return camera.quality.value?.issues.includes('moved') ? t.report.badgeMoved : t.report.badgeCutOff;
 });
+/** No board yet, or one lost or moved, is fixed by finding it; anything else by the capture lab. */
+const refind = computed(() => !calibration.value || lost.value || (camera.quality.value?.issues.includes('moved') ?? false));
 
 const size = computed(() => ({ width: camera.width.value || 1280, height: camera.height.value || 720 }));
 const reportCrop = computed(() =>
@@ -301,7 +306,7 @@ const attachVideo = (element: unknown) => {
   camera.video.value = element as HTMLVideoElement | null;
 };
 
-/** The camera has moved: to camera setup, which finds the board again straight away. */
+/** The camera has moved, or the board was lost: to the capture lab, at the confirmation before the scan. */
 const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
 </script>
 
@@ -311,6 +316,7 @@ const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
          only when it cannot, with the way to fix it one click away. -->
     <Teleport defer :to="badgeTarget ?? 'body'" :disabled="!badgeTarget">
       <span class="camera-badge">
+        <ConnectionBadge />
         <button
           type="button"
           :class="['status', 'status-btn', `status-${status}`]"
@@ -325,9 +331,9 @@ const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
           v-if="status === 'bad' && keepFrames"
           type="button"
           class="btn-primary btn-sm"
-          @click="router.push(`${PATHS.camera}?from=game`)"
+          @click="refind ? findAgain() : router.push(`${PATHS.camera}?from=game`)"
         >
-          {{ t.report.cameraSetup }}
+          {{ refind ? (calibration ? t.capture.recalibrate : t.capture.calibrate) : t.report.cameraSetup }}
         </button>
       </span>
     </Teleport>
@@ -361,13 +367,17 @@ const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
         :quality="camera.quality.value"
         :on-find-again="findAgain"
       />
+      <p v-if="keepFrames && lost" class="warning">{{ t.report.lostHelp }}</p>
       <p v-if="keepFrames && followed" class="hint">{{ fill(t.report.followed, { mm: followed.shiftMm.toFixed(1) }) }}</p>
       <p v-if="!keepFrames" class="hint">{{ t.report.noFrame }}</p>
       <p v-else-if="!usable && latest !== null" class="hint">{{ t.capture.noCalibration }}</p>
       <PhoneBattery v-if="keepFrames" />
-      <PhoneLink v-if="keepFrames" />
       <div class="camera-panel-actions">
-        <button type="button" :class="status === 'bad' ? 'btn-primary' : ''" @click="router.push(`${PATHS.camera}?from=game`)">
+        <button
+          type="button"
+          :class="status === 'bad' ? 'btn-primary' : ''"
+          @click="calibration ? router.push(`${PATHS.camera}?from=game`) : findAgain()"
+        >
           {{ calibration ? t.report.cameraSetup : t.capture.calibrate }}
         </button>
         <button type="button" class="btn-quiet" @click="panelOpen = false">{{ t.report.close }}</button>

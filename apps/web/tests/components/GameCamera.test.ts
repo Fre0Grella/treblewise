@@ -11,6 +11,7 @@ import { createAppRouter } from '@/router/index.js';
 import type { CapturedFrame } from '@/storage/frames.js';
 import { useLobbyStore, useSettingsStore } from '@/store/stores.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
+import type { FinderResult } from '@/vision/findBoard.js';
 import { THUMB_VERSION } from '@/vision/imageStats.js';
 import GameCamera from '@/components/GameCamera.vue';
 
@@ -25,6 +26,12 @@ const hooks = vi.hoisted(() => ({
   paused: (() => false) as () => boolean,
   /** What "take a photograph now" gives back. */
   capture: null as GrabbedFrame | null,
+}));
+
+/** What finding the board again comes to: unreadable at once, unless a test holds it. */
+const finder = vi.hoisted(() => ({ next: null as Promise<FinderResult> | null }));
+vi.mock('@/vision/findBoard.js', () => ({
+  findBoardIn: async (): Promise<FinderResult> => finder.next ?? { notFound: 'unreadable' },
 }));
 
 vi.mock('@/composables/useCamera.js', async () => {
@@ -274,6 +281,31 @@ describe('the autoscorer in a game', () => {
     hooks.found = [{ x: 30, y: -50 }];
     await settle();
     expect(onAutoDart).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes cyan while the board is found again after the pull-out, the turn waiting, then red when it is lost', async () => {
+    let answer: (result: FinderResult) => void = () => {};
+    finder.next = new Promise((resolve) => (answer = resolve));
+    await start([
+      { id: 'a', hit: T20, pos: { x: 0, y: 103 } },
+      { id: 'b', hit: T20, pos: { x: 5, y: 103 } },
+      { id: 'c', hit: T20, pos: { x: -5, y: 103 } },
+    ]);
+    await settle(EMPTY);
+    const badge = screen.getByRole('button', { name: /finding the board/i });
+    expect(badge.className).toContain('status-busy');
+    expect(onTurnPassed).not.toHaveBeenCalled();
+
+    answer({ notFound: 'noRing' });
+    await tick();
+    await tick();
+    await nextTick();
+    expect(onTurnPassed).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: /board lost/i }).className).toContain('status-bad');
+    expect(screen.getAllByRole('button', { name: /find the board again/i }).length).toBeGreaterThan(0);
+    // The calibration it had is still the one in use.
+    expect(useSettingsStore().settings.calibration?.ts).toBe(1);
+    finder.next = null;
   });
 
   it('ends a visit pulled out early: the darts not in the board missed it', async () => {

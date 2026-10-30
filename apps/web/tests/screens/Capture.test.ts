@@ -28,6 +28,8 @@ const hooks = vi.hoisted(() => ({
   change: 50,
   /** What "take a photograph now" gives back. */
   capture: null as GrabbedFrame | null,
+  /** What the camera says about the picture. */
+  quality: null as unknown,
   /** What finding the board comes to, and what it was asked. */
   finder: { notFound: 'unreadable' } as FinderResult,
   finderAsked: [] as Array<FindOptions['near']>,
@@ -61,7 +63,7 @@ vi.mock('@/composables/useCamera.js', async () => {
         motion: ref(0),
         change: ref(0),
         photo: shallowRef(null),
-        quality: shallowRef(null),
+        quality: shallowRef(hooks.quality),
         exposure: shallowRef(null),
         capture: async () => hooks.capture,
         sampleThumbnail: () => null,
@@ -159,8 +161,6 @@ describe('the capture lab saves only what a person confirmed', () => {
         calibration: { ...calibration, ts: 1, reference: Array.from(EMPTY), referenceVersion: THUMB_VERSION },
       };
     });
-    await press(/start camera/i);
-    await press(/try it/i);
     // Nothing heavy is loaded until proposals are asked for.
     expect(hooks.detectorLoads).toBe(0);
     await press(/autoscorer proposes.*off/i);
@@ -407,7 +407,7 @@ describe('the capture lab saves only what a person confirmed', () => {
 
   it('asks before leaving with marks that are not saved', async () => {
     await settle();
-    await press(/^done$/i);
+    await press(/^back$/i);
     expect(screen.getByRole('alertdialog')).toBeDefined();
     await press(/throw it away/i);
     expect(hooks.stored).toEqual([]);
@@ -426,8 +426,8 @@ describe('finding the board', () => {
     await renderAt('/camera', () => {
       useLobbyStore().mode = 'solo';
     });
-    await press(/start camera/i);
     await press(/find the board/i);
+    await press(/^scan$/i);
     await screen.findByText(/couldn't read the photo/i, {}, { timeout: 3000 });
     await press(/use this calibration/i);
 
@@ -454,8 +454,8 @@ describe('finding the board', () => {
     await renderAt('/camera', () => {
       useLobbyStore().mode = 'solo';
     });
-    await press(/start camera/i);
     await press(/find the board/i);
+    await press(/^scan$/i);
     // The steps light up one after another, then the result shows.
     expect(await screen.findByRole('status', { name: /finding the board/i })).toBeDefined();
   }
@@ -470,7 +470,11 @@ describe('finding the board', () => {
     expect(await screen.findByText(/found by itself: it fits the wires/i, {}, { timeout: 3000 })).toBeDefined();
     expect(screen.getByText(/280 ring edges and 78 wires measured/i)).toBeDefined();
     await press(/use this calibration/i);
+    // Back in the lab, on the live picture: no markers, no calibrate panel.
+    expect(screen.queryByRole('button', { name: /use this calibration/i })).toBeNull();
+    expect(screen.queryAllByText('20|1')).toEqual([]);
     const calibration = useSettingsStore().settings.calibration!;
+    expect(calibration.found).toBeDefined();
     calibration.imagePoints.forEach((p, i) => {
       expect(p.x).toBeCloseTo(FOUND_POINTS[i]!.x, 6);
       expect(p.y).toBeCloseTo(FOUND_POINTS[i]!.y, 6);
@@ -499,5 +503,41 @@ describe('finding the board', () => {
     expect(hooks.finderAsked).toHaveLength(2);
     expect(hooks.finderAsked[1]).toHaveLength(9);
     hooks.capture = null;
+  });
+
+  it('opens on the live view with Find the board first, and asks before the scan', async () => {
+    hooks.finderAsked = [];
+    await renderAt('/camera', () => {
+      useLobbyStore().mode = 'solo';
+    });
+    expect(screen.queryByRole('button', { name: /start camera/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /try it/i })).toBeNull();
+    const find = screen.getByRole('button', { name: /^find the board$/i });
+    expect(find.className).toContain('btn-primary');
+    await press(/^find the board$/i);
+    expect(screen.getByRole('alertdialog', { name: /find the board/i }).textContent).toMatch(/point the phone at the board first/i);
+    await press(/not now/i);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(hooks.finderAsked).toEqual([]);
+  });
+
+  it('stops at the confirmation when sent from a match', async () => {
+    await renderAt('/camera?from=game&find=1', () => {
+      useLobbyStore().mode = 'solo';
+    });
+    expect(screen.getByRole('alertdialog', { name: /find the board/i })).toBeDefined();
+  });
+
+  it('offers Find the board again once, in the coach, when the camera has moved', async () => {
+    const { calibrate } = await import('@/storage/frames.js');
+    const calibration = calibrate(FOUND_POINTS, CALIBRATION_BOARD_POINTS, { width: WIDTH, height: HEIGHT })!;
+    hooks.quality = { brightness: 120, glare: 0, glareLimit: 0.04, glareBefore: 0, sharpness: 80, drift: 0.6, issues: ['moved'], glareSpots: [], changedSpots: [] };
+    await renderAt('/camera', () => {
+      useLobbyStore().mode = 'solo';
+      const settings = useSettingsStore();
+      settings.settings = { ...settings.settings, calibration: { ...calibration, ts: 1 } };
+    });
+    expect(screen.getAllByRole('button', { name: /find the board again/i })).toHaveLength(1);
+    hooks.quality = null;
   });
 });

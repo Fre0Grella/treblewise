@@ -7,7 +7,7 @@ import { createBoardWatcher } from '@/vision/boardWatcher.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
 import { THUMB_VERSION } from '@/vision/imageStats.js';
 import type { Detection, ModelManifest } from '@/vision/detector.js';
-import { createGameVisit, type GameVisitSignal } from '@/game/gameVisit.js';
+import { BOARD_WAIT_MS, createGameVisit, type GameVisitSignal } from '@/game/gameVisit.js';
 
 // The real board watcher, with only the model faked: what the game visit gets
 // right or wrong is the order it tells the watcher things in, and a fake
@@ -211,6 +211,46 @@ describe('the autoscorer in a game visit', () => {
     model.found = [{ x: 30, y: -50 }];
     await settle(DARTS);
     expect(thrown).toHaveLength(1);
+  });
+
+  it('holds the turn back while the board is found again on the empty board, then passes it', async () => {
+    const { gameVisit, signals, match, settle } = await setup();
+    let done: () => void = () => {};
+    gameVisit.onEmptyBoard(() => gameVisit.awaitBoard(new Promise<void>((resolve) => (done = resolve))));
+    match([dart('a'), dart('b'), dart('c')]);
+    await settle(EMPTY);
+    expect(gameVisit.state().position).toBe('closed');
+    expect(signals).toEqual([]);
+    done();
+    await flush();
+    expect(signals).toEqual(['turn-passed']);
+  });
+
+  it('passes the turn after three seconds at most, however long the check takes', async () => {
+    vi.useFakeTimers();
+    try {
+      const { gameVisit, signals, match } = await setup();
+      gameVisit.onEmptyBoard(() => gameVisit.awaitBoard(new Promise(() => {})));
+      match([dart('a'), dart('b'), dart('c')]);
+      gameVisit.settle(photo(), EMPTY, null);
+      await vi.advanceTimersByTimeAsync(BOARD_WAIT_MS - 10);
+      expect(signals).toEqual([]);
+      await vi.advanceTimersByTimeAsync(20);
+      expect(signals).toEqual(['turn-passed']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('passes the turn at once when no check is running', async () => {
+    const { gameVisit, signals, match, settle } = await setup();
+    let done: () => void = () => {};
+    gameVisit.awaitBoard(new Promise<void>((resolve) => (done = resolve)));
+    done();
+    await flush();
+    match([dart('a'), dart('b'), dart('c')]);
+    await settle(EMPTY);
+    expect(signals).toEqual(['turn-passed']);
   });
 
   it('passes the turn on a still empty board when the settle after the pull did not see it empty', async () => {

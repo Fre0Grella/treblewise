@@ -1,30 +1,30 @@
 <!--
   Explanatory text that can be folded away once it has been read. Open until
-  someone closes it; this browser then remembers it closed, so a laptop that
-  needs the room keeps it.
+  someone closes it, or closed until someone opens it (`closed`), and this
+  browser then remembers which, so a laptop that needs the room keeps it.
 -->
 <script setup lang="ts">
 import { ref } from 'vue';
 
-const props = defineProps<{ id: string; summary: string }>();
+const props = withDefaults(defineProps<{ id: string; summary: string; closed?: boolean }>(), { closed: false });
 
 const KEY = 'treblewise.fold.';
 
-function remembered(id: string): boolean {
+function remembered(id: string, open: boolean): boolean {
   try {
-    return localStorage.getItem(KEY + id) !== 'closed';
+    const kept = localStorage.getItem(KEY + id);
+    return kept === null ? open : kept !== 'closed';
   } catch {
-    return true;
+    return open;
   }
 }
 
-const open = ref(remembered(props.id));
+const open = ref(remembered(props.id, !props.closed));
 
 function toggled(event: Event) {
   open.value = (event.currentTarget as HTMLDetailsElement).open;
   try {
-    if (open.value) localStorage.removeItem(KEY + props.id);
-    else localStorage.setItem(KEY + props.id, 'closed');
+    localStorage.setItem(KEY + props.id, open.value ? 'open' : 'closed');
   } catch {
     // Private mode or storage switched off: it just opens again next time.
   }
