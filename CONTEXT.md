@@ -51,6 +51,14 @@ _Avoid_: previous frame, last frame
 The module that follows the board between settles: it classifies each settle (empty board or not), keeps the **pull-out phase** and the **visit photo**, and reads a photograph for new darts when its owner asks.
 _Avoid_: autoscorer (the model and its pipeline as a whole), camera
 
+**Board finder**:
+Finding the board in a photograph by itself, from its red and green beds and its wires, with no trained model: it puts the four calibration markers on the board for a person to check.
+_Avoid_: auto-calibration model, board pose model (the trained model it replaced)
+
+**Following the board**:
+Between visits, on a photograph of the **empty board**, finding the board again and moving the calibration with it when it has shifted by a millimetre or more: the phone slides on its hook, and pulling darts out nudges the board.
+_Avoid_: recalibrating (a person finding the board again in camera setup)
+
 **Proposal**:
 A new dart the model read in a photograph, beside the **darts in the board**, that a person has not yet confirmed or corrected.
 _Avoid_: guess, detection (a detection is any tip the model sees, old darts included)
