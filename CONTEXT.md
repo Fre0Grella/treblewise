@@ -69,7 +69,7 @@ A capture-lab visit the model is kept out of entirely, so a person marks it from
 ### Labelling
 
 **Capture lab**:
-The screen where the camera is set up and calibrated, and throws are marked to build training data.
+The screen where the board is found and throws are marked to build training data. It opens on the live camera; finding the board happens over the same view, after a confirmation, and ends back in it.
 _Avoid_: capture screen, camera setup
 
 **Marking session**:
