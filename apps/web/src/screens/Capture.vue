@@ -19,13 +19,23 @@
   camera, calibrates, and renders the session.
 -->
 <script setup lang="ts">
-import { CALIBRATION_BOARD_POINTS, applyHomography, assessBoardView, boardRegion, formatHit, type Point } from '@treblewise/core';
+import {
+  CALIBRATION_BOARD_POINTS,
+  applyHomography,
+  assessBoardView,
+  boardRegion,
+  formatHit,
+  type Matrix3,
+  type Point,
+} from '@treblewise/core';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { unlockCaller } from '../caller/caller.js';
+import BoardFit from '../components/BoardFit.vue';
 import BoardOverlay, { type OverlayHandle } from '../components/BoardOverlay.vue';
 import ExposureControl from '../components/ExposureControl.vue';
+import FinderSteps from '../components/FinderSteps.vue';
 import PhoneBattery from '../components/PhoneBattery.vue';
 import PhoneLink from '../components/PhoneLink.vue';
 import QualityMarks from '../components/QualityMarks.vue';
@@ -34,7 +44,8 @@ import Fold from '../components/ui/Fold.vue';
 import Icon from '../components/ui/Icon.vue';
 import ThrowStrip from '../components/ui/ThrowStrip.vue';
 import Toggle from '../components/ui/Toggle.vue';
-import { useCamera } from '../composables/useCamera.js';
+import { useBoardFinder } from '../composables/useBoardFinder.js';
+import { useCamera, withoutMoved } from '../composables/useCamera.js';
 import { useExposure } from '../composables/useExposure.js';
 import { useMarkingSession } from '../composables/useMarkingSession.js';
 import { fill, useStrings } from '../i18n/index.js';
@@ -45,6 +56,7 @@ import { calibrate, countFrames, deleteFrame, exportFrames, listFrames } from '.
 import { useLobbyStore, useSettingsStore } from '../store/stores.js';
 import { cameraSupported, type GrabbedFrame } from '../vision/camera.js';
 import { cropFrameStyle, squareAround } from '../vision/crop.js';
+import type { FinderResult } from '../vision/findBoard.js';
 import { referenceOf, THUMB_VERSION } from '../vision/imageStats.js';
 
 type Mode = 'setup' | 'calibrate' | 'try';
@@ -85,7 +97,10 @@ const mode = ref<Mode>('setup');
 // Shallow, like everything that ends up stored: a deep ref makes each point a
 // Vue proxy, the calibration carries them, and IndexedDB refuses to store it.
 const draft = shallowRef<Point[]>([]);
-const frozen = shallowRef<{ url: string; width: number; height: number } | null>(null);
+const frozen = shallowRef<{ url: string; jpeg: Blob; width: number; height: number } | null>(null);
+/** Finding the board on the frozen photograph: the step lit while it works, and what it came to. */
+const { shown: findingStep, findIn, cancel: cancelFinding } = useBoardFinder();
+const finderResult = shallowRef<FinderResult | null>(null);
 
 /**
  * Try-it: the photograph being marked, the one waiting behind it, the darts in
@@ -149,6 +164,28 @@ const camera = useCamera({
   exposure: () => settings.settings.exposure,
 });
 const exposure = useExposure(camera);
+// Finding the board again is what a moved camera asks for: while it is being
+// done, the coach does not go on saying so.
+const coachQuality = computed(() => {
+  const quality = camera.quality.value;
+  return quality && mode.value === 'calibrate' ? withoutMoved(quality) : quality;
+});
+
+// Sent here by a game's "Find the board again": the camera on, and the board
+// found as soon as there is a picture.
+if (route.query.find === '1') {
+  if (lobby.mode !== 'paired') cameraOn.value = true;
+  let asked = false;
+  watch(
+    () => camera.ready.value,
+    (ready) => {
+      if (!ready || asked) return;
+      asked = true;
+      void startCalibration();
+    },
+    { immediate: true },
+  );
+}
 
 const frameSize = computed(() =>
   photo.value && mode.value === 'try'
@@ -180,7 +217,9 @@ const draftCalibration = computed(() =>
 );
 
 const view = computed(() => {
-  const source = mode.value === 'calibrate' ? draftCalibration.value : calibration.value;
+  // While the board is being found the markers are only where they start: the
+  // coach goes on judging the calibration in use until there is something new.
+  const source = mode.value === 'calibrate' && findingStep.value === null ? draftCalibration.value : calibration.value;
   return source ? assessBoardView(source.toImage, { width: source.width, height: source.height }) : null;
 });
 
@@ -188,15 +227,40 @@ async function startCalibration() {
   const grabbed = await camera.capture();
   if (!grabbed) return;
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
-  frozen.value = { url: URL.createObjectURL(grabbed.jpeg), width: grabbed.width, height: grabbed.height };
-  // From where the current calibration puts the landmarks, not from the
-  // points tapped for it: those may be landmarks that have since moved.
+  frozen.value = { url: URL.createObjectURL(grabbed.jpeg), jpeg: grabbed.jpeg, width: grabbed.width, height: grabbed.height };
+  // Where the markers start if the board is not found: where the current
+  // calibration puts the landmarks, not the points tapped for it, which may
+  // be landmarks that have since moved.
   const current = calibration.value && !staleCalibration.value ? calibration.value : null;
   draft.value = current
     ? CALIBRATION_BOARD_POINTS.map((point) => applyHomography(current.toImage, point))
     : defaultHandles(grabbed.width, grabbed.height);
   mode.value = 'calibrate';
+  await findTheBoard();
 }
+
+/** Finds the board on the frozen photograph, from nothing or from `near`, and puts the markers on it. */
+async function findTheBoard(near?: Matrix3) {
+  const jpeg = frozen.value?.jpeg;
+  if (!jpeg) return;
+  finderResult.value = null;
+  const result = await findIn(jpeg, near);
+  if (!result || mode.value !== 'calibrate') return;
+  finderResult.value = result;
+  if (!('notFound' in result)) draft.value = result.imagePoints.map((p) => ({ x: p.x, y: p.y }));
+}
+
+const findAgain = () => void findTheBoard(draftCalibration.value?.toImage);
+
+/** A marker has been dragged since the board was found. */
+const adjusted = computed(() => {
+  const result = finderResult.value;
+  if (!result || 'notFound' in result) return false;
+  return result.imagePoints.some((p, i) => {
+    const now = draft.value[i];
+    return !now || Math.hypot(now.x - p.x, now.y - p.y) > 0.5;
+  });
+});
 
 function finishCalibration(save: boolean) {
   const made = draftCalibration.value;
@@ -212,6 +276,8 @@ function finishCalibration(save: boolean) {
   if (frozen.value) URL.revokeObjectURL(frozen.value.url);
   frozen.value = null;
   draft.value = [];
+  cancelFinding();
+  finderResult.value = null;
   mode.value = save ? 'try' : 'setup';
 }
 onBeforeUnmount(() => {
@@ -327,7 +393,9 @@ async function deleteAll() {
 
 const overlayToImage = computed(() =>
   mode.value === 'calibrate'
-    ? (draftCalibration.value?.toImage ?? null)
+    ? findingStep.value === null
+      ? (draftCalibration.value?.toImage ?? null)
+      : null
     : staleCalibration.value
       ? null
       : (calibration.value?.toImage ?? null),
@@ -424,8 +492,9 @@ const storageLine = computed(() => {
           :calibrated="mode === 'calibrate' ? draftCalibration !== null : calibration !== null"
           :old-reference="mode !== 'calibrate' && oldReference"
           :view="view"
-          :quality="camera.quality.value"
+          :quality="coachQuality"
           show-numbers
+          :on-find-again="mode === 'setup' ? startCalibration : undefined"
         />
 
         <div v-if="mode === 'try'" :class="`coach ${photo || pullingOut ? 'coach-warn' : 'coach-ready'}`" role="status">
@@ -542,19 +611,33 @@ const storageLine = computed(() => {
         <div class="capture-more">
         <section v-if="mode === 'calibrate'" class="panel">
           <h2>{{ t.capture.calibrateTitle }}</h2>
-          <p class="hint">{{ t.capture.calibrateHelp }}</p>
+          <BoardFit v-if="finderResult" :result="finderResult" :adjusted="adjusted" />
+          <p class="hint">
+            {{ finderResult && !('notFound' in finderResult) ? t.capture.calibrateHelpFound : t.capture.calibrateHelp }}
+          </p>
           <ul class="landmark-list">
             <li v-for="handle in handles" :key="handle.label">
               <b>{{ handle.label }}</b> {{ handle.hint }}
             </li>
           </ul>
-          <p class="hint">
+          <p v-if="!finderResult || 'notFound' in finderResult" class="hint">
             {{ t.capture.calibrateError }}: <b>{{ draftCalibration ? `${draftCalibration.error.toFixed(1)} px` : '—' }}</b>
           </p>
           <div class="controls">
-            <button type="button" class="btn-primary" :disabled="!draftCalibration" @click="finishCalibration(true)">{{ t.capture.calibrateSave }}</button>
+            <button
+              type="button"
+              class="btn-primary"
+              :disabled="!draftCalibration || findingStep !== null"
+              @click="finishCalibration(true)"
+            >
+              {{ t.capture.calibrateSave }}
+            </button>
+            <button type="button" class="btn-sm" :disabled="!draftCalibration || findingStep !== null" @click="findAgain">
+              {{ t.capture.findAgain }}
+            </button>
             <button type="button" class="btn-sm" @click="finishCalibration(false)">{{ t.capture.calibrateCancel }}</button>
           </div>
+          <p class="hint">{{ t.capture.findAgainHelp }}</p>
         </section>
 
         <template v-if="mode === 'setup'">
@@ -622,13 +705,14 @@ const storageLine = computed(() => {
             :width="frameSize.width"
             :height="frameSize.height"
             :to-image="overlayToImage"
-            :handles="mode === 'calibrate' ? handles : []"
+            :handles="mode === 'calibrate' && findingStep === null ? handles : []"
             :on-handle-move="moveHandle"
             :lens-src="mode === 'calibrate' ? frozen?.url : null"
             :darts="overlayDarts"
             :on-dart-move="session.move"
             :on-tap="tap"
           />
+          <FinderSteps v-if="mode === 'calibrate' && findingStep !== null" :shown="findingStep" />
         </div>
       </div>
     </div>

@@ -701,7 +701,7 @@ export const en = {
   },
   coach: {
     ready: 'Board found — you can play.',
-    notCalibrated: 'Tap "Find the board" and drag the four markers onto it.',
+    notCalibrated: 'Tap "Find the board": the app finds it by itself, and you check it.',
     moved: 'The camera has moved. Find the board again.',
     oldReference:
       'Find the board again: the picture has changed since you found it (a new brightness, or an app update), and until it is redone the app cannot tell when the camera moves or when the darts are out.',
@@ -817,6 +817,29 @@ export const en = {
     calibrateTitle: 'Where is the board?',
     calibrateHelp:
       'Drag each marker onto the corner where the wire between two numbers meets the outer edge of the double ring. While you drag, the lens shows it close up: put the cross on the corner. The green board is drawn from your four points — nudge until it sits on the real wires.',
+    calibrateHelpFound:
+      'The board was found by itself. Check that the green board sits on the real wires all the way round. If a part is off, drag the nearest marker onto its corner, where the wire between two numbers meets the outer edge of the double ring; the lens shows it close up.',
+    findAgain: 'Find again',
+    findAgainHelp: '"Find again" snaps the markers onto the wires from where they are now: drag them roughly into place first if the board was found turned the wrong way.',
+    finding: 'Finding the board…',
+    finderSteps: {
+      colours: 'The red and the green',
+      bull: 'The bull',
+      ring: 'The double ring',
+      tilt: 'The tilt',
+      turn: 'Which way is up',
+      wires: 'The wires',
+    },
+    fitGood: 'Found by itself: it fits the wires',
+    fitCheck: 'Found by itself. Check near the {sector}: drag a marker if the wires are off there',
+    fitAdjusted: 'Found by itself, then adjusted by hand',
+    fitNumbers: '{edges} ring edges and {wires} wires measured · off by {median} mm typically, 90% under {p90} mm',
+    notFound: {
+      noBull: "Couldn't find the bull. Place the four markers by hand.",
+      noRing: "Couldn't see the red and green rings. Place the four markers by hand.",
+      weakFit: "Couldn't make out enough of the wires. Place the four markers roughly, then press Find again.",
+      unreadable: "Couldn't read the photo. Place the four markers by hand.",
+    },
     calibrateSave: 'Use this calibration',
     calibrateCancel: 'Cancel',
     calibrateError: 'Fit',

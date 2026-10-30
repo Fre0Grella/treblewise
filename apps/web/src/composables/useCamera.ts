@@ -33,7 +33,7 @@ const MOVED_HOLD_MS = 2000;
 /** How often a still board is handed to `onStill`. */
 const STILL_EVERY_MS = 500;
 
-const withoutMoved = (quality: ImageQuality): ImageQuality =>
+export const withoutMoved = (quality: ImageQuality): ImageQuality =>
   quality.issues.includes('moved')
     ? { ...quality, issues: quality.issues.filter((issue) => issue !== 'moved'), changedSpots: [] }
     : quality;

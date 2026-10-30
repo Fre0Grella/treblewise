@@ -29,8 +29,10 @@ const props = withDefaults(
     imageOnly?: boolean;
     /** Offers "Show where" for a warning the preview can point at. */
     onShowWhere?: () => void;
+    /** Offers "Find the board again" when the camera has moved. */
+    onFindAgain?: () => void;
   }>(),
-  { oldReference: false, showNumbers: false, imageOnly: false, onShowWhere: undefined },
+  { oldReference: false, showNumbers: false, imageOnly: false, onShowWhere: undefined, onFindAgain: undefined },
 );
 
 const t = useStrings();
@@ -95,6 +97,9 @@ const pointable = computed(() => said.value?.image === 'glare' || said.value?.im
     <span class="coach-dot" aria-hidden="true" />
     <span class="coach-message">{{ said.message }}</span>
     <button v-if="pointable && onShowWhere" type="button" class="btn-sm" @click="onShowWhere">{{ t.coach.showWhere }}</button>
+    <button v-if="said.image === 'moved' && onFindAgain" type="button" class="btn-sm" @click="onFindAgain">
+      {{ t.capture.recalibrate }}
+    </button>
     <p v-if="detail" class="coach-detail">{{ detail }}</p>
     <span v-if="showNumbers && view && quality" class="coach-numbers">
       {{ t.coach.fill }} {{ Math.round(view.coverage * 100) }}% · {{ t.coach.angle }} {{ Math.round(view.tilt) }}° ·

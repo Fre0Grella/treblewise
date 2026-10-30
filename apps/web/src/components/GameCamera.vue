@@ -296,6 +296,9 @@ const supported = cameraSupported();
 const attachVideo = (element: unknown) => {
   camera.video.value = element as HTMLVideoElement | null;
 };
+
+/** The camera has moved: to camera setup, which finds the board again straight away. */
+const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
 </script>
 
 <template>
@@ -352,6 +355,7 @@ const attachVideo = (element: unknown) => {
         :old-reference="oldReference"
         :view="view"
         :quality="camera.quality.value"
+        :on-find-again="findAgain"
       />
       <p v-if="!keepFrames" class="hint">{{ t.report.noFrame }}</p>
       <p v-else-if="!usable && latest !== null" class="hint">{{ t.capture.noCalibration }}</p>

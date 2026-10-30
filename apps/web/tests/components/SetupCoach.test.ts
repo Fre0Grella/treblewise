@@ -42,6 +42,15 @@ describe('the setup coach', () => {
     expect(showWhere).toHaveBeenCalledOnce();
   });
 
+  it('offers to find the board again when the camera has moved', async () => {
+    const findAgain = vi.fn();
+    render(SetupCoach, {
+      props: { calibrated: true, view: null, quality: quality({ drift: 0.5, issues: ['moved'] }), onFindAgain: findAgain },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /find the board again/i }));
+    expect(findAgain).toHaveBeenCalledOnce();
+  });
+
   it('asks for the board to be found again when the calibration was saved before thumbnails changed', () => {
     render(SetupCoach, { props: { calibrated: true, oldReference: true, view: null, quality: quality({}) } });
     expect(screen.getByText(/the picture has changed since you found it/i)).toBeDefined();

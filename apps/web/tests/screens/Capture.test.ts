@@ -8,6 +8,7 @@ import { loadSettings } from '@/storage/db.js';
 import { useLobbyStore, useSettingsStore } from '@/store/stores.js';
 import { renderAt } from '../support/renderAt.js';
 import type { GrabbedFrame } from '@/vision/camera.js';
+import type { FinderResult, FindOptions } from '@/vision/findBoard.js';
 import { THUMB_VERSION } from '@/vision/imageStats.js';
 
 const WIDTH = 640;
@@ -27,6 +28,17 @@ const hooks = vi.hoisted(() => ({
   change: 50,
   /** What "take a photograph now" gives back. */
   capture: null as GrabbedFrame | null,
+  /** What finding the board comes to, and what it was asked. */
+  finder: { notFound: 'unreadable' } as FinderResult,
+  finderAsked: [] as Array<FindOptions['near']>,
+}));
+
+vi.mock('@/vision/findBoard.js', () => ({
+  findBoardIn: async (_jpeg: Blob, options: FindOptions) => {
+    hooks.finderAsked.push(options.near);
+    for (const step of ['colours', 'bull', 'ring', 'tilt', 'turn', 'wires'] as const) options.onStep?.(step);
+    return hooks.finder;
+  },
 }));
 
 vi.mock('@/composables/useCamera.js', async () => {
@@ -416,12 +428,76 @@ describe('finding the board', () => {
     });
     await press(/start camera/i);
     await press(/find the board/i);
+    await screen.findByText(/couldn't read the photo/i, {}, { timeout: 3000 });
     await press(/use this calibration/i);
 
     const calibration = useSettingsStore().settings.calibration!;
     expect(calibration.imagePoints).toHaveLength(4);
     expect(() => structuredClone(calibration)).not.toThrow();
     expect((await loadSettings()).calibration?.imagePoints).toHaveLength(4);
+    hooks.capture = null;
+  });
+
+  const FOUND_POINTS = [
+    { x: 300, y: 70 },
+    { x: 510, y: 230 },
+    { x: 330, y: 410 },
+    { x: 130, y: 250 },
+  ];
+
+  async function findIt(result: FinderResult) {
+    URL.createObjectURL = () => 'blob:test';
+    URL.revokeObjectURL = () => undefined;
+    hooks.capture = photo();
+    hooks.finder = result;
+    hooks.finderAsked = [];
+    await renderAt('/camera', () => {
+      useLobbyStore().mode = 'solo';
+    });
+    await press(/start camera/i);
+    await press(/find the board/i);
+    // The steps light up one after another, then the result shows.
+    expect(await screen.findByRole('status', { name: /finding the board/i })).toBeDefined();
+  }
+
+  it('puts the markers where the board was found, says it fits, and saves them', async () => {
+    const { solveHomography } = await import('@treblewise/core');
+    await findIt({
+      toImage: solveHomography(CALIBRATION_BOARD_POINTS, FOUND_POINTS)!,
+      imagePoints: FOUND_POINTS,
+      fit: { ringFeatures: 280, wireFeatures: 78, medianMm: 0.9, p90Mm: 2.2, worstSector: null },
+    });
+    expect(await screen.findByText(/found by itself: it fits the wires/i, {}, { timeout: 3000 })).toBeDefined();
+    expect(screen.getByText(/280 ring edges and 78 wires measured/i)).toBeDefined();
+    await press(/use this calibration/i);
+    const calibration = useSettingsStore().settings.calibration!;
+    calibration.imagePoints.forEach((p, i) => {
+      expect(p.x).toBeCloseTo(FOUND_POINTS[i]!.x, 6);
+      expect(p.y).toBeCloseTo(FOUND_POINTS[i]!.y, 6);
+    });
+    expect(() => structuredClone(calibration)).not.toThrow();
+    hooks.capture = null;
+  });
+
+  it('names the sector to check when one fits clearly worse', async () => {
+    const { solveHomography } = await import('@treblewise/core');
+    await findIt({
+      toImage: solveHomography(CALIBRATION_BOARD_POINTS, FOUND_POINTS)!,
+      imagePoints: FOUND_POINTS,
+      fit: { ringFeatures: 200, wireFeatures: 60, medianMm: 0.8, p90Mm: 3.1, worstSector: 3 },
+    });
+    expect(await screen.findByText(/check near the 3/i, {}, { timeout: 3000 })).toBeDefined();
+    hooks.capture = null;
+  });
+
+  it('says why when the board is not found, and Find again starts from the markers', async () => {
+    await findIt({ notFound: 'noRing' });
+    expect(await screen.findByText(/couldn't see the red and green rings/i, {}, { timeout: 3000 })).toBeDefined();
+    expect(hooks.finderAsked).toEqual([undefined]);
+    await press(/find again/i);
+    await screen.findByText(/couldn't see the red and green rings/i, {}, { timeout: 3000 });
+    expect(hooks.finderAsked).toHaveLength(2);
+    expect(hooks.finderAsked[1]).toHaveLength(9);
     hooks.capture = null;
   });
 });
