@@ -55,13 +55,14 @@
   /* Two players told apart in charts and lists: beige and a cool grey. */
   --player-a: var(--beige-300);
   --player-b: #9aa4b2;
-  --warn: var(--beige-300);
+  /* Its own amber, not the beige of the primary buttons: a warning must not read as "press me". */
+  --warn: #f29a2e;
   /* The board being found again: neither fine nor wrong, busy. */
   --busy: #4cc3d9;
   --tint-busy: rgb(76 195 217 / 14%);
   --danger: var(--red-400);
   --tint-live: rgb(0 113 60 / 18%);
-  --tint-warn: rgb(234 207 117 / 10%);
+  --tint-warn: rgb(242 154 46 / 12%);
   --tint-danger: rgb(192 24 47 / 16%);
   --scrim: rgb(11 10 8 / 78%);
   --scrim-badge: rgb(11 10 8 / 72%);
@@ -1613,6 +1614,37 @@ input:focus-visible {
   color: var(--text);
 }
 
+/* A badge led by an icon instead of a dot: the icon takes the status colour. */
+.status-glyph {
+  flex: none;
+  color: var(--text-faint);
+}
+
+.status-ok .status-glyph {
+  color: var(--live);
+}
+
+.status-warn .status-glyph {
+  color: var(--warn);
+}
+
+.status-busy .status-glyph {
+  color: var(--busy);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.status-bad .status-glyph {
+  color: var(--danger);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-busy .status-glyph,
+  .status-bad .status-glyph {
+    animation: none;
+  }
+}
+
 /* A badge that is an icon and a chevron, no words: the icon takes the colour. */
 .status-icon {
   gap: var(--space-1);
@@ -1632,13 +1664,16 @@ input:focus-visible {
 }
 
 .connection-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
+/* Under the badge, wherever the badge is: the match's top bar or the capture lab. */
 .popover-link {
-  left: var(--space-6);
+  top: calc(100% + var(--space-2));
+  left: 0;
 }
 
 /* The camera's own panel: the live picture and what is wrong. Out of the

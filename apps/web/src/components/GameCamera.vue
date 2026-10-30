@@ -324,7 +324,7 @@ const findAgain = () => void router.push(`${PATHS.camera}?from=game&find=1`);
           :aria-label="fill(t.report.showCamera, { status: statusLabel })"
           @click="panelOpen = !panelOpen"
         >
-          <span class="status-dot" aria-hidden="true" />{{ statusLabel }}
+          <Icon name="camera" :size="18" class="status-glyph" />{{ statusLabel }}
           <Icon :name="panelOpen ? 'chevron-up' : 'chevron-down'" :size="14" />
         </button>
         <button

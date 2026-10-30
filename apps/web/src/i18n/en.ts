@@ -908,7 +908,7 @@ export const en = {
     notKept: 'The photo was not kept for training: every dart of the visit needs a mark for that.',
     photosOff: 'The photo was not kept: keeping photos is off. Switch it on in the menu to help train the autoscorer.',
     /** The camera badge in the match's top bar: quiet while the autoscorer can work. */
-    badgeReady: 'Camera ready',
+    badgeReady: 'Ready',
     badgeOff: 'Camera off',
     badgeNotCalibrated: 'Camera not set up',
     followed: 'Board moved {mm} mm: followed',

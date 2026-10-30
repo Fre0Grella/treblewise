@@ -40,7 +40,7 @@ import BoardOverlay, { type OverlayHandle } from '../components/BoardOverlay.vue
 import ExposureControl from '../components/ExposureControl.vue';
 import FinderSteps from '../components/FinderSteps.vue';
 import PhoneBattery from '../components/PhoneBattery.vue';
-import PhoneLink from '../components/PhoneLink.vue';
+import ConnectionBadge from '../components/ConnectionBadge.vue';
 import QualityMarks from '../components/QualityMarks.vue';
 import SetupCoach from '../components/SetupCoach.vue';
 import Fold from '../components/ui/Fold.vue';
@@ -518,7 +518,8 @@ const storageLine = computed(() => {
         </div>
 
         <PhoneBattery />
-        <PhoneLink />
+        <!-- The connection to the phone, as in a match: here too it is often why nothing works. -->
+        <ConnectionBadge />
 
         <section v-if="mode === 'calibrate'" class="panel">
           <h2>{{ t.capture.calibrateTitle }}</h2>
