@@ -1100,6 +1100,78 @@ input:focus-visible {
   pointer-events: none;
 }
 
+/* More than two players: compact cards, the score, the bars and the average
+   on one line. They share the column and never squeeze; past what it holds
+   (eight players on a laptop), the column scrolls. */
+@media (min-width: 900px) {
+  .game-players-many {
+    overflow-y: auto;
+  }
+}
+
+.player-card-compact {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  align-items: end;
+  column-gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.player-card-compact .player-card-head {
+  grid-column: 1 / -1;
+}
+
+.player-card-compact .player-card-numbers {
+  display: contents;
+}
+
+.player-card-compact .player-card-left {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: clamp(3.4rem, 5vw, 4.75rem);
+}
+
+.player-card-compact .player-card-bars {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: calc(var(--bar-max) + var(--bar-label));
+  justify-content: flex-end;
+  padding-top: 0;
+  overflow: hidden;
+}
+
+/* Left-aligned while they fit; once they don't, the oldest go off the left. */
+.player-card-compact .player-card-bars > :last-child {
+  margin-right: auto;
+}
+
+.player-card-compact .visit-bar {
+  flex: none;
+  width: 22px;
+}
+
+.player-card-compact .visit-bar-label {
+  font-size: 0.8rem;
+}
+
+.player-card-compact .player-card-empty {
+  align-self: center;
+  font-size: var(--text-xs);
+}
+
+.player-card-compact .player-card-average {
+  grid-column: 3;
+  grid-row: 2;
+  min-width: 96px;
+  padding: 6px var(--space-3);
+}
+
+.player-card-compact .player-card-average-value {
+  font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+}
+
 /* ---- the visit ---- */
 
 .game-visit {
@@ -2262,6 +2334,7 @@ input:focus-visible {
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--bg-hover);
   text-align: right;
+  white-space: nowrap;
 }
 
 .h2h-table th:first-child {
@@ -2275,6 +2348,11 @@ input:focus-visible {
 
 .h2h-table td {
   font-size: 1.3rem;
+}
+
+/* More players than fit scroll sideways. */
+.h2h-columns {
+  overflow-x: auto;
 }
 
 /* ---------- overlay ---------- */
@@ -2302,6 +2380,13 @@ input:focus-visible {
   border: 1px solid var(--line);
   border-radius: 14px;
   animation: popover-in 0.2s ease-out;
+}
+
+/* Not two players: a column a player, so the numbers get the room, and the
+   card grows by as much so the buttons keep theirs. */
+.result-columns {
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 500px);
+  width: min(1180px, 100%);
 }
 
 .result-main {
@@ -2425,6 +2510,41 @@ input:focus-visible {
   transform-origin: left;
 }
 
+/* Not two players: the bands are rows of the numbers' table, a count and its
+   bar in each player's column. */
+.h2h-table .result-bands-head th {
+  padding: var(--space-3) var(--space-3) 6px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.h2h-table .result-bands-row > * {
+  padding-block: 3px;
+  border-top: 0;
+}
+
+.h2h-table .result-bands-row:last-child > * {
+  padding-bottom: 14px;
+}
+
+.result-bands-row td {
+  font-size: 1.15rem;
+}
+
+.result-band-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.result-band-cell .num {
+  min-width: 1.2em;
+  text-align: right;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -2537,6 +2657,125 @@ input:focus-visible {
   }
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+/* The leg as a race, more than two players (components/charts/RaceLanes.vue). */
+
+.lanes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.lanes-scale,
+.lane {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) 3.25rem;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lanes-scale-track {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.lanes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lane-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.lane-on .lane-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* The lane: what is still to score shows as the empty track; its right edge is the finish. */
+.lane-track {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  box-shadow: inset -3px 0 0 var(--text-faint);
+  overflow: hidden;
+}
+
+.lane-visit {
+  /* A winner's lane is exactly full: its visits give up the gaps between them. */
+  flex: 0 1 auto;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent-ink);
+  transform-origin: left;
+  animation: grow-x 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.lane-visit-low {
+  background: var(--text-faint);
+  color: var(--text);
+}
+
+.lane-visit-good {
+  background: var(--accent);
+}
+
+.lane-visit-ton {
+  background: var(--checkout);
+}
+
+/* A bust scores nothing: a mark where it happened. */
+.lane-visit-bust {
+  flex-basis: 4px;
+  background: var(--board-red);
+}
+
+.lane-left {
+  font-size: 1.15rem;
+  text-align: right;
+  color: var(--text-dim);
+}
+
+.lane-on .lane-left {
+  color: var(--checkout);
+}
+
+.lanes-caption {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+@media (max-width: 899px) {
+  .lanes-scale,
+  .lane {
+    grid-template-columns: 4.5rem minmax(0, 1fr) 2.75rem;
+    gap: var(--space-2);
   }
 }
 
