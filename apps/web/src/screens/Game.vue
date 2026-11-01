@@ -12,13 +12,14 @@
 -->
 <script setup lang="ts">
 import { formatHit, matchStats, type Dart, type Hit, type Point, type Visit } from '@treblewise/core';
-import { computed, onMounted, onScopeDispose, ref, shallowRef } from 'vue';
+import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { unlockCaller } from '../caller/caller.js';
 import { loadSounds, playBust, playThud, playTurn, unlockSounds } from '../caller/sounds.js';
 import DartCard, { type CardDart } from '../components/DartCard.vue';
 import type { LeadPoint } from '../components/charts/LeadChart.vue';
+import type { RaceLane } from '../components/charts/RaceLanes.vue';
 import Dartboard, { type BoardDart } from '../components/Dartboard.vue';
 import GameCamera from '../components/GameCamera.vue';
 import type { HeadToHeadRow } from '../components/HeadToHead.vue';
@@ -197,6 +198,26 @@ const cards = computed(() => {
     };
   });
 });
+
+/** More players than two: compact cards, in a column that scrolls when they still don't fit. */
+const many = computed(() => cards.value.length > 2);
+/** From four players on, the cards drop their bars: too many to read at a glance. */
+const crowded = computed(() => cards.value.length > 3);
+const playersList = ref<HTMLElement | null>(null);
+// The column scrolls (eight players on a laptop): keep the one at the oche in sight.
+watch(
+  () => cards.value.find((card) => card.current)?.id,
+  async () => {
+    await nextTick();
+    const list = playersList.value;
+    const card = list?.querySelector('.player-card-on');
+    if (!list || !card || list.scrollHeight <= list.clientHeight) return;
+    const box = list.getBoundingClientRect();
+    const at = card.getBoundingClientRect();
+    const by = at.top < box.top ? at.top - box.top : at.bottom > box.bottom ? at.bottom - box.bottom : 0;
+    if (by !== 0) list.scrollBy({ top: by, behavior: 'smooth' });
+  },
+);
 
 /** The darts the cards show: the visit being thrown, or the one held in the board. */
 const shownDarts = computed<Dart[]>(() => (visitIsCurrent.value || held.value ? (visit.value?.darts ?? []) : []));
@@ -383,7 +404,23 @@ const result = computed(() => {
     });
     lead = { points, won: l.winnerId !== null };
   }
-  return { rows, bands, lead };
+
+  // More than two: the leg as a race, a lane each, the winner's lit (or, in
+  // a leg ended early, whoever had least left).
+  let race: { start: number; lanes: RaceLane[]; lit: number } | null = null;
+  if (ids.length > 2) {
+    const lanes = s.config.players.map((p) => {
+      const own = l.visits.filter((v) => v.playerId === p.id);
+      return {
+        name: p.name,
+        visits: own.map((v) => ({ score: scored(v), bust: v.busted })),
+        left: own.at(-1)?.scoreAfter ?? s.config.startScore,
+      };
+    });
+    const lit = l.winnerId ? ids.indexOf(l.winnerId) : lanes.reduce((best, lane, k) => (lane.left < lanes[best]!.left ? k : best), 0);
+    race = { start: s.config.startScore, lanes, lit };
+  }
+  return { rows, bands, lead, race };
 });
 
 const legTitle = computed(() => {
@@ -452,7 +489,7 @@ function rematch() {
     </header>
 
     <div :class="['game-body', { 'game-body-wide': !sheetOn }]">
-      <section class="game-players" :aria-label="t.setup.players">
+      <section ref="playersList" :class="['game-players', { 'game-players-many': many }]" :aria-label="t.setup.players">
         <PlayerCard
           v-for="card in cards"
           :key="card.id"
@@ -468,6 +505,8 @@ function rematch() {
           :average-note="card.averageNote"
           :usual="card.usual"
           :visits="card.visits"
+          :compact="many"
+          :show-bars="!crowded"
         />
       </section>
 
@@ -563,6 +602,7 @@ function rematch() {
       :caption="fill(t.game.legCaption, { n: snapshot.legs.length })"
       :bands="result.bands"
       :lead="result.lead"
+      :race="result.race"
     >
       <template v-if="finished">
         <div class="result-row">

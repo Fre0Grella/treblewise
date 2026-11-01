@@ -5,6 +5,11 @@
 
   The player at the oche wears the beige card; the others stay dark. No
   pictures, no other numbers: they are at the end of the leg.
+
+  With more than two players the cards are compact, so they share the
+  column: the score, the bars and the average on one line, the bars half as
+  tall, and the newest visits kept in sight when they run out of room. From
+  four players on there are no bars at all: too many to read at a glance.
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
@@ -39,15 +44,19 @@ const props = withDefaults(
     /** The usual average, drawn across the bars; null for a guest or no history. */
     usual?: number | null;
     visits: readonly VisitBar[];
+    /** One of more than two: the smaller card. */
+    compact?: boolean;
+    /** The leg's visits as bars; off from four players on. */
+    showBars?: boolean;
   }>(),
-  { setsWon: null, starts: false, current: false, averageColor: null, averageNote: null, usual: null },
+  { setsWon: null, starts: false, current: false, averageColor: null, averageNote: null, usual: null, compact: false, showBars: true },
 );
 
 const t = useStrings();
 
 /** A 180 is this many pixels tall. */
-const BAR_HEIGHT = 96;
-const barHeight = (score: number) => Math.round(6 + (score / 180) * BAR_HEIGHT);
+const fullBar = computed(() => (props.compact ? 44 : 96));
+const barHeight = (score: number) => Math.round(6 + (score / 180) * fullBar.value);
 
 const bars = computed(() =>
   props.visits.map((visit) => ({
@@ -60,7 +69,7 @@ const usualBottom = computed(() => (props.usual === null ? null : barHeight(prop
 </script>
 
 <template>
-  <article :class="['player-card', { 'player-card-on': current }]" :aria-current="current ? 'true' : undefined">
+  <article :class="['player-card', { 'player-card-on': current, 'player-card-compact': compact }]" :aria-current="current ? 'true' : undefined">
     <div class="player-card-head">
       <span class="player-card-name">{{ name }}</span>
       <span v-if="starts" class="tag player-card-tag">{{ t.game.throwsFirst }}</span>
@@ -82,7 +91,7 @@ const usualBottom = computed(() => (props.usual === null ? null : barHeight(prop
       </span>
     </div>
 
-    <div class="player-card-bars" :style="{ '--bar-max': `${BAR_HEIGHT + 6}px` }">
+    <div v-if="showBars" class="player-card-bars" :style="{ '--bar-max': `${fullBar + 6}px` }">
       <template v-if="usualBottom !== null && bars.length > 0">
         <span class="player-card-usual" :style="{ bottom: `calc(var(--bar-label) + ${usualBottom}px)` }" aria-hidden="true" />
         <span class="player-card-usual-label" :style="{ bottom: `calc(var(--bar-label) + ${usualBottom + 4}px)` }">

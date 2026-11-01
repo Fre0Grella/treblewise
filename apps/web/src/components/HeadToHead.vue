@@ -2,7 +2,9 @@
   Players' numbers side by side, broadcast style: the label in the middle, a
   value at each end, the better one lit, and a two-sided bar under it showing
   how the two compare. Used at the end of a leg and for a past match. With
-  more than two players there is no "side": the numbers go in columns.
+  more than two players there is no "side": the numbers go in columns, a
+  column a player, and the caller's own rows (the `rows` slot) go in the same
+  columns.
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
@@ -48,7 +50,7 @@ const shown = computed(() =>
 </script>
 
 <template>
-  <div class="h2h">
+  <div :class="['h2h', { 'h2h-columns': !sides }]">
     <template v-if="sides">
       <div class="h2h-head">
         <span>{{ players[0]!.name }}</span>
@@ -80,6 +82,7 @@ const shown = computed(() =>
           <th scope="row">{{ row.label }}</th>
           <td v-for="(text, index) in row.texts" :key="index" class="num">{{ text }}</td>
         </tr>
+        <slot name="rows" />
       </tbody>
     </table>
   </div>

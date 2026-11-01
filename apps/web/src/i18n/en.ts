@@ -331,6 +331,9 @@ export const en = {
     aheadDown: '▼ {name} ahead',
     level: 'level',
     wonBy: 'won by {n}',
+    raceLanes: 'The leg as a race, from {n} to zero',
+    raceLane: '{name}: {visits}; {n} left',
+    raceNote: 'Each stretch is a visit, as long as it scored: green for 100 or more, red for a bust. The finish is zero.',
   },
   caller: {
     noScore: 'No score',

@@ -162,6 +162,45 @@ describe('the game screen', () => {
     expect(screen.getByRole('heading', { name: /bob, you require 40/i })).toBeDefined();
   });
 
+  it('compacts the cards for three players, and drops their bars from four on', async () => {
+    const three = [...config.players, { id: 'cal', name: 'Cal' }];
+    const throwOne = () => useMatchesStore().throwDart(hit(20, 'single'));
+    const first = await renderAt('/game', () => {
+      startMatch({ players: three });
+      throwOne();
+    });
+    expect(document.querySelectorAll('.player-card-compact')).toHaveLength(3);
+    expect(document.querySelectorAll('.player-card-bars')).toHaveLength(3);
+    first.unmount();
+
+    await renderAt('/game', () => {
+      startMatch({ players: [...three, { id: 'dee', name: 'Dee' }] });
+      throwOne();
+    });
+    expect(document.querySelectorAll('.player-card-compact')).toHaveLength(4);
+    expect(document.querySelector('.player-card-bars')).toBeNull();
+  });
+
+  it('puts the visits by score in the players columns, and runs the leg as a race, when there are more than two', async () => {
+    await renderAt('/game', () => {
+      startMatch({ startScore: 40, legsPerSet: 3, players: [...config.players, { id: 'cal', name: 'Cal' }] });
+      useMatchesStore().throwDart(hit(20, 'double'));
+    });
+    const card = screen.getByRole('dialog', { name: 'Leg to Ann' });
+    // Who was ahead is for two: three race to zero instead.
+    expect(within(card).queryByRole('img', { name: /who was ahead/i })).toBeNull();
+    expect(within(card).getByRole('list', { name: 'The leg as a race, from 40 to zero' })).toBeDefined();
+    // The winner on top, then the closest to zero.
+    const lanes = within(within(card).getByRole('list', { name: 'The leg as a race, from 40 to zero' })).getAllByRole('listitem');
+    expect(lanes.map((lane) => lane.getAttribute('aria-label'))).toEqual(['Ann: 40; 0 left', 'Bob: ; 40 left', 'Cal: ; 40 left']);
+    const table = within(card).getByRole('table');
+    expect(within(table).getByRole('columnheader', { name: 'Cal' })).toBeDefined();
+    expect(within(table).getByText('Visits by score')).toBeDefined();
+    // Ann's one visit, a 40, in her column.
+    const forty = within(table).getByRole('rowheader', { name: '40+' }).closest('tr')!;
+    expect([...forty.querySelectorAll('td')].map((cell) => cell.textContent?.trim())).toEqual(['1', '0', '0']);
+  });
+
   it('takes the winning dart back from the leg won card', async () => {
     await renderAt('/game', () => {
       startMatch({ startScore: 40, legsPerSet: 3 });
