@@ -369,26 +369,31 @@ export const en = {
     lede: 'Darts, scored properly. Tap the board or let the camera read it, hear the score called out, and get the statistics that only come from knowing where every dart landed.',
     cta: 'Play darts',
     // What comes next, in order. Plans, not promises: keep it true of the
-    // roadmap (docs/07) and move a step to "Now" only once it has shipped.
+    // roadmap (docs/07). A step that has shipped stays where it was, marked
+    // done, so the road shows what has been done as well as what is next.
     roadmapTitle: 'What comes next',
     roadmap: [
       {
         when: 'Now',
+        done: true,
         title: 'Scoring, the caller, statistics and the camera',
         body: 'All working today, in a new interface: a match screen you can read from the oche, a card at the end of every leg, and your average against your usual one. The camera already scores with the experimental autoscorer: it reads each dart, calls it, and you correct the odd one it gets wrong. And it installs as an app on a phone or a computer, and works with no connection.',
       },
       {
-        when: 'Next',
+        when: 'Shipped',
+        done: true,
         title: 'Automatic board calibration',
         body: 'The camera finds the board by itself, instead of you tapping four points on it.',
       },
       {
-        when: 'Then',
+        when: 'Next',
+        done: false,
         title: 'Improve the autoscorer accuracy',
         body: 'Taught on more real boards, lights and throws, so the camera reads more darts right and you correct fewer.',
       },
       {
         when: 'Later',
+        done: false,
         title: 'Cloud sync with your Google account',
         body: 'Sign in to keep your matches and statistics on every device. Only if you want it: without it, everything stays on this one.',
       },
