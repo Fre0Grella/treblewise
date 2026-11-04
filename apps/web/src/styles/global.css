@@ -2420,7 +2420,13 @@ input:focus-visible {
 
 .result-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+/* A button that does not fit moves to the next line whole, its label on one line. */
+.result-row > button {
+  white-space: nowrap;
 }
 
 .result-grow {
@@ -2787,10 +2793,6 @@ input:focus-visible {
 
   .result-title {
     font-size: 2.5rem;
-  }
-
-  .result-row {
-    flex-wrap: wrap;
   }
 }
 

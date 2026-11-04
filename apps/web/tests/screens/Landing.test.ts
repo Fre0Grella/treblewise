@@ -26,11 +26,15 @@ describe('the landing page', () => {
     const roadmap = screen.getByRole('heading', { name: /what comes next/i }).closest('section')!;
     const steps = within(roadmap).getAllByRole('listitem');
     expect(roadmap.querySelector('ol')).not.toBeNull();
-    expect(steps[0].className).toContain('is-now');
+    expect(steps).toHaveLength(4);
     // The new interface has shipped: it is part of what works now.
     expect(steps[0].textContent).toMatch(/new interface/i);
+    // Automatic board calibration (#24) has shipped too: it keeps its place, marked done.
     expect(steps[1].textContent).toMatch(/board calibration/i);
+    expect(steps.map((step) => step.className.includes('is-now'))).toEqual([true, true, false, false]);
+    // The first step not done is the next one.
     expect(steps[2].textContent).toMatch(/autoscorer accuracy/i);
+    expect(steps[2].className).toContain('is-next');
     expect(steps[3].textContent).toMatch(/cloud sync/i);
   });
 

@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/vue';
 import { dartEvent, hit } from '@treblewise/core';
 import { describe, expect, it, vi } from 'vitest';
 
-import { useMatchesStore, useSettingsStore } from '@/store/stores.js';
+import { useLobbyStore, useMatchesStore, useSettingsStore } from '@/store/stores.js';
 import { fakeFullscreen } from '../support/fullscreen.js';
 import { renderAt } from '../support/renderAt.js';
 
@@ -144,6 +144,29 @@ describe('the game screen', () => {
     const won = await screen.findByRole('dialog', { name: /wins the match/i });
     await fireEvent.click(within(won).getByRole('button', { name: /new match/i }));
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/setup'));
+  });
+
+  it('starts the rematch with the other player, and goes back to the lobby', async () => {
+    const { router } = await renderAt('/game', () => {
+      useLobbyStore().enter('solo');
+      startMatch({ startScore: 40 });
+      useMatchesStore().throwDart(hit(20, 'double')); // Ann threw first and won
+    });
+    const matches = useMatchesStore();
+    const firstId = matches.match!.id;
+    const won = await screen.findByRole('dialog', { name: /Ann wins/ });
+    await fireEvent.click(within(won).getByRole('button', { name: 'Rematch' }));
+    expect(matches.match!.id).not.toBe(firstId);
+    expect(matches.snapshot!.current!.playerId).toBe('bob');
+
+    matches.throwDart(hit(20, 'double')); // Bob wins the rematch
+    const again = await screen.findByRole('dialog', { name: /Bob wins/ });
+    await fireEvent.click(within(again).getByRole('button', { name: 'Rematch' }));
+    expect(matches.snapshot!.current!.playerId).toBe('ann');
+
+    matches.throwDart(hit(20, 'double'));
+    await fireEvent.click(within(await screen.findByRole('dialog', { name: /Ann wins/ })).getByRole('button', { name: 'Back to the lobby' }));
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/lobby'));
   });
 
   it('shows the leg won, then puts it away for the next leg', async () => {

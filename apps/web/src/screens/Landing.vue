@@ -1,5 +1,6 @@
 <!-- The front door: what treblewise is, before it drops anyone into a leg. -->
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 import Dartboard from '../components/Dartboard.vue';
@@ -12,6 +13,9 @@ import { useLobbyStore } from '../store/stores.js';
 const t = useStrings();
 const router = useRouter();
 const lobby = useLobbyStore();
+
+/** The roadmap's next step: the first one not done yet. Done steps keep their place, in green. */
+const nextStep = computed(() => t.landing.roadmap.findIndex((step) => !step.done));
 </script>
 
 <template>
@@ -59,7 +63,7 @@ const lobby = useLobbyStore();
           <li
             v-for="(step, index) in t.landing.roadmap"
             :key="step.title"
-            :class="{ 'is-now': index === 0, 'is-next': index === 1 }"
+            :class="{ 'is-now': step.done, 'is-next': index === nextStep }"
           >
             <span class="landing-step-when">{{ step.when }}</span>
             <b>{{ step.title }}</b>

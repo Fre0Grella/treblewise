@@ -5,7 +5,7 @@
  * leg from there (x01.ts `startingPlayerFor`).
  */
 
-import type { Hit, PlayerConfig, Point } from '@treblewise/core';
+import type { Hit, PlayerConfig, Point, X01Config } from '@treblewise/core';
 
 /** `list` with the item at `from` moved to `to`. */
 export function moveTo<T>(list: readonly T[], from: number, to: number): T[] {
@@ -20,6 +20,16 @@ export function moveTo<T>(list: readonly T[], from: number, to: number): T[] {
 export function startingWith(players: readonly PlayerConfig[], id: string): PlayerConfig[] {
   const at = players.findIndex((player) => player.id === id);
   return at <= 0 ? [...players] : [...players.slice(at), ...players.slice(0, at)];
+}
+
+/**
+ * The same match again, the next player in the turn throwing first: whoever
+ * started this one throws second in the rematch. The players keep their
+ * places; only who starts moves on.
+ */
+export function rematchConfig(config: X01Config): X01Config {
+  const count = Math.max(config.players.length, 1);
+  return { ...config, startingPlayerIndex: ((config.startingPlayerIndex ?? 0) + 1) % count };
 }
 
 /** One player's dart at the bull. */
