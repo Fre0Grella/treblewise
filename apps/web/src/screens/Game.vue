@@ -30,6 +30,7 @@ import VisitSheet, { type SheetVisit } from '../components/VisitSheet.vue';
 import Icon from '../components/ui/Icon.vue';
 import Switch from '../components/ui/Switch.vue';
 import { useGameVisit } from '../composables/useGameVisit.js';
+import { rematchConfig } from '../game/throwOrder.js';
 import { averageColour, difference, usualAverages } from '../game/usualAverage.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
@@ -453,10 +454,14 @@ const matchSub = computed(() => {
   return [ended, howWon.value].filter(Boolean).join(' · ');
 });
 
+/** The same match again, the first throw passing to the next player. */
 function rematch() {
   const config = matches.match?.config;
-  if (config) matches.start(config);
+  if (config) matches.start(rematchConfig(config));
 }
+
+/** Back to the lobby; with no session behind it, to the choice of how to play. */
+const toLobby = () => go(lobby.session ? PATHS.lobby : PATHS.start);
 </script>
 
 <template>
@@ -609,6 +614,7 @@ function rematch() {
           <button type="button" class="btn-primary btn-lg result-grow" @click="router.push(PATHS.setup)">{{ t.game.newMatch }}</button>
           <button type="button" class="btn-lg" @click="rematch">{{ t.game.rematch }}</button>
           <button type="button" class="btn-quiet btn-lg" @click="go(PATHS.stats)">{{ t.stats.title }}</button>
+          <button type="button" class="btn-quiet btn-lg" @click="toLobby">{{ t.lobby.back }}</button>
         </div>
         <button type="button" class="btn-quiet btn-sm result-back" @click="matches.undo()">
           {{ snapshot.endedEarly ? t.game.playOn : t.game.undoLast }}

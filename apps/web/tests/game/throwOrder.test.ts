@@ -1,7 +1,7 @@
 import { BULL, OUTER_BULL, hit, type PlayerConfig } from '@treblewise/core';
 import { describe, expect, it } from 'vitest';
 
-import { bullOff, moveTo, pickOne, startingWith, wheelTurn, type BullThrow } from '@/game/throwOrder.js';
+import { bullOff, moveTo, pickOne, rematchConfig, startingWith, wheelTurn, type BullThrow } from '@/game/throwOrder.js';
 
 const players: PlayerConfig[] = [
   { id: 'ann', name: 'Ann' },
@@ -23,6 +23,23 @@ describe('startingWith', () => {
   it('starts with the chosen player, the turn going round as before', () => {
     expect(startingWith(players, 'cat').map((p) => p.id)).toEqual(['cat', 'ann', 'bob']);
     expect(startingWith(players, 'ann').map((p) => p.id)).toEqual(['ann', 'bob', 'cat']);
+  });
+});
+
+describe('rematchConfig', () => {
+  const config = { startScore: 501, inRule: 'straight' as const, outRule: 'double' as const, legsPerSet: 3, setsToWin: 1, players };
+
+  it('hands the first throw to the next player, keeping the order', () => {
+    expect(rematchConfig(config).startingPlayerIndex).toBe(1);
+    expect(rematchConfig(rematchConfig(config)).startingPlayerIndex).toBe(2);
+    expect(rematchConfig({ ...config, startingPlayerIndex: 2 }).startingPlayerIndex).toBe(0);
+    expect(rematchConfig(config).players).toEqual(players);
+  });
+
+  it('alternates between two players', () => {
+    const two = { ...config, players: players.slice(0, 2) };
+    expect(rematchConfig(two).startingPlayerIndex).toBe(1);
+    expect(rematchConfig(rematchConfig(two)).startingPlayerIndex).toBe(0);
   });
 });
 
