@@ -136,6 +136,21 @@ export const en = {
     start: 'Start match',
     /** Over the recap beside the settings. */
     recap: 'Ready to throw',
+    /** Playing in teams: a side per team, its players taking its visits in turn (game/teams.ts). */
+    teams: {
+      switch: 'Teams',
+      team: 'Team {n}',
+      count: (n: number) => (n === 1 ? '1 player' : `${n} players`),
+      move: 'Move {name} to {team}',
+      add: 'Team',
+      remove: 'Remove the last team',
+      shuffle: 'Shuffle teams',
+      needMore: 'Teams need three players or more.',
+      notHere: '{game} is played each for themselves.',
+      emptyTeam: 'Every team needs a player.',
+      /** The heading's "who is at the oche", for a team. */
+      atOche: '{name} ({team})',
+    },
     rules: {
       straight: 'Straight',
       double: 'Double',

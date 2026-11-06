@@ -95,6 +95,28 @@ On the screen:
   - A halved round or a missed Bob's 27 round plays the bust sound, through
     `visit.busted`.
 
+## Teams
+
+Approved from mockups on 2026-11-06.
+
+- **Where:** in every game except Killer, where a shared number and shared lives would make an odd game.
+- **The rule:** a team is a side. It shares the score and takes its turn like a player would, and its members take the side's visits in turn (A1, B1, A2, B2…). The rotation runs through the whole match, so everyone throws as often.
+- **Contract:** every config is a `Lineup` (core `game/teams.ts`):
+  - `players` are the people;
+  - `teams?` (`{ id, name, members }`) the sides;
+  - `startingPlayerIndex` indexes the sides.
+- **Folding:** both engines take turns over `sides(config)`. After the fold, `assignThrowers` fills `visit.throwerId` and `current.throwerId`. The engines and every game's rules know nothing of teams.
+- **Statistics:** personal statistics read `visit.throwerId`, so a member's darts are theirs; legs won and who started go to their team. `matchStats(snapshot, 'side')` gives a team's totals for the match screen and the history. Without teams the thrower is the side, so nothing changes.
+- **Setup:**
+  - A Teams switch from three players up, shown as 2–4 team columns.
+  - A move button sends a player to the next team; "+ Team" adds one, and "Shuffle teams" deals everyone at random.
+  - Players who haven't been placed are dealt onto the smallest team (`game/teamDraft.ts`).
+  - Who throws first is decided between the teams.
+- **Playing:**
+  - Each team's card, or its column on the cricket board, lists its members, with the one at the oche marked (`TeamMembers.vue`).
+  - The heading says "Anna (Team 2) to throw".
+  - The visits list and the caller name the person who threw (`game/sides.ts`).
+
 ## Alternatives
 
 - **Each mode with its own engine, as X01 has.** Rejected: each would repeat
@@ -104,6 +126,7 @@ On the screen:
   and busts don't fit the turn engine. It is the battle-tested path every
   stored match folds through. Leaving it alone means no stored match can
   change.
+- **Teams known to every engine and every game's rules.** Rejected: each game would have to deal with members. As sides plus one pass to record who threw, a team costs the engines nothing.
 - **One generic game screen for every mode, X01 included.** Rejected for the
   same reason: X01's screen has its checkout routes, averages and charts.
 

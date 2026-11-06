@@ -56,4 +56,20 @@ describe('the caller in the other games', () => {
     expect(calls).toEqual([['Yes! Game shot, and the match', { name: 'Ann' }]]);
     expect(say({ ...countUp, rounds: 1, players: [ann] }, ['S1', 'S1', 'S1'])).toEqual([]);
   });
+
+  it('calls the teammate whose turn it is', () => {
+    const team: ModeConfig = {
+      mode: 'countUp',
+      rounds: 3,
+      legsToWin: 1,
+      players: [ann, bob, { id: 'cat', name: 'Cat' }, { id: 'dan', name: 'Dan' }],
+      teams: [
+        { id: 't1', name: 'Team 1', members: ['ann', 'cat'] },
+        { id: 't2', name: 'Team 2', members: ['bob', 'dan'] },
+      ],
+    };
+    // Ann throws for Team 1, Bob for Team 2: then Cat is called up.
+    expect(say(team, ['S1', 'S1', 'S1', 'S2', 'S2', 'S2']).at(-1)).toEqual([{ name: 'Cat' }, 'to throw']);
+  });
 });
+

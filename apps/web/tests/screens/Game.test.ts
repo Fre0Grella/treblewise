@@ -278,4 +278,23 @@ describe('the game screen', () => {
       restore();
     }
   });
+
+  it('plays pairs: a card per team with its players, and the one at the oche required by name', async () => {
+    const people = ['Marco', 'Giulia', 'Dave', 'Anna'].map((name) => ({ id: name.toLowerCase(), name }));
+    await renderAt('/game', () =>
+      startMatch({
+        startScore: 40,
+        players: people,
+        teams: [
+          { id: 't1', name: 'Team 1', members: ['marco', 'giulia'] },
+          { id: 't2', name: 'Team 2', members: ['dave', 'anna'] },
+        ],
+      } as Partial<typeof config>),
+    );
+    expect(screen.getByRole('heading', { name: /marco \(team 1\), you require 40/i })).toBeDefined();
+    const cards = screen.getByRole('region', { name: /players/i });
+    expect(within(cards).getByText('Team 1')).toBeDefined();
+    expect(within(cards).getByText('Giulia')).toBeDefined();
+  });
 });
+

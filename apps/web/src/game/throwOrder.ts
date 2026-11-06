@@ -5,7 +5,7 @@
  * leg from there (x01.ts `startingPlayerFor`).
  */
 
-import type { GameConfig, Hit, PlayerConfig, Point } from '@treblewise/core';
+import { sides, type GameConfig, type Hit, type PlayerConfig, type Point } from '@treblewise/core';
 
 /** `list` with the item at `from` moved to `to`. */
 export function moveTo<T>(list: readonly T[], from: number, to: number): T[] {
@@ -28,7 +28,7 @@ export function startingWith(players: readonly PlayerConfig[], id: string): Play
  * places; only who starts moves on.
  */
 export function rematchConfig<C extends GameConfig>(config: C): C & { startingPlayerIndex: number } {
-  const count = Math.max(config.players.length, 1);
+  const count = Math.max(sides(config).length, 1);
   return { ...config, startingPlayerIndex: ((config.startingPlayerIndex ?? 0) + 1) % count };
 }
 

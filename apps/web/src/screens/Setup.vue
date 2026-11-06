@@ -27,6 +27,7 @@ import {
   type InOutRule,
   type KillerRing,
   type PlayerConfig,
+  type TeamConfig,
 } from '@treblewise/core';
 import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
@@ -40,6 +41,8 @@ import Stepper from '../components/ui/Stepper.vue';
 import Switch from '../components/ui/Switch.vue';
 import { vFocus } from '../components/ui/focus.js';
 import { gameSummary, halveTargetsShort } from '../game/modeView.js';
+import { lineupLabel } from '../game/sides.js';
+import { MAX_TEAMS, draftTeams, moveToNext, newDraft, resize, shuffleTeams, type TeamDraft } from '../game/teamDraft.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore, useMatchesStore, usePlayersStore } from '../store/stores.js';
@@ -124,6 +127,27 @@ const numbersOptions = (['drawn', 'thrown'] as const).map((value) => ({ value, l
 const presetOptions = (['classic', 'long'] as const).map((value) => ({ value, label: m.halveIt.presets[value] }));
 const countUpOptions = [5, 8, 10, 20].map((value) => ({ value, label: String(value) }));
 
+/**
+ * Teams (game/teams.ts): every game but Killer, from three players. With them
+ * on, the teams take turns, each one's players taking its visits in turn.
+ */
+const teamsOn = ref(false);
+const teamDraft = ref<TeamDraft>(newDraft());
+const TEAM_COLOURS = ['var(--player-a)', 'var(--player-b)', 'var(--checkout)', 'var(--busy)'];
+const teamsAllowed = computed(() => mode.value !== 'killer');
+const playingTeams = computed(() => teamsOn.value && teamsAllowed.value && lineup.value.length >= 3);
+const teamList = computed<TeamConfig[]>(() => draftTeams(lineup.value, teamDraft.value, (n) => fill(t.setup.teams.team, { n })));
+const teamsReady = computed(() => !playingTeams.value || teamList.value.every((team) => team.members.length > 0));
+const memberOf = (id: string) => lineup.value.find((player) => player.id === id)!;
+const nextTeamName = (k: number) => teamList.value[(k + 1) % teamList.value.length]?.name ?? '';
+const moveOn = (id: string) => (teamDraft.value = moveToNext(teamDraft.value, teamList.value, id));
+const shuffle = () => (teamDraft.value = shuffleTeams(teamDraft.value, lineup.value));
+const resizeTeams = (by: 1 | -1) => (teamDraft.value = resize(teamDraft.value, by, lineup.value.length));
+/** Who takes turns, as it stands: the teams, or the players. */
+const turnTakers = computed<PlayerConfig[]>(() =>
+  playingTeams.value ? teamList.value.map((team) => ({ id: team.id, name: team.name })) : lineup.value,
+);
+
 const inLineup = (id: string) => lineup.value.some((player) => player.id === id);
 const pickableProfiles = computed(() => players.profiles.filter((profile) => !inLineup(profile.id)));
 const pickableGuests = computed(() => players.sessionGuests.filter((guest) => !inLineup(guest.id)));
@@ -166,27 +190,33 @@ function commitDraft(id: string) {
 }
 
 function start() {
-  if (!ordering.value && lineup.value.length > 1) {
+  if (!teamsReady.value) return;
+  if (!ordering.value && turnTakers.value.length > 1) {
     order.value = null;
     ordering.value = true;
     return;
   }
-  begin(ordering.value && order.value ? order.value : lineup.value);
+  begin(ordering.value && order.value ? order.value : turnTakers.value);
 }
 
+/** Starts the game, the sides (players or teams) taking turns in `inOrder`. */
 function begin(inOrder: PlayerConfig[]) {
   // Playing alone without making a profile first is allowed: it is a guest.
-  const named = inOrder.map((player) => {
-    const profile = players.profiles.find((candidate) => candidate.id === player.id);
-    return profile ? { ...player, name: profile.name } : player;
-  });
-  matches.start(configFor(named.length > 0 ? named : [{ id: 'guest-solo', name: t.setup.guest, temporary: true }]));
+  const named = (list: readonly PlayerConfig[]) =>
+    list.map((player) => {
+      const profile = players.profiles.find((candidate) => candidate.id === player.id);
+      return profile ? { ...player, name: profile.name } : player;
+    });
+  const teams = playingTeams.value ? inOrder.map((side) => teamList.value.find((team) => team.id === side.id)!) : undefined;
+  const playing = named(teams ? lineup.value : inOrder);
+  matches.start(configFor(playing.length > 0 ? playing : [{ id: 'guest-solo', name: t.setup.guest, temporary: true }], teams));
   void router.push(PATHS.game);
 }
 
-/** The game as set up, for these players in this order. */
-function configFor(playing: PlayerConfig[]): GameConfig {
-  const base = { players: playing, legsToWin: modeLegs.value };
+/** The game as set up, for these players in this order, and the teams they make up, if any. */
+function configFor(playing: PlayerConfig[], teams?: TeamConfig[]): GameConfig {
+  const lineupOf = { players: playing, ...(teams ? { teams } : {}) };
+  const base = { ...lineupOf, legsToWin: modeLegs.value };
   switch (mode.value) {
     case 'x01':
       return {
@@ -195,7 +225,7 @@ function configFor(playing: PlayerConfig[]): GameConfig {
         outRule: outRule.value,
         legsPerSet: legsPerSet.value,
         setsToWin: setsToWin.value,
-        players: playing,
+        ...lineupOf,
       };
     case 'cricket':
       return { ...base, mode: 'cricket', scoring: cricketScoring.value };
@@ -251,8 +281,13 @@ const recapDetails = computed(() => {
 const training = computed(() => TRAINING_MODES.includes(mode.value));
 /** In throwing order, once that is decided. */
 const who = computed(() => {
+  if (lineup.value.length === 0) return t.setup.nobodyYet;
+  if (playingTeams.value) {
+    const teams = ordering.value && order.value ? order.value.map((side) => teamList.value.find((team) => team.id === side.id)!) : teamList.value;
+    return lineupLabel({ players: lineup.value, teams });
+  }
   const shown = ordering.value && order.value ? order.value : lineup.value;
-  return shown.length === 0 ? t.setup.nobodyYet : shown.map((player) => player.name).join(' v ');
+  return shown.map((player) => player.name).join(' v ');
 });
 
 </script>
@@ -269,7 +304,7 @@ const who = computed(() => {
       <button type="button" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
     </template>
 
-    <WhoStarts v-if="ordering" v-model:order="order" :players="lineup" />
+    <WhoStarts v-if="ordering" v-model:order="order" :players="turnTakers" />
 
     <div v-else class="setup-layout">
       <div class="setup-grid">
@@ -277,12 +312,49 @@ const who = computed(() => {
         <section class="panel" :aria-label="t.setup.players">
           <div class="section-head">
             <h2>{{ t.setup.players }}</h2>
-            <span class="section-note">{{ t.setup.playersNote }}</span>
+            <Switch v-if="teamsAllowed" v-model="teamsOn" class="teams-switch" :label="t.setup.teams.switch" />
+            <span v-else class="section-note">{{ fill(t.setup.teams.notHere, { game: m.names[mode] }) }}</span>
           </div>
 
           <p v-if="lineup.length === 0" class="empty-note">{{ t.setup.noPlayers }}</p>
+          <template v-else-if="playingTeams">
+            <div class="team-columns">
+              <div v-for="(team, k) in teamList" :key="team.id" class="team-column" :style="{ '--team': TEAM_COLOURS[k] }">
+                <div class="team-head">
+                  <span class="team-dot" aria-hidden="true" />
+                  <span class="label">{{ team.name }}</span>
+                  <span class="team-count">{{ t.setup.teams.count(team.members.length) }}</span>
+                </div>
+                <div v-for="id in team.members" :key="id" class="row team-row">
+                  <span class="lineup-name">{{ memberOf(id).name }}</span>
+                  <span v-if="memberOf(id).temporary" class="tag">{{ t.setup.guest }}</span>
+                  <button
+                    type="button"
+                    class="btn-quiet btn-icon"
+                    :aria-label="fill(t.setup.teams.move, { name: memberOf(id).name, team: nextTeamName(k) })"
+                    :title="fill(t.setup.teams.move, { name: memberOf(id).name, team: nextTeamName(k) })"
+                    @click="moveOn(id)"
+                  >
+                    <Icon name="order" :size="18" />
+                  </button>
+                  <button type="button" class="btn-quiet btn-icon" :aria-label="`${t.setup.removePlayer} ${memberOf(id).name}`" @click="dropFromLineup(id)">
+                    <Icon name="close" :size="18" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="team-tools">
+              <button type="button" class="btn-sm" :disabled="teamList.length >= Math.min(MAX_TEAMS, lineup.length)" @click="resizeTeams(1)">
+                <Icon name="plus" :size="16" />{{ t.setup.teams.add }}
+              </button>
+              <button v-if="teamList.length > 2" type="button" class="btn-sm btn-quiet" @click="resizeTeams(-1)">{{ t.setup.teams.remove }}</button>
+              <button type="button" class="btn-sm" @click="shuffle">{{ t.setup.teams.shuffle }}</button>
+            </div>
+            <p v-if="!teamsReady" class="hint">{{ t.setup.teams.emptyTeam }}</p>
+          </template>
+          <p v-if="teamsOn && teamsAllowed && lineup.length < 3" class="hint">{{ t.setup.teams.needMore }}</p>
           <ol
-            v-else
+            v-if="lineup.length > 0 && !playingTeams"
             :class="['lineup', { 'lineup-wrapped': lineup.length > LINEUP_COLUMN }]"
             :style="lineup.length > LINEUP_COLUMN ? { gridTemplateRows: `repeat(${Math.ceil(lineup.length / 2)}, auto)` } : undefined"
           >
@@ -574,7 +646,7 @@ const who = computed(() => {
               <span class="setup-recap-details">{{ recapDetails }}</span>
               <span class="setup-summary-who">{{ who }}</span>
             </span>
-            <button type="button" class="btn-primary btn-xl setup-start" @click="start">{{ t.setup.start }}</button>
+            <button type="button" class="btn-primary btn-xl setup-start" :disabled="!teamsReady" @click="start">{{ t.setup.start }}</button>
           </div>
         </div>
       </section>

@@ -82,7 +82,10 @@ const people = computed(() => {
       const name = players.profiles.find((profile) => profile.id === player.id)?.name ?? player.name;
       const entry = seen.get(player.id) ?? { id: player.id, name, darts: 0 };
       entry.name = name;
-      entry.darts += snapshot.legs.reduce((sum, leg) => sum + (leg.dartsThrown[player.id] ?? 0), 0);
+      // Their own darts: in a team match, not their teammates'.
+      for (const leg of snapshot.legs) {
+        for (const visit of leg.visits) if (visit.throwerId === player.id) entry.darts += visit.darts.length;
+      }
       seen.set(player.id, entry);
     }
   }

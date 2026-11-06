@@ -8,6 +8,7 @@
 <script setup lang="ts">
 import { fill, useStrings } from '../i18n/index.js';
 import type { ModeCard } from '../game/modeView.js';
+import TeamMembers from './TeamMembers.vue';
 
 withDefaults(defineProps<{ card: ModeCard; legsToWin: number; compact?: boolean }>(), { compact: false });
 
@@ -20,7 +21,10 @@ const t = useStrings();
     :aria-current="card.current ? 'true' : undefined"
   >
     <div class="player-card-head">
-      <span class="player-card-name">{{ card.name }}</span>
+      <span class="player-card-name">
+        {{ card.name }}
+        <TeamMembers v-if="card.members" :members="card.members" />
+      </span>
       <span v-if="card.badge" class="tag player-card-tag mode-card-badge">{{ card.badge }}</span>
       <span v-else-if="card.starts" class="tag player-card-tag">{{ t.game.throwsFirst }}</span>
       <span v-if="legsToWin > 1" class="player-card-legs" :aria-label="fill(t.game.legsOf, { n: card.legsWon, of: legsToWin })">
