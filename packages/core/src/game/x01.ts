@@ -34,6 +34,8 @@ export interface PlayerConfig {
 }
 
 export interface X01Config {
+  /** The game (game/modes.ts). Absent on every match stored before there were other games. */
+  mode?: 'x01';
   /** 301, 501, 701, … */
   startScore: number;
   inRule: InOutRule;
@@ -106,6 +108,12 @@ export interface Dart {
   atFinish: boolean;
   /** True when this dart closed the leg. */
   won: boolean;
+  /**
+   * In the other games (game/modes.ts), what the dart counted for there: the
+   * marks it put on a cricket number, the hits on the target it was thrown
+   * at. Absent in X01, where `scored` says it all.
+   */
+  hits?: number;
 }
 
 export interface Visit {
