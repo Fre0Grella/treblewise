@@ -114,9 +114,9 @@ has to be running for a game to work.
 
 ## Explicitly not in v1
 
-- Cricket, practice modes, party games, bot opponents. The engine is written so
-  that a second game mode is a new rules module, not a rewrite — but one mode,
-  finished, beats five half-modes.
+- Bot opponents. (Cricket, around the clock, Shanghai, Killer and three
+  training drills arrived after v1, issue #22, each a rules module on a shared
+  turn engine: see [design/game-modes.md](design/game-modes.md).)
 - Online multiplayer against a remote opponent.
 - Accounts, cloud sync, any server-side storage. Data is local, with export and
   import. A sync boundary exists in the storage layer so this can be added later
