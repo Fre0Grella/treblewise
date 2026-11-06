@@ -21,9 +21,9 @@ Goals:
 
 Non-goals:
 
-- Statistics for the new modes. The Statistics screen and the usual average
-  stay X01-only, because an average means nothing in Cricket or a drill. A past
-  match of any mode still shows its numbers side by side in the history.
+- Folding the new modes into the X01 statistics. A dart at the 3 round the
+  clock is not a scoring dart, so the X01 averages and the usual average stay
+  X01-only. Each game has its own statistics instead (see *Statistics*).
 - New caller clips. A new mode uses the clips the caller already has: visit
   totals, "No score", "to throw", "game shot". Calling Cricket marks would need
   new clips, picked by ear (see the caller pack).
@@ -94,6 +94,28 @@ On the screen:
   - Then it calls "to throw".
   - A halved round or a missed Bob's 27 round plays the bust sound, through
     `visit.busted`.
+
+## Statistics
+
+Built on 2026-11-06 at the user's request; the rest was left to me.
+
+- **Targets:** each dart records what it was thrown at (`Dart.target`), given by one optional rule, `target()`, which the engine asks before each dart. It returns the number round the clock, the double in Bob's 27, the round's number in Shanghai, the target in Halve-it, and your own number while becoming a killer.
+- **Core:** `stats/modes.ts` `modeStats()` walks a player's own visits once and gives:
+  - legs played and won;
+  - the darts that counted, and the hit rate by target, with where each dart landed;
+  - cricket marks by number, and the trebles;
+  - one result per leg in the game's own unit (`RESULT_UNIT`): darts to get round the clock (fewer is better), marks per round in cricket, final points in the drills and Shanghai, lives in Killer.
+- **Screen:** a Game picker beside the player and the period, showing only the games the player has thrown in. Each game shows:
+  - four tiles in its own terms (`game/modeStatsView.ts`);
+  - in the games with a target, a board painted by hit rate (`TargetBoard.vue`). Tap a number on the board or in the list, and its darts appear where they landed, filled when they counted. Bob's 27 paints only the doubles;
+  - cricket's marks by number;
+  - the last ten results.
+- **X01, rearranged with the user:**
+  - Shape of scoring sits beside "When you go at the 20";
+  - each board has its own row, with its text beside it, and the doubles next to the heatmap.
+- **Board maps:**
+  - The real board, faded, is under every map, with all twenty numbers (`BoardFace.vue`, which the game's dartboard now draws through too).
+  - The aim map runs from black at the lowest value on the board to yellow at the highest, squared, so the colour spreads instead of being yellow all over.
 
 ## Teams
 

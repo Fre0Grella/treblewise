@@ -4271,6 +4271,94 @@ input:focus-visible {
   }
 }
 
+/* A board on its own row (where the darts land, where to aim, a game's
+   targets): the board on the left, what it says beside it. */
+.stats-board-row {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .stats-board-row {
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+    gap: var(--space-7);
+  }
+}
+
+.stats-board,
+.stats-board-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stats-board-side {
+  padding-top: var(--space-6);
+}
+
+.stats-board .board-map {
+  width: 100%;
+  max-width: 460px;
+}
+
+/* A bar picks its number on the board of targets. */
+.bars-pick {
+  padding: 0;
+  min-height: 0;
+  background: none;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bars-picked .bars-fill {
+  background: var(--accent);
+}
+
+.bars-picked .bars-pick {
+  color: var(--accent);
+}
+
+/* The board of targets: a dart thrown at the number picked, filled when it counted. */
+.target-board {
+  cursor: pointer;
+}
+
+.target-dart {
+  fill: var(--scrim);
+  stroke: var(--mark-ink);
+  stroke-width: 1.5;
+}
+
+.target-dart-hit {
+  fill: var(--live);
+}
+
+/* The last games, oldest first, a won one lit. */
+.last-games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.last-game {
+  min-width: 52px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  font-size: var(--text-lg);
+  text-align: center;
+}
+
+.last-game-won {
+  background: var(--tint-live);
+  color: var(--live);
+}
+
 .stats-sub {
   margin: var(--space-3) 0 0;
   font-size: var(--text-base);

@@ -13,10 +13,11 @@
   the size with a crosshair on the exact point; drag to adjust; lift to score.
 -->
 <script setup lang="ts">
-import { BOARD, formatHit, scoreAt, targetPoint, type Hit, type Point } from '@treblewise/core';
+import { formatHit, scoreAt, targetPoint, type Hit, type Point } from '@treblewise/core';
 import { computed, ref, useId } from 'vue';
 
-import { COLOURS, LENS, R, boardPointAt, buildBeds, numberPositions, placeLens } from './dartboardGeometry.js';
+import BoardFace from './BoardFace.vue';
+import { COLOURS, LENS, R, boardPointAt, placeLens } from './dartboardGeometry.js';
 
 export interface BoardDart {
   id: string;
@@ -46,8 +47,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{ hit: [hit: Hit, pos: Point] }>();
 
-const beds = buildBeds();
-const numbers = numberPositions();
 
 // Ids have to be unique per instance: two boards on one page would otherwise
 // share a lens clip and magnify each other.
@@ -120,16 +119,8 @@ const lensTransform = computed(() =>
   >
     <defs>
       <g :id="artId">
-        <circle :cx="0" :cy="0" :r="R" :fill="COLOURS.surround" />
-        <g :stroke="COLOURS.wire" :stroke-width="0.8">
-          <path v-for="b in beds" :key="b.key" :d="b.d" :fill="b.fill" />
-          <circle :cx="0" :cy="0" :r="BOARD.outerBullRadius" :fill="COLOURS.green" />
-          <circle :cx="0" :cy="0" :r="BOARD.bullRadius" :fill="COLOURS.red" />
-        </g>
         <!-- A backdrop turns: numbers going round upside down are noise. -->
-        <g v-if="!decorative" :fill="COLOURS.number" :font-size="26" font-weight="600" text-anchor="middle">
-          <text v-for="n in numbers" :key="n.sector" :x="n.x" :y="n.y + 9">{{ n.sector }}</text>
-        </g>
+        <BoardFace :numbers="!decorative" />
       </g>
 
       <g :id="dartsId">

@@ -64,6 +64,7 @@ function bobs27Rules(config: Bobs27Config): TurnRules<Bobs27Config, Bobs27State>
       out: Object.fromEntries(ids.map((id) => [id, false])),
     }),
     out: (state, id) => state.out[id] === true,
+    target: (_, id, leg) => targetOf(leg, id),
     dart(state, hit, { leg, playerId }) {
       const target = targetOf(leg, playerId);
       if (!isDoubleOf(target, hit)) return { scored: 0, hits: 0 };
@@ -133,6 +134,10 @@ function halveItRules(config: HalveItConfig): TurnRules<HalveItConfig, HalveItSt
   const targetOf = (leg: TurnLeg<HalveItState>, id: string) => targets[Math.min(targets.length - 1, visitsDone(leg, id))]!;
   return {
     start: (_, ids) => ({ kind: 'halveIt', points: Object.fromEntries(ids.map((id) => [id, 0])) }),
+    target: (_, id, leg) => {
+      const target = targetOf(leg, id);
+      return target === 'bull' ? 25 : target;
+    },
     dart(state, hit, { leg, playerId }) {
       if (!onHalveTarget(targetOf(leg, playerId), hit)) return { scored: 0, hits: 0 };
       state.points[playerId] = (state.points[playerId] ?? 0) + hit.value;

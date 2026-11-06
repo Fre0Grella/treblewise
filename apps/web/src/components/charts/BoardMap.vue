@@ -2,15 +2,18 @@
   A value drawn over the board: where the darts went, or where they would be
   worth the most.
 
-  The grid is painted into one image (heatRamp.ts). The board's wires go on top
-  as a thin wireframe so a bright patch can be read as "the treble 19" rather
-  than "up and to the left".
+  The board is under it, faded, with every number round it (BoardFace.vue), so
+  a bright patch reads as "the treble 19" rather than "up and to the left".
+  The grid is painted into one image (heatRamp.ts), kept inside the board's
+  circle so the numbers stay clear, and a thin wireframe goes over it.
 -->
 <script setup lang="ts">
-import { BOARD, boardWireframe, type BoardGrid, type Point } from '@treblewise/core';
-import { computed } from 'vue';
+import { boardWireframe, type BoardGrid, type Point } from '@treblewise/core';
+import { computed, useId } from 'vue';
 
-import { paintGrid } from './heatRamp.js';
+import BoardFace from '../BoardFace.vue';
+import { R } from '../dartboardGeometry.js';
+import { paintGrid, type RampStyle } from './heatRamp.js';
 
 export interface BoardMarker {
   point: Point;
@@ -21,32 +24,31 @@ export interface BoardMarker {
 const props = withDefaults(
   defineProps<{
     grid: BoardGrid;
-    /** Values at or below this are drawn as empty. */
+    /** Values at or below this share of the range are drawn as empty (fading only). */
     floor?: number;
     /** Divides every value; defaults to the grid's own maximum. */
     scale?: number;
+    /** `fade` lets the board show where nothing happened; `full` colours it all, black at the lowest. */
+    ramp?: RampStyle;
     markers?: BoardMarker[];
     label: string;
   }>(),
-  { floor: 0.02, scale: undefined, markers: () => [] },
+  { floor: 0.02, scale: undefined, ramp: 'fade', markers: () => [] },
 );
 
-const R = BOARD.boardRadius;
-
-const image = computed(() => paintGrid(props.grid, props.floor, props.scale));
-
+const clip = useId();
+const image = computed(() => paintGrid(props.grid, { floor: props.floor, scale: props.scale, style: props.ramp }));
 const wires = boardWireframe().map((line) => line.map((point) => `${point.x.toFixed(1)},${(-point.y).toFixed(1)}`).join(' '));
-
-const numbers = [20, 6, 3, 11].map((sector, index) => {
-  const angle = ([90, 0, 270, 180][index]! * Math.PI) / 180;
-  const r = (BOARD.doubleOuterRadius + R) / 2;
-  return { sector, x: r * Math.cos(angle), y: -r * Math.sin(angle) + 5 };
-});
 </script>
 
 <template>
   <svg class="board-map" :viewBox="`${-R} ${-R} ${2 * R} ${2 * R}`" role="img" :aria-label="label">
-    <circle :cx="0" :cy="0" :r="R" fill="var(--board-backdrop)" />
+    <defs>
+      <clipPath :id="clip">
+        <circle :cx="0" :cy="0" :r="grid.half" />
+      </clipPath>
+    </defs>
+    <BoardFace :dim="0.4" :number-size="17" />
     <image
       v-if="image"
       :href="image"
@@ -54,15 +56,12 @@ const numbers = [20, 6, 3, 11].map((sector, index) => {
       :y="-grid.half"
       :width="grid.half * 2"
       :height="grid.half * 2"
+      :clip-path="`url(#${clip})`"
       style="image-rendering: auto"
     />
 
     <g fill="none" stroke="var(--map-wire)" :stroke-width="0.7" :opacity="0.22">
       <polyline v-for="(points, index) in wires" :key="index" :points="points" />
-    </g>
-
-    <g fill="var(--map-number)" :font-size="15" text-anchor="middle" :opacity="0.7">
-      <text v-for="n in numbers" :key="n.sector" :x="n.x" :y="n.y">{{ n.sector }}</text>
     </g>
 
     <g v-for="marker in markers" :key="marker.label">

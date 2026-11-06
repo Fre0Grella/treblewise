@@ -21,6 +21,7 @@ import {
   type Dart,
   type DartCorrectedEvent,
   type DartSource,
+  type DartTarget,
   type Leg,
   type MatchEvent,
   type Visit,
@@ -77,6 +78,8 @@ export interface TurnRules<C extends TurnConfig, S> {
    * counted for in the game; `endsVisit` takes the rest of the visit away.
    */
   dart(state: S, hit: Hit, context: TurnContext<S>): { scored: number; hits: number; endsVisit?: boolean };
+  /** What the player is throwing at with this dart, in the games that have one target at a time. */
+  target?(state: S, playerId: string, leg: TurnLeg<S>): DartTarget | undefined;
   /** Darts in this player's next visit: three unless the game says otherwise. */
   visitSize?(state: S, playerId: string): number;
   /** The visit is over: settle it. True when it counts as no score. */
@@ -226,8 +229,10 @@ export function reduceTurns<C extends TurnConfig, S>(
     visit.darts.push(dart);
     leg.dartsThrown[playerId] = (leg.dartsThrown[playerId] ?? 0) + 1;
 
-    // Asked before the dart, which may change it (a killer number thrown for).
+    // Asked before the dart, which may change them (a killer number thrown for, a number hit round the clock).
     const size = rules.visitSize?.(leg.state, playerId) ?? DARTS_PER_VISIT;
+    const target = rules.target?.(leg.state, playerId, leg);
+    if (target !== undefined) dart.target = target;
     const context: TurnContext<S> = { ids, leg, visit, playerId };
     const outcome = rules.dart(leg.state, now.hit, context);
     dart.scored = outcome.scored;

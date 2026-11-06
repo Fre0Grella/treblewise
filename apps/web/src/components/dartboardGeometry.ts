@@ -51,6 +51,8 @@ function bed(r1: number, r2: number, from: number, to: number): string {
 
 export interface Bed {
   key: string;
+  /** The number the bed belongs to. */
+  sector: number;
   d: string;
   fill: string;
 }
@@ -67,10 +69,10 @@ export function buildBeds(): Bed[] {
     const ring = isDark ? COLOURS.red : COLOURS.green;
 
     beds.push(
-      { key: `s-in-${sector}`, d: bed(BOARD.outerBullRadius, BOARD.trebleInnerRadius, from, to), fill: single },
-      { key: `t-${sector}`, d: bed(BOARD.trebleInnerRadius, BOARD.trebleOuterRadius, from, to), fill: ring },
-      { key: `s-out-${sector}`, d: bed(BOARD.trebleOuterRadius, BOARD.doubleInnerRadius, from, to), fill: single },
-      { key: `d-${sector}`, d: bed(BOARD.doubleInnerRadius, BOARD.doubleOuterRadius, from, to), fill: ring },
+      { key: `s-in-${sector}`, sector, d: bed(BOARD.outerBullRadius, BOARD.trebleInnerRadius, from, to), fill: single },
+      { key: `t-${sector}`, sector, d: bed(BOARD.trebleInnerRadius, BOARD.trebleOuterRadius, from, to), fill: ring },
+      { key: `s-out-${sector}`, sector, d: bed(BOARD.trebleOuterRadius, BOARD.doubleInnerRadius, from, to), fill: single },
+      { key: `d-${sector}`, sector, d: bed(BOARD.doubleInnerRadius, BOARD.doubleOuterRadius, from, to), fill: ring },
     );
   });
 

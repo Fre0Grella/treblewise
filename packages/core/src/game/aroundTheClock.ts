@@ -93,6 +93,8 @@ function rules(config: AroundTheClockConfig): TurnRules<AroundTheClockConfig, Ar
       return { scored: 0, hits: counted };
     },
 
+    target: (state, id) => targetOf(state, id),
+
     decide: (state, { playerId }) => ((state.hits[playerId] ?? 0) >= total ? { winner: playerId } : null),
 
     /** Targets still to hit. */

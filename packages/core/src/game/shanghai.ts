@@ -69,6 +69,8 @@ function rules(config: ShanghaiConfig): TurnRules<ShanghaiConfig, ShanghaiState>
 
     score: (state, id) => state.points[id] ?? 0,
 
+    target: (_, id, leg) => shanghaiTarget(config, visitsDone(leg, id) + 1),
+
     aim(_, id, leg) {
       const target = shanghaiTarget(config, visitsDone(leg, id) + 1);
       return target === 25 ? OUTER_BULL : hitOf(target, 'single');

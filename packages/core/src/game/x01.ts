@@ -23,6 +23,9 @@ export const DARTS_PER_VISIT = 3;
 
 export type DartSource = 'manual' | 'voice' | 'auto';
 
+/** What a dart was thrown at, in the games with a target: a number (25 the bull), or any double or treble. */
+export type DartTarget = number | 'double' | 'treble';
+
 export interface PlayerConfig {
   id: string;
   name: string;
@@ -111,6 +114,8 @@ export interface Dart {
    * at. Absent in X01, where `scored` says it all.
    */
   hits?: number;
+  /** What it was thrown at, in the games that set one (the number round the clock, the double in Bob's 27). */
+  target?: DartTarget;
 }
 
 export interface Visit {

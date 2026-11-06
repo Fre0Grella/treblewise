@@ -152,3 +152,49 @@ describe('the statistics page', () => {
     expect(checkout).toBeDefined();
   });
 });
+
+describe('the other games on the statistics page', () => {
+  beforeEach(async () => {
+    for (const match of await listMatches(Number.MAX_SAFE_INTEGER)) await deleteMatch(match.id);
+    setActivePinia(createPinia());
+  });
+
+  /** Two games round the clock, 1 to 20: one clean, one with two misses on the 7. */
+  async function twoRoundsOfTheClock() {
+    const matches = useMatchesStore();
+    for (const misses of [0, 2]) {
+      matches.start({ mode: 'aroundTheClock', ring: 'any', order: 'up', bull: false, hitsPerTarget: 1, multiples: false, legsToWin: 1, players: [marco] });
+      for (let n = 1; n <= 20; n += 1) {
+        if (n === 7) for (let k = 0; k < misses; k += 1) matches.throwDart(hit(18, 'single'), { pos: targetPoint(hit(18, 'single')) });
+        matches.throwDart(hit(n, 'single'), { pos: targetPoint(hit(n, 'single')) });
+      }
+    }
+    await matches.refreshHistory();
+  }
+
+  it('keeps each game on its own page, out of the X01 averages', async () => {
+    throwDarts(30);
+    await twoRoundsOfTheClock();
+    await renderStats();
+    const games = await screen.findByRole('radiogroup', { name: 'Game' });
+    expect(games.textContent).toContain('X01');
+    expect(games.textContent).toContain('Around the clock');
+    // The X01 page counts only X01 darts.
+    expect(screen.getByText(/from 30 darts/i)).toBeDefined();
+
+    (screen.getByRole('radio', { name: 'Around the clock' }) as HTMLButtonElement).click();
+    expect(await screen.findByText(/2 games, 42 darts/i)).toBeDefined();
+    // Best round: 20 darts; average 21.
+    expect(screen.getByText('Best round').closest('.tile')!.textContent).toContain('20');
+    expect(screen.getByText('Average round').closest('.tile')!.textContent).toContain('21.0');
+  });
+
+  it('picks a number from the list and says how it went', async () => {
+    await twoRoundsOfTheClock();
+    await renderStats();
+    // The busiest number, the 7, is picked to start with: 2 of 4 darts.
+    expect(await screen.findByText(/7: 50% · 2 of 4 darts/)).toBeDefined();
+    (screen.getByRole('button', { name: '20' }) as HTMLButtonElement).click();
+    await waitFor(() => expect(screen.getByText(/20: 100% · 2 of 2 darts/)).toBeDefined());
+  });
+});

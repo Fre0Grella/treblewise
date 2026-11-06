@@ -8,32 +8,42 @@
 
   Every number carries its sample size, and every contested definition says
   what it means next to itself rather than in a help page nobody opens.
+
+  The other games (issue #22) each have their own page, picked under Game
+  (ModeStats.vue): their darts never go into the X01 averages.
 -->
 <script setup lang="ts">
 import {
+  GAME_MODES,
   careerStats,
   densityGrid,
   estimateSpread,
   expectedScoreMap,
   formatHit,
   hit as makeHit,
-  isX01,
+  isX01Snapshot,
   legStats,
+  modeStats,
   positionedDarts,
-  reduceMatch,
+  reduceGame,
   scoreAt,
   sectorAtAngle,
   sectorSplit,
   targetPoint,
+  type GameMode,
+  type GameSnapshot,
   type MatchSnapshot,
+  type ModeSnapshot,
 } from '@treblewise/core';
 import { computed, onMounted, ref } from 'vue';
 
 import BandBars from '../components/charts/BandBars.vue';
 import BoardMap from '../components/charts/BoardMap.vue';
 import LegTrend, { type LegPoint } from '../components/charts/LegTrend.vue';
-import { rampStops } from '../components/charts/heatRamp.js';
+import PercentBars from '../components/charts/PercentBars.vue';
+import { boardMin, rampStops } from '../components/charts/heatRamp.js';
 import StatTile from '../components/charts/StatTile.vue';
+import ModeStats from '../components/ModeStats.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
 import { fill, useStrings } from '../i18n/index.js';
@@ -44,7 +54,7 @@ type Range = 'session' | 'month' | 'all';
 /** Darts needed before the spread is worth estimating, per the paper: ~50. */
 const AIM_MAP_MINIMUM = 50;
 
-function lastDartAt(snapshot: MatchSnapshot): number {
+function lastDartAt(snapshot: GameSnapshot): number {
   let latest = 0;
   for (const leg of snapshot.legs) {
     for (const visit of leg.visits) {
@@ -66,13 +76,17 @@ const chosenPlayer = ref<string | null>(null);
 const range = ref<Range>('all');
 const rangeOptions = (['session', 'month', 'all'] as Range[]).map((value) => ({ value, label: t.stats.ranges[value] }));
 
-/** The X01 matches: the statistics are averages, checkouts and where the darts land in X01. */
-const x01Matches = computed(() => matches.history.flatMap((match) => (isX01(match.config) ? [{ match, config: match.config }] : [])));
-const snapshots = computed(() => x01Matches.value.map(({ match, config }) => reduceMatch(config, match.events)));
+/** Every match folded once, with its own game. */
+const folded = computed(() => matches.history.map((match) => ({ match, snapshot: reduceGame(match.config, match.events) })));
+/** The X01 matches: averages, checkouts and where the darts land are X01's. */
+const x01Matches = computed(() =>
+  folded.value.flatMap(({ match, snapshot }) => (isX01Snapshot(snapshot) ? [{ match, snapshot }] : [])),
+);
+const snapshots = computed<MatchSnapshot[]>(() => x01Matches.value.map(({ snapshot }) => snapshot));
 
 const people = computed(() => {
   const seen = new Map<string, { id: string; name: string; darts: number }>();
-  for (const snapshot of snapshots.value) {
+  for (const { snapshot } of folded.value) {
     for (const player of snapshot.config.players) {
       // Guests are scored like anyone else and then forgotten: they are here
       // to play, not to be measured, and they would fill this list up.
@@ -106,6 +120,33 @@ const cutoff = computed(() => {
   return range.value === 'month' ? now - 30 * 24 * 3600_000 : now - 12 * 3600_000;
 });
 const inRange = computed(() => snapshots.value.filter((snapshot) => lastDartAt(snapshot) >= cutoff.value));
+
+/**
+ * The games the chosen player has thrown in, in the period: X01 first, then
+ * the others in the setup's order. Each has its own page.
+ */
+const othersInRange = computed(() =>
+  folded.value.flatMap(({ snapshot }) => (!isX01Snapshot(snapshot) && lastDartAt(snapshot) >= cutoff.value ? [snapshot as ModeSnapshot] : [])),
+);
+const played = (snapshot: GameSnapshot) => snapshot.config.players.some((player) => player.id === active.value);
+const games = computed<GameMode[]>(() =>
+  GAME_MODES.filter((mode) => (mode === 'x01' ? inRange.value.some(played) : othersInRange.value.some((s) => s.config.mode === mode && played(s)))),
+);
+const chosenGame = ref<GameMode>('x01');
+const game = computed({
+  get: () => (games.value.includes(chosenGame.value) ? chosenGame.value : (games.value[0] ?? 'x01')),
+  set: (mode: GameMode) => {
+    chosenGame.value = mode;
+  },
+});
+const gameOptions = computed(() => games.value.map((mode) => ({ value: mode, label: t.modes.names[mode] })));
+const otherGame = computed(() => (game.value === 'x01' ? null : modeStats(othersInRange.value, game.value, active.value)));
+/** The line under the title: the chosen game's games and darts. */
+const lead = computed(() =>
+  otherGame.value
+    ? t.stats.gameSubtitle(otherGame.value.legs, otherGame.value.darts)
+    : fill(t.stats.subtitle, { matches: career.value?.matches ?? 0, darts: career.value?.dartsThrown ?? 0 }),
+);
 
 /** The chosen player's legs in the period, oldest first: one point each on the chart. */
 const legPoints = computed<LegPoint[]>(() =>
@@ -173,6 +214,17 @@ const aimMarkers = computed(() =>
     : [],
 );
 const ramp = `linear-gradient(90deg, ${rampStops()})`;
+const aimRamp = `linear-gradient(90deg, ${rampStops('full')})`;
+const aimLow = computed(() => (aim.value ? boardMin(aim.value) : 0));
+const doubleBars = computed(() =>
+  (career.value?.doubles ?? []).slice(0, 10).map((entry) => ({
+    key: String(entry.target),
+    label: doubleName(entry.target),
+    percent: entry.percent,
+    hits: entry.hits,
+    darts: entry.attempts,
+  })),
+);
 </script>
 
 <template>
@@ -182,17 +234,19 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
     v-else
     name="stats"
     :title="t.stats.title"
-    :lead="fill(t.stats.subtitle, { matches: career.matches, darts: career.dartsThrown })"
+    :lead="lead"
     :back-label="t.stats.back"
   >
     <template #head>
       <div class="stats-filters">
         <Segmented v-model="active" :options="peopleOptions" :label="t.stats.player" />
         <Segmented v-model="range" :options="rangeOptions" :label="t.stats.period" />
+        <Segmented v-if="gameOptions.length > 1" v-model="game" :options="gameOptions" :label="t.stats.game" />
       </div>
     </template>
 
-    <p v-if="career.dartsThrown === 0" class="empty-note">{{ t.stats.nothingInRange }}</p>
+    <ModeStats v-if="otherGame" :stats="otherGame" />
+    <p v-else-if="career.dartsThrown === 0" class="empty-note">{{ t.stats.nothingInRange }}</p>
     <template v-else>
       <!-- The four that matter, big; the records in a line under them. -->
       <section class="stats-scoring" :aria-label="t.stats.scoring">
@@ -250,75 +304,75 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
         </section>
 
         <section class="panel">
-          <h2>{{ t.stats.doubles }}</h2>
-          <p v-if="career.doubles.length === 0" class="hint">{{ t.stats.noDoubles }}</p>
-          <template v-else>
-            <p v-if="bestDouble && worstDouble && bestDouble !== worstDouble" class="stat-sentence">
-              {{
-                fill(t.stats.doublesSummary, {
-                  best: doubleName(bestDouble.target),
-                  bestPercent: number(bestDouble.percent ?? 0, 0),
-                  worst: doubleName(worstDouble.target),
-                  worstPercent: number(worstDouble.percent ?? 0, 0),
-                })
-              }}
-            </p>
-            <ul class="bars">
-              <li v-for="entry in career.doubles.slice(0, 10)" :key="entry.target">
-                <span class="bars-label">{{ doubleName(entry.target) }}</span>
-                <span class="bars-track">
-                  <span class="bars-fill" :style="{ width: `${entry.percent ?? 0}%` }" />
-                </span>
-                <span class="bars-value">
-                  {{ entry.percent === null ? '—' : `${number(entry.percent, 0)}%` }}
-                  <small>{{ entry.hits }}/{{ entry.attempts }}</small>
-                </span>
-              </li>
-            </ul>
-            <p class="hint">{{ t.stats.doublesNote }}</p>
-          </template>
+          <h2>{{ fill(t.stats.goingAt, { sector: split.sector }) }}</h2>
+          <BandBars
+            v-if="split.total >= 10"
+            :bands="[
+              { label: `T${split.sector}`, count: split.treble, strong: true },
+              { label: `S${split.sector}`, count: split.single },
+              { label: `D${split.sector}`, count: split.double },
+              { label: `${split.clockwise.sector}`, count: split.clockwise.count },
+              { label: `${split.anticlockwise.sector}`, count: split.anticlockwise.count },
+              { label: t.stats.offBoard, count: split.off },
+            ]"
+            :total="split.total"
+          />
+          <p v-else class="hint">{{ fill(t.stats.aimPending, { have: darts.length, need: 10 }) }}</p>
         </section>
 
-        <section v-if="darts.length > 0" class="panel">
-          <h2>{{ t.stats.where }}</h2>
-          <BoardMap :grid="density" :label="t.stats.whereLabel" />
-          <div class="legend">
-            <span>{{ t.stats.fewer }}</span>
-            <span class="legend-ramp" :style="{ background: ramp }" />
-            <span>{{ t.stats.more }}</span>
+        <!-- Where the darts land, the board on the left, the group and the doubles beside it. -->
+        <section class="panel stats-wide stats-board-row">
+          <div class="stats-board">
+            <h2>{{ t.stats.where }}</h2>
+            <template v-if="darts.length > 0">
+              <BoardMap :grid="density" :label="t.stats.whereLabel" />
+              <div class="legend">
+                <span>{{ t.stats.fewer }}</span>
+                <span class="legend-ramp" :style="{ background: ramp }" />
+                <span>{{ t.stats.more }}</span>
+              </div>
+            </template>
+            <p v-else class="hint">{{ t.stats.whereEmpty }}</p>
           </div>
-
-          <p v-if="spread" class="stat-sentence">
-            {{ fill(t.stats.groupSentence, { along: number(spread.along, 0), across: number(spread.across, 0), n: spread.count }) }}
-          </p>
-
-          <template v-if="split.total >= 10">
-            <h3 class="stats-sub">{{ fill(t.stats.goingAt, { sector: split.sector }) }}</h3>
-            <BandBars
-              :bands="[
-                { label: `T${split.sector}`, count: split.treble, strong: true },
-                { label: `S${split.sector}`, count: split.single },
-                { label: `D${split.sector}`, count: split.double },
-                { label: `${split.clockwise.sector}`, count: split.clockwise.count },
-                { label: `${split.anticlockwise.sector}`, count: split.anticlockwise.count },
-                { label: t.stats.offBoard, count: split.off },
-              ]"
-              :total="split.total"
-            />
-          </template>
-
-          <p v-if="tapped > 0" class="hint">{{ fill(t.stats.tappedNote, { n: tapped }) }}</p>
+          <div class="stats-board-side">
+            <p v-if="spread" class="stat-sentence">
+              {{ fill(t.stats.groupSentence, { along: number(spread.along, 0), across: number(spread.across, 0), n: spread.count }) }}
+            </p>
+            <h3 class="stats-sub">{{ t.stats.doubles }}</h3>
+            <p v-if="career.doubles.length === 0" class="hint">{{ t.stats.noDoubles }}</p>
+            <template v-else>
+              <p v-if="bestDouble && worstDouble && bestDouble !== worstDouble" class="stat-sentence">
+                {{
+                  fill(t.stats.doublesSummary, {
+                    best: doubleName(bestDouble.target),
+                    bestPercent: number(bestDouble.percent ?? 0, 0),
+                    worst: doubleName(worstDouble.target),
+                    worstPercent: number(worstDouble.percent ?? 0, 0),
+                  })
+                }}
+              </p>
+              <PercentBars :bars="doubleBars" />
+              <p class="hint">{{ t.stats.doublesNote }}</p>
+            </template>
+            <p v-if="tapped > 0" class="hint">{{ fill(t.stats.tappedNote, { n: tapped }) }}</p>
+          </div>
         </section>
 
-        <section class="panel">
-          <h2>{{ t.stats.aim }}</h2>
-          <template v-if="aim && aimTarget">
-            <BoardMap :grid="aim" :floor="0.02" :label="t.stats.aimLabel" :markers="aimMarkers" />
-            <div class="legend">
-              <span>0</span>
-              <span class="legend-ramp" :style="{ background: ramp }" />
-              <span>{{ fill(t.stats.perDart, { max: number(aimPeak) }) }}</span>
-            </div>
+        <!-- Where to aim, the board on the left, what it says beside it. -->
+        <section class="panel stats-wide stats-board-row">
+          <div class="stats-board">
+            <h2>{{ t.stats.aim }}</h2>
+            <template v-if="aim && aimTarget">
+              <BoardMap :grid="aim" ramp="full" :label="t.stats.aimLabel" :markers="aimMarkers" />
+              <div class="legend">
+                <span>{{ number(aimLow) }}</span>
+                <span class="legend-ramp" :style="{ background: aimRamp }" />
+                <span>{{ fill(t.stats.perDart, { max: number(aimPeak) }) }}</span>
+              </div>
+            </template>
+            <p v-else class="hint">{{ fill(t.stats.aimPending, { have: darts.length, need: AIM_MAP_MINIMUM }) }}</p>
+          </div>
+          <div v-if="aim && aimTarget" class="stats-board-side">
             <p class="stat-sentence">
               {{
                 aimIsTrebleTwenty
@@ -333,8 +387,7 @@ const ramp = `linear-gradient(90deg, ${rampStops()})`;
               }}
             </p>
             <p class="hint">{{ t.stats.aimNote }}</p>
-          </template>
-          <p v-else class="hint">{{ fill(t.stats.aimPending, { have: darts.length, need: AIM_MAP_MINIMUM }) }}</p>
+          </div>
         </section>
       </div>
     </template>

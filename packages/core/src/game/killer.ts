@@ -119,6 +119,9 @@ function rules(config: KillerConfig): TurnRules<KillerConfig, KillerState> {
 
     score: (state, id) => state.lives[id] ?? 0,
 
+    // Only while becoming a killer is there one number to hit: your own.
+    target: (state, id) => (state.number[id] != null && !isKiller(config, state, id) ? state.number[id]! : undefined),
+
     aim(state, id) {
       const own = state.number[id];
       if (own == null || isKiller(config, state, id)) return null;
