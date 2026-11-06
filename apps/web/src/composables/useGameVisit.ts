@@ -4,7 +4,7 @@
  * framework (game/gameVisit.ts).
  */
 
-import type { MatchSnapshot } from '@treblewise/core';
+import type { GameSnapshot } from '@treblewise/core';
 import { toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { createGameVisit, type GameVisitDeps } from '../game/gameVisit.js';
@@ -14,7 +14,7 @@ import { createBoardWatcher } from '../vision/boardWatcher.js';
 import { raw, useExternal } from './external.js';
 
 export interface GameVisitInputs {
-  snapshot: MaybeRefOrGetter<MatchSnapshot | null>;
+  snapshot: MaybeRefOrGetter<GameSnapshot | null>;
   /** The camera on, and "autoscorer scores" with it. */
   autoscoring: MaybeRefOrGetter<boolean>;
   calibration: MaybeRefOrGetter<Calibration | null>;

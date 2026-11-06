@@ -78,7 +78,7 @@ describe('starting a match', () => {
     expect(scores).toBeDefined();
 
     await press(/start match/i);
-    expect(useMatchesStore().snapshot!.config.startScore).toBe(701);
+    expect(useMatchesStore().snapshot!.config).toMatchObject({ startScore: 701 });
   });
 
   it('finds the players of matches played before profiles existed', async () => {
@@ -172,5 +172,49 @@ describe('starting a match', () => {
       expect(screen.getByRole('heading', { name: /new match/i })).toBeDefined();
       expect(useMatchesStore().snapshot).toBeNull();
     });
+  });
+});
+
+describe('picking the game (issue #22)', () => {
+  beforeEach(async () => {
+    for (const match of await listMatches(Number.MAX_SAFE_INTEGER)) await deleteMatch(match.id);
+    await saveSetting('profilesSeeded', true);
+  });
+
+  it('starts X01 unless another game is picked', async () => {
+    await renderAt('/setup');
+    const games = screen.getByRole('radiogroup', { name: /what are you playing/i });
+    expect(within(games).getByRole('radio', { name: /^x01/i }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('sets a game up with its own settings', async () => {
+    await renderAt('/setup');
+    await fireEvent.click(screen.getByRole('radio', { name: /^cricket/i }));
+    // X01's settings make way for cricket's.
+    expect(screen.queryByRole('radiogroup', { name: /start score/i })).toBeNull();
+    await fireEvent.click(screen.getByRole('radio', { name: 'Cut-throat' }));
+    await press(/more: legs to win/i);
+    expect(screen.getByText(/cricket · cut-throat · first to 2 legs/i)).toBeDefined();
+
+    await press(/start match/i);
+    expect(useMatchesStore().snapshot!.config).toMatchObject({ mode: 'cricket', scoring: 'cutThroat', legsToWin: 2 });
+  });
+
+  it('plays a drill once, whatever the legs', async () => {
+    await renderAt('/setup');
+    await fireEvent.click(screen.getByRole('radio', { name: /^bob’s 27/i }));
+    expect(screen.queryByRole('group', { name: /legs to win/i })).toBeNull();
+    await fireEvent.click(screen.getByRole('switch', { name: /bull round/i }));
+    await press(/start match/i);
+    expect(useMatchesStore().snapshot!.config).toMatchObject({ mode: 'bobs27', bull: true, legsToWin: 1 });
+  });
+
+  it('draws the killer numbers as the game starts', async () => {
+    await renderAt('/setup');
+    await fireEvent.click(screen.getByRole('radio', { name: /^killer/i }));
+    await press(/start match/i);
+    const config = useMatchesStore().snapshot!.config;
+    expect(config).toMatchObject({ mode: 'killer', numbers: 'drawn' });
+    expect(Object.values((config as { assigned: Record<string, number> }).assigned)).toHaveLength(1);
   });
 });
