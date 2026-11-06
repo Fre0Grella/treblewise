@@ -18,6 +18,7 @@
   real buttons, so a screen reader and a keyboard get the same menu.
 -->
 <script setup lang="ts">
+import { sides } from '@treblewise/core';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -69,13 +70,13 @@ const standing = computed(() => {
   if (!inProgress.value || !snapshot || !snapshot.current) return null;
   const leg = snapshot.legs.at(-1);
   return {
-    players: snapshot.config.players.map((player) => ({
+    players: sides(snapshot.config).map((player) => ({
       id: player.id,
       name: player.name,
       left: snapshot.current!.playerId === player.id ? snapshot.current!.remaining : (leg?.remaining[player.id] ?? snapshot.current!.remaining),
       throwing: snapshot.current!.playerId === player.id,
     })),
-    legs: snapshot.config.players.map((player) => snapshot.legsWon[player.id] ?? 0).join('–'),
+    legs: sides(snapshot.config).map((player) => snapshot.legsWon[player.id] ?? 0).join('–'),
     game: gameName(snapshot.config),
   };
 });

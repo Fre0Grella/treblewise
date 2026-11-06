@@ -6,7 +6,7 @@
   beside it (issue #20); on a phone the list and the match take turns.
 -->
 <script setup lang="ts">
-import { TRAINING_MODES, isX01Snapshot, matchStats, reduceGame, type GameSnapshot } from '@treblewise/core';
+import { TRAINING_MODES, isX01Snapshot, matchStats, reduceGame, sides, type GameSnapshot } from '@treblewise/core';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -14,6 +14,7 @@ import HeadToHead, { type HeadToHeadRow } from '../components/HeadToHead.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
 import { gameName, modeRows } from '../game/modeView.js';
+import { lineupLabel } from '../game/sides.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import type { StoredMatch } from '../storage/db.js';
@@ -49,10 +50,10 @@ function dayLabel(time: number): string {
 }
 
 const timeOf = (time: number) => new Date(time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-const gameOf = (match: StoredMatch) => `${gameName(match.config)} · ${match.config.players.map((p) => p.name).join(' v ')}`;
+const gameOf = (match: StoredMatch) => `${gameName(match.config)} · ${lineupLabel(match.config)}`;
 /** Sets or legs won; in a game played once for points (a drill), the points. */
 function scoreOf(snapshot: GameSnapshot): string {
-  const players = snapshot.config.players;
+  const players = sides(snapshot.config);
   if (isX01Snapshot(snapshot)) {
     return players.map((player) => (snapshot.config.setsToWin > 1 ? snapshot.setsWon[player.id] : snapshot.legsWon[player.id]) ?? 0).join('–');
   }
@@ -81,7 +82,7 @@ const open = computed(() => {
   const match = matches.history.find((candidate) => candidate.id === id.value);
   if (!match) return null;
   const snapshot = reduceGame(match.config, match.events);
-  const players = snapshot.config.players;
+  const players = sides(snapshot.config);
   const winner = players.find((player) => player.id === snapshot.winnerId);
   const score = scoreOf(snapshot);
   const each = (pick: (id: string) => number | null, text: (value: number | null) => string) => {
@@ -93,7 +94,7 @@ const open = computed(() => {
   let rows: HeadToHeadRow[] = [];
   if (!isX01Snapshot(snapshot)) rows = modeRows(snapshot, snapshot.legs);
   else {
-    const stats = matchStats(snapshot);
+    const stats = matchStats(snapshot, 'side');
     rows = [
     { label: t.headToHead.average, higherIsBetter: true, ...each((p) => (stats[p]!.dartsThrown ? stats[p]!.average : null), one) },
     { label: t.headToHead.first9, higherIsBetter: true, ...each((p) => (stats[p]!.dartsThrown ? stats[p]!.first9Average : null), one) },
@@ -116,7 +117,7 @@ const open = computed(() => {
       ? winner
         ? fill(t.history.won, { name: winner.name, score })
         : fill(t.history.noWinner, { score })
-      : `${players.map((player) => player.name).join(' v ')} · ${score}`,
+      : `${lineupLabel(match.config)} · ${score}`,
     meta: `${gameName(match.config)} · ${dayLabel(match.createdAt)}, ${timeOf(match.createdAt)}${match.finished ? '' : ` · ${t.history.inProgress}`}`,
     legs: snapshot.legs.map((leg, index) => {
       const legWinner = players.find((player) => player.id === leg.winnerId);

@@ -35,13 +35,14 @@ export function positionedDarts(
   for (const snapshot of snapshots) {
     for (const leg of snapshot.legs) {
       for (const visit of leg.visits) {
-        if (filter.playerId && visit.playerId !== filter.playerId) continue;
+        // The person who threw it: in a team, not their teammates.
+        if (filter.playerId && visit.throwerId !== filter.playerId) continue;
         for (const dart of visit.darts) {
           if (!dart.pos) continue;
           if (filter.sources && !filter.sources.includes(dart.source)) continue;
           if (filter.since !== undefined && dart.ts < filter.since) continue;
           darts.push({
-            playerId: visit.playerId,
+            playerId: visit.throwerId,
             pos: dart.pos,
             hit: dart.hit,
             source: dart.source,

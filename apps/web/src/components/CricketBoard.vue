@@ -9,6 +9,8 @@ import type { CricketState, PlayerConfig } from '@treblewise/core';
 import { computed } from 'vue';
 
 import { cricketRows } from '../game/modeView.js';
+import type { MemberChip } from '../game/sides.js';
+import TeamMembers from './TeamMembers.vue';
 import { fill, useStrings } from '../i18n/index.js';
 
 const props = defineProps<{
@@ -21,6 +23,8 @@ const props = defineProps<{
   legsToWin: number;
   /** Points are kept (not "no score"). */
   points: boolean;
+  /** Each team's players, by side; a player alone has none. */
+  members?: Record<string, readonly MemberChip[] | null>;
 }>();
 
 const t = useStrings();
@@ -41,6 +45,7 @@ const markWords = (n: number) => (n >= 3 ? t.modes.play.done : t.modes.play.mark
         :aria-current="current === player.id ? 'true' : undefined"
       >
         <span class="cricket-name">{{ player.name }}</span>
+        <TeamMembers v-if="members?.[player.id]" :members="members[player.id]!" />
         <span v-if="points" class="num cricket-points">{{ state?.points[player.id] ?? 0 }}</span>
         <span v-if="legsToWin > 1" class="player-card-legs" :aria-label="fill(t.game.legsOf, { n: legsWon[player.id] ?? 0, of: legsToWin })">
           <span v-for="index in legsToWin" :key="index" :class="['pip', { 'pip-on': index <= (legsWon[player.id] ?? 0) }]" aria-hidden="true" />

@@ -14,7 +14,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import type { MemberChip } from '../game/sides.js';
 import { fill, useStrings } from '../i18n/index.js';
+import TeamMembers from './TeamMembers.vue';
 
 export interface VisitBar {
   score: number;
@@ -26,6 +28,8 @@ export interface VisitBar {
 const props = withDefaults(
   defineProps<{
     name: string;
+    /** A team's players, the one at the oche marked; null for a player alone. */
+    members?: readonly MemberChip[] | null;
     remaining: number;
     legsWon: number;
     legsToWin: number;
@@ -49,7 +53,7 @@ const props = withDefaults(
     /** The leg's visits as bars; off from four players on. */
     showBars?: boolean;
   }>(),
-  { setsWon: null, starts: false, current: false, averageColor: null, averageNote: null, usual: null, compact: false, showBars: true },
+  { members: null, setsWon: null, starts: false, current: false, averageColor: null, averageNote: null, usual: null, compact: false, showBars: true },
 );
 
 const t = useStrings();
@@ -71,7 +75,10 @@ const usualBottom = computed(() => (props.usual === null ? null : barHeight(prop
 <template>
   <article :class="['player-card', { 'player-card-on': current, 'player-card-compact': compact }]" :aria-current="current ? 'true' : undefined">
     <div class="player-card-head">
-      <span class="player-card-name">{{ name }}</span>
+      <span class="player-card-name">
+        {{ name }}
+        <TeamMembers v-if="members" :members="members" />
+      </span>
       <span v-if="starts" class="tag player-card-tag">{{ t.game.throwsFirst }}</span>
       <span class="player-card-legs" :aria-label="fill(t.game.legsOf, { n: legsWon, of: legsToWin })">
         <template v-if="setsWon !== null">{{ t.game.sets }} {{ setsWon }} · </template>

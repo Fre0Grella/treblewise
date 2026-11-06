@@ -20,6 +20,7 @@ import {
   legsToWin,
   modeOf,
   shanghaiTarget,
+  sides,
   visitsDone,
   type GameConfig,
   type HalveTarget,
@@ -29,6 +30,8 @@ import {
 } from '@treblewise/core';
 
 import { fill, strings } from '../i18n/index.js';
+
+import { atOche, teamMembers, type MemberChip } from './sides.js';
 
 /** A row of numbers side by side: HeadToHead.vue's row. */
 export interface HeadToHeadRow {
@@ -141,7 +144,7 @@ export function modeHeading(snapshot: ModeSnapshot): string {
   const current = snapshot.current;
   if (!current) return '';
   const t = strings();
-  const name = snapshot.config.players.find((p) => p.id === current.playerId)?.name ?? '';
+  const name = atOche(snapshot.config, current.playerId, current.throwerId);
   const leg = currentLeg(snapshot);
   if (snapshot.config.mode === 'killer' && leg?.state.kind === 'killer' && leg.state.number[current.playerId] === null) {
     return fill(t.modes.play.pickNumber, { name });
@@ -169,6 +172,8 @@ export interface ModeCard {
   starts: boolean;
   out: boolean;
   legsWon: number;
+  /** A team's players, the one at the oche marked; null for a player alone. */
+  members: MemberChip[] | null;
   /** A tag beside the name: "Killer". */
   badge: string | null;
   /** Lives, as pips: so many on of so many. */
@@ -178,10 +183,11 @@ export interface ModeCard {
 }
 
 /**
- * Each player's card. `holder` is the player still holding the board with
- * their darts in it (the camera's pull-out), who stays lit until they are out.
+ * Each side's card. `holder` is the side still holding the board with its
+ * darts in it (the camera's pull-out), lit until they are out; `thrower` the
+ * person at the oche for the lit side.
  */
-export function modeCards(snapshot: ModeSnapshot, holder: string | null = null): ModeCard[] {
+export function modeCards(snapshot: ModeSnapshot, holder: string | null = null, thrower: string | null = snapshot.current?.throwerId ?? null): ModeCard[] {
   const t = strings();
   const p = t.modes.play;
   const config = snapshot.config;
@@ -190,12 +196,13 @@ export function modeCards(snapshot: ModeSnapshot, holder: string | null = null):
   // over, they keep where it ended.
   const leg = last && (!last.over || snapshot.current === null) ? last : null;
 
-  return config.players.map((player) => {
+  return sides(config).map((player) => {
     const id = player.id;
     const isCurrent = holder ? holder === id : snapshot.current?.playerId === id;
     const base: ModeCard = {
       id,
       name: player.name,
+      members: teamMembers(config, id, isCurrent ? thrower : null),
       value: '0',
       label: p.points,
       caption: '',
@@ -329,14 +336,14 @@ export function modeTitle(snapshot: ModeSnapshot): string {
   const legs = legsToWin(config);
   if (legs <= 1) return name;
   const target = fill(t.game.firstToLegs, { n: legs });
-  const score = config.players.map((p) => snapshot.legsWon[p.id] ?? 0).join('–');
+  const score = sides(config).map((p) => snapshot.legsWon[p.id] ?? 0).join('–');
   return `${name} · ${target} · ${score}`;
 }
 
 /** How a leg was won, in words: "Ann closed everything". */
 export function legHow(snapshot: ModeSnapshot, leg: ModeLeg): string {
   const p = strings().modes.play;
-  const name = snapshot.config.players.find((pl) => pl.id === leg.winnerId)?.name ?? '';
+  const name = sides(snapshot.config).find((side) => side.id === leg.winnerId)?.name ?? '';
   if (!leg.winnerId) return '';
   switch (leg.state.kind) {
     case 'cricket':
@@ -355,7 +362,7 @@ export function legHow(snapshot: ModeSnapshot, leg: ModeLeg): string {
 /** The numbers side by side for the legs given (one leg, or all of them). */
 export function modeRows(snapshot: ModeSnapshot, legs: readonly ModeLeg[]): HeadToHeadRow[] {
   const p = strings().modes.play.rows;
-  const ids = snapshot.config.players.map((pl) => pl.id);
+  const ids = sides(snapshot.config).map((side) => side.id);
   const darts = (id: string) => legs.flatMap((l) => l.visits).filter((v) => v.playerId === id).flatMap((v) => v.darts);
   const visits = (id: string) => legs.flatMap((l) => l.visits).filter((v) => v.playerId === id && v.darts.length > 0);
   const hits = (id: string) => darts(id).reduce((sum, d) => sum + (d.hits ?? 0), 0);

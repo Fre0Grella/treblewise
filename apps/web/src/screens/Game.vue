@@ -11,7 +11,7 @@
   report is open.
 -->
 <script setup lang="ts">
-import { formatHit, isX01Snapshot, matchStats, type Dart, type Hit, type Point, type Visit } from '@treblewise/core';
+import { formatHit, isX01Snapshot, matchStats, sides, type Dart, type Hit, type Point, type Visit } from '@treblewise/core';
 import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -31,6 +31,7 @@ import VisitSheet, { type SheetVisit } from '../components/VisitSheet.vue';
 import Icon from '../components/ui/Icon.vue';
 import Switch from '../components/ui/Switch.vue';
 import { useGameVisit } from '../composables/useGameVisit.js';
+import { atOche, personName, teamMembers } from '../game/sides.js';
 import { rematchConfig } from '../game/throwOrder.js';
 import { averageColour, difference, usualAverages } from '../game/usualAverage.js';
 import { fill, useStrings } from '../i18n/index.js';
@@ -86,7 +87,8 @@ const snapshot = computed(() => (matches.snapshot && isX01Snapshot(matches.snaps
 const current = computed(() => snapshot.value?.current ?? null);
 // Won, or ended early with or without a winner (issue #18).
 const finished = computed(() => snapshot.value != null && (snapshot.value.winnerId !== null || snapshot.value.endedEarly));
-const players = computed(() => snapshot.value?.config.players ?? []);
+/** Who takes turns: the players, or the teams (game/teams.ts). */
+const players = computed(() => (snapshot.value ? sides(snapshot.value.config) : []));
 
 // The visit being thrown, or between visits the one just thrown, so its darts
 // stay on the board until the next player throws.
@@ -100,6 +102,9 @@ const held = computed(() => position.value === 'held');
 const holder = computed(() => (held.value && visit.value ? visit.value.playerId : null));
 
 const nameOf = (id: string) => players.value.find((p) => p.id === id)?.name ?? '';
+/** The person at the oche: whoever holds the board with their darts in it, or is to throw. */
+const ocheThrower = computed(() => (holder.value ? (visit.value?.throwerId ?? null) : (current.value?.throwerId ?? null)));
+const personOf = (id: string) => (snapshot.value ? personName(snapshot.value.config, id) : '');
 
 const canReport = computed(() => settings.settings.keepFrames && visitState.value.reportable);
 function openReport() {
@@ -155,7 +160,7 @@ const title = computed(() => {
     : s.config.legsPerSet === 1
       ? t.game.firstToLeg
       : fill(t.game.firstToLegs, { n: s.config.legsPerSet });
-  const score = s.config.players.map((p) => (sets ? s.setsWon[p.id] : s.legsWon[p.id]) ?? 0).join('–');
+  const score = players.value.map((p) => (sets ? s.setsWon[p.id] : s.legsWon[p.id]) ?? 0).join('–');
   return `${s.config.startScore} · ${target} · ${score}`;
 });
 
@@ -179,7 +184,7 @@ function againstUsual(average: number | null, usualAverage: number | null) {
 const cards = computed(() => {
   const s = snapshot.value;
   if (!s) return [];
-  return s.config.players.map((player) => {
+  return players.value.map((player) => {
     const isNext = !holder.value && s.current?.playerId === player.id;
     const visits = legOver.value ? [] : (leg.value?.visits ?? []).filter((v) => v.playerId === player.id);
     const darts = visits.reduce((sum, v) => sum + v.darts.length, 0);
@@ -190,6 +195,7 @@ const cards = computed(() => {
     return {
       id: player.id,
       name: player.name,
+      members: teamMembers(s.config, player.id, holder.value ? (holder.value === player.id ? ocheThrower.value : null) : isNext ? ocheThrower.value : null),
       remaining: isNext
         ? s.current!.remaining
         : legOver.value
@@ -265,12 +271,12 @@ const boardDarts = computed<BoardDart[]>(() =>
 
 const heading = computed(() => {
   if (correcting.value) return keypad.value ? t.game.correctingPress : t.game.correctingTap;
-  if (holder.value) return fill(t.game.pullOutName, { name: nameOf(holder.value) });
+  if (holder.value) return fill(t.game.pullOutName, { name: personOf(ocheThrower.value ?? holder.value) });
   const now = current.value;
   if (!now) return '';
   return now.checkout
-    ? fill(t.game.require, { name: nameOf(now.playerId), n: now.remaining })
-    : fill(t.game.toThrowName, { name: nameOf(now.playerId) });
+    ? fill(t.game.require, { name: atOche(snapshot.value!.config, now.playerId, now.throwerId), n: now.remaining })
+    : fill(t.game.toThrowName, { name: atOche(snapshot.value!.config, now.playerId, now.throwerId) });
 });
 
 /** The leg visit by visit, newest first. */
@@ -282,7 +288,7 @@ const sheet = computed<SheetVisit[]>(() => {
     const live = !v.complete && !legOver.value;
     const last = !live && !lastSeen;
     if (last) lastSeen = true;
-    const name = nameOf(v.playerId);
+    const name = personOf(v.throwerId);
     const total = scored(v);
     return {
       key: `${v.setIndex}-${v.legIndex}-${visits.length - index}`,
@@ -304,7 +310,7 @@ const sheet = computed<SheetVisit[]>(() => {
   });
 });
 
-const nextName = computed(() => (current.value ? nameOf(current.value.playerId) : ''));
+const nextName = computed(() => (current.value ? personOf(current.value.throwerId) : ''));
 
 // ---------- the leg or the match just won (issue #18) ----------
 
@@ -322,10 +328,10 @@ function nextLeg() {
 /** Who leads, on sets then legs, with the score that way round: "Ann leads 2–1", "Level at 1–1". */
 const standing = computed(() => {
   const s = snapshot.value;
-  if (!s || s.config.players.length < 2) return '';
+  if (!s || players.value.length < 2) return '';
   const sets = (id: string) => s.setsWon[id] ?? 0;
   const legs = (id: string) => s.legsWon[id] ?? 0;
-  const order = [...s.config.players].sort((a, b) => sets(b.id) - sets(a.id) || legs(b.id) - legs(a.id));
+  const order = [...players.value].sort((a, b) => sets(b.id) - sets(a.id) || legs(b.id) - legs(a.id));
   const legScore = order.map((p) => legs(p.id)).join('–');
   const score =
     s.config.setsToWin > 1 ? fill(t.game.setsAndLegs, { sets: order.map((p) => sets(p.id)).join('–'), legs: legScore }) : legScore;
@@ -358,9 +364,9 @@ const result = computed(() => {
   const s = snapshot.value;
   const l = leg.value;
   if (!s || !l) return null;
-  const ids = s.config.players.map((p) => p.id);
-  const ofLeg = matchStats({ ...s, legs: [l] });
-  const ofMatch = matchStats(s);
+  const ids = players.value.map((p) => p.id);
+  const ofLeg = matchStats({ ...s, legs: [l] }, 'side');
+  const ofMatch = matchStats(s, 'side');
   const one = (n: number) => n.toFixed(1);
 
   const legAverage = ids.map((id) => (ofLeg[id]!.dartsThrown > 0 ? ofLeg[id]!.average : null));
@@ -418,7 +424,7 @@ const result = computed(() => {
   // a leg ended early, whoever had least left).
   let race: { start: number; lanes: RaceLane[]; lit: number } | null = null;
   if (ids.length > 2) {
-    const lanes = s.config.players.map((p) => {
+    const lanes = players.value.map((p) => {
       const own = l.visits.filter((v) => v.playerId === p.id);
       return {
         name: p.name,
@@ -446,9 +452,9 @@ const matchTitle = computed(() => {
   if (!s) return '';
   if (s.winnerId === null) return standing.value;
   const name = nameOf(s.winnerId);
-  if (s.config.players.length < 2) return fill(t.game.matchWon, { name });
+  if (players.value.length < 2) return fill(t.game.matchWon, { name });
   const sets = s.config.setsToWin > 1;
-  const score = s.config.players
+  const score = players.value
     .map((p) => (sets ? s.setsWon[p.id] : s.legsWon[p.id]) ?? 0)
     .sort((x, y) => y - x)
     .join('–');
@@ -507,6 +513,7 @@ const toLobby = () => go(lobby.session ? PATHS.lobby : PATHS.start);
           v-for="card in cards"
           :key="card.id"
           :name="card.name"
+          :members="card.members"
           :remaining="card.remaining"
           :legs-won="card.legsWon"
           :legs-to-win="snapshot.config.legsPerSet"

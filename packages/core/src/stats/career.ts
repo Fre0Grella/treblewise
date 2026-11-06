@@ -7,6 +7,7 @@
  */
 
 import { finishingDart, isFinishableWithOneDart } from '../game/checkout.js';
+import { sideOf } from '../game/teams.js';
 import type { Dart, MatchSnapshot, Visit } from '../game/x01.js';
 import { matchStats, visitTotal, type PlayerStats } from './match.js';
 
@@ -47,8 +48,9 @@ const BANDS: { from: number; to: number; label: string }[] = [
   { from: 0, to: 0, label: 'No score' },
 ];
 
+/** The visits a player threw themselves: in a team, theirs and not their teammates'. */
 function playerVisits(snapshot: MatchSnapshot, playerId: string): Visit[] {
-  return snapshot.legs.flatMap((leg) => leg.visits).filter((visit) => visit.playerId === playerId);
+  return snapshot.legs.flatMap((leg) => leg.visits).filter((visit) => visit.throwerId === playerId);
 }
 
 /**
@@ -128,22 +130,24 @@ export function careerStats(snapshots: readonly MatchSnapshot[], playerId: strin
     }
 
     // The first-nine average has to be re-derived: it is a ratio, not a sum.
+    // Who threw first and who won a leg are the side's: in a team, the team's.
+    const side = sideOf(snapshot.config, playerId);
     for (const leg of snapshot.legs) {
       legs += 1;
-      if (leg.startingPlayerId === playerId) {
+      if (leg.startingPlayerId === side) {
         firstThrowLegs += 1;
-        if (leg.winnerId === playerId) firstThrowLegsWon += 1;
+        if (leg.winnerId === side) firstThrowLegsWon += 1;
       }
-      if (leg.winnerId === playerId) legDartsWon += leg.dartsThrown[playerId] ?? 0;
+      if (leg.winnerId === side) legDartsWon += leg.dartsThrown[side] ?? 0;
 
-      const visits = leg.visits.filter((visit) => visit.playerId === playerId);
+      const visits = leg.visits.filter((visit) => visit.throwerId === playerId);
       visits.slice(0, 3).forEach((visit) => {
         first9Points += visitTotal(visit);
         first9Darts += visit.darts.length;
       });
 
-      if (leg.winnerId === playerId) {
-        const darts = leg.dartsThrown[playerId] ?? 0;
+      if (leg.winnerId === side) {
+        const darts = leg.dartsThrown[side] ?? 0;
         if (darts > 0) {
           const average = (snapshot.config.startScore / darts) * 3;
           bestLegAverage = bestLegAverage === null ? average : Math.max(bestLegAverage, average);

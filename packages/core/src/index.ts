@@ -3,6 +3,7 @@ export * from './board/notation.js';
 export * from './game/rules.js';
 export * from './game/checkout.js';
 export * from './game/x01.js';
+export * from './game/teams.js';
 export * from './game/turns.js';
 export * from './game/cricket.js';
 export * from './game/aroundTheClock.js';

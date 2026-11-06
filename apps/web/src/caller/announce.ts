@@ -5,8 +5,9 @@
  * without a microphone, a browser or a game.
  */
 
-import type { GameSnapshot, Hit, MatchSnapshot, ModeSnapshot } from '@treblewise/core';
+import { sides, type GameSnapshot, type Hit, type MatchSnapshot, type ModeSnapshot } from '@treblewise/core';
 
+import { personName, sideName } from '../game/sides.js';
 import { strings } from '../i18n/index.js';
 
 import type { Call } from './call.js';
@@ -29,9 +30,13 @@ export interface AnnounceOptions {
   names?: boolean;
 }
 
-function playerName(snapshot: GameSnapshot, playerId: string): string {
-  return snapshot.config.players.find((p) => p.id === playerId)?.name ?? playerId;
+/** A side's name, for the shots: the player, or the team. */
+function playerName(snapshot: GameSnapshot, sideId: string): string {
+  return sideName(snapshot.config, sideId) || sideId;
 }
+
+/** Who is called up to throw: the person, in a team the member whose turn it is. */
+const throwerName = (snapshot: GameSnapshot, current: { throwerId: string }) => personName(snapshot.config, current.throwerId);
 
 function completedVisits(snapshot: GameSnapshot) {
   return snapshot.legs.flatMap((leg) => leg.visits).filter((visit) => visit.complete);
@@ -84,8 +89,8 @@ export function announce(before: MatchSnapshot | null, after: MatchSnapshot, opt
   const next = after.current;
   if (next !== null) {
     const finish = next.checkout !== null && next.remaining <= MOST_REQUIRED;
-    if (finish) calls.push(named(t.caller.requires(playerName(after, next.playerId), next.remaining)));
-    else if (names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(playerName(after, next.playerId)));
+    if (finish) calls.push(named(t.caller.requires(throwerName(after, next), next.remaining)));
+    else if (names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(throwerName(after, next)));
   }
 
   return calls;
@@ -105,7 +110,7 @@ export function announceMode(before: ModeSnapshot | null, after: ModeSnapshot, o
   const t = strings();
   const names = options.names ?? true;
   const named = (call: Call) => (names ? call : withoutNames(call));
-  const alone = after.config.players.length === 1;
+  const alone = sides(after.config).length === 1;
 
   if (after.winnerId !== null && (before === null || before.winnerId === null)) {
     return alone ? [] : [named(t.caller.matchShot(playerName(after, after.winnerId)))];
@@ -122,7 +127,7 @@ export function announceMode(before: ModeSnapshot | null, after: ModeSnapshot, o
     else if (total <= 180) calls.push([t.caller.visit(total)]);
   }
   const next = after.current;
-  if (next !== null && names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(playerName(after, next.playerId)));
+  if (next !== null && names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(throwerName(after, next)));
   return calls;
 }
 

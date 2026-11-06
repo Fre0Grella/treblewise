@@ -72,4 +72,30 @@ describe('the screen of the other games', () => {
     await fireEvent.click(within(rules).getByRole('button', { name: 'Got it' }));
     expect(screen.queryByRole('dialog', { name: /how to play/i })).toBeNull();
   });
+
+  it('plays teams: the team on the board, its players under the name, the one at the oche named', async () => {
+    const people = ['Marco', 'Giulia', 'Dave', 'Anna'].map((name) => ({ id: name.toLowerCase(), name }));
+    await renderAt('/game', () =>
+      start({
+        mode: 'cricket',
+        scoring: 'standard',
+        legsToWin: 1,
+        players: people,
+        teams: [
+          { id: 't1', name: 'Team 1', members: ['marco', 'giulia'] },
+          { id: 't2', name: 'Team 2', members: ['dave', 'anna'] },
+        ],
+      }),
+    );
+    expect(screen.getByRole('heading', { name: 'Marco (Team 1) to throw' })).toBeDefined();
+    const board = screen.getByRole('region', { name: 'Cricket' });
+    expect(within(board).getByText('Team 1')).toBeDefined();
+    expect(within(board).getByText('Marco').getAttribute('aria-current')).toBe('true');
+
+    for (let i = 0; i < 3; i += 1) await press('Miss');
+    expect(screen.getByRole('heading', { name: 'Dave (Team 2) to throw' })).toBeDefined();
+    // The visit is the thrower's, by name.
+    expect(within(screen.getByRole('region', { name: /visits/i })).getByText('Marco')).toBeDefined();
+  });
 });
+

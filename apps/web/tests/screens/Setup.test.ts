@@ -237,3 +237,57 @@ it('keeps the setup behind the rules', async () => {
   await fireEvent.click(screen.getByRole('button', { name: /how to play cricket/i }));
   expect(document.querySelector('.setup-grid')).not.toBeNull();
 });
+
+describe('playing in teams', () => {
+  beforeEach(async () => {
+    for (const match of await listMatches(Number.MAX_SAFE_INTEGER)) await deleteMatch(match.id);
+    await saveSetting('profilesSeeded', true);
+  });
+
+  async function fourGuests() {
+    const rendered = await renderAt('/setup');
+    for (const name of ['Marco', 'Giulia', 'Dave', 'Anna']) {
+      await press(/^guest$/i);
+      await fireEvent.update(screen.getByLabelText(/guest/i), name);
+      await press(/add for this match/i);
+    }
+    return rendered;
+  }
+
+  it('deals the lineup onto teams, moves a player, and starts the teams in the order set', async () => {
+    await fourGuests();
+    await fireEvent.click(screen.getByRole('switch', { name: /teams/i }));
+    expect(screen.getByText('Marco & Dave v Giulia & Anna')).toBeDefined();
+
+    await press(/move dave to team 2/i);
+    await press(/move giulia to team 1/i);
+    expect(screen.getByText('Marco & Giulia v Dave & Anna')).toBeDefined();
+
+    await press(/start match/i);
+    await press(/set the order/i);
+    await press(/move team 2 up/i);
+    await press(/start match/i);
+
+    const config = useMatchesStore().snapshot!.config;
+    expect(config.teams!.map((team) => team.members)).toEqual([
+      ['dave', 'anna'].map((name) => config.players.find((p) => p.name.toLowerCase() === name)!.id),
+      ['marco', 'giulia'].map((name) => config.players.find((p) => p.name.toLowerCase() === name)!.id),
+    ]);
+    expect(config.players).toHaveLength(4);
+    expect(useMatchesStore().snapshot!.current).toMatchObject({ playerId: 'team-2' });
+    // Stored as it is: plain objects, not Vue proxies.
+    const stored = await listMatches(Number.MAX_SAFE_INTEGER);
+    expect(stored[0]!.config.teams).toHaveLength(2);
+  });
+
+  it('is not offered in Killer, nor played with fewer than three', async () => {
+    await renderAt('/setup');
+    await fireEvent.click(screen.getByRole('radio', { name: /^killer/i }));
+    expect(screen.queryByRole('switch', { name: /teams/i })).toBeNull();
+    expect(screen.getByText(/killer is played each for themselves/i)).toBeDefined();
+
+    await fireEvent.click(screen.getByRole('radio', { name: /^x01/i }));
+    await fireEvent.click(screen.getByRole('switch', { name: /teams/i }));
+    expect(screen.getByText(/teams need three players or more/i)).toBeDefined();
+  });
+});
