@@ -18,7 +18,7 @@ const SCREENS: Record<RouteName, () => Promise<unknown>> = {
   history: () => import('../screens/History.vue'),
   match: () => import('../screens/History.vue'),
   stats: () => import('../screens/Stats.vue'),
-  game: () => import('../screens/Game.vue'),
+  game: () => import('../screens/Play.vue'),
   review: () => import('../screens/Review.vue'),
   photo: () => import('../screens/Review.vue'),
   camera: () => import('../screens/Capture.vue'),

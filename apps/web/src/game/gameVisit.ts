@@ -18,7 +18,7 @@
  * reload shows the last visit open again.
  */
 
-import { MISS, type Hit, type MatchSnapshot, type Visit } from '@treblewise/core';
+import { MISS, type GameSnapshot, type Hit, type Visit } from '@treblewise/core';
 
 import type { Calibration } from '../storage/types.js';
 import type { ThrowOptions } from '../store/matches.js';
@@ -73,7 +73,7 @@ export interface GameVisitDeps {
 
 export interface GameVisit {
   /** The match as it is now. Call it whenever the snapshot changes. */
-  follow(snapshot: MatchSnapshot | null): void;
+  follow(snapshot: GameSnapshot | null): void;
   /** Whether the autoscorer is scoring: the camera on, and "autoscorer scores" with it. */
   setAutoscoring(on: boolean): void;
   /** The calibration photographs are judged and reported under; the board watcher is told it too. */
@@ -116,7 +116,7 @@ const fits = (photo: GrabbedFrame | null, calibration: Calibration | null): phot
   photo !== null && calibration !== null && photo.width === calibration.width && photo.height === calibration.height;
 
 export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): GameVisit {
-  let snapshot: MatchSnapshot | null = null;
+  let snapshot: GameSnapshot | null = null;
   let autoscoring = false;
   let calibration: Calibration | null = null;
   /** The finished visit whose darts are out (its first dart's id): no longer correctable here. */
@@ -183,7 +183,7 @@ export function createGameVisit(watcher: BoardWatcher, deps: GameVisitDeps): Gam
     });
   };
 
-  const visitOf = (match: MatchSnapshot | null): Visit | null => match?.legs.at(-1)?.visits.at(-1) ?? null;
+  const visitOf = (match: GameSnapshot | null): Visit | null => match?.legs.at(-1)?.visits.at(-1) ?? null;
   const canThrow = () => snapshot !== null && snapshot.current !== null && snapshot.winnerId === null;
 
   function positionOf(visit: Visit | null): VisitPosition {

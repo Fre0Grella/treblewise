@@ -4,13 +4,14 @@
  * other.
  */
 
-import type { Hit, Matrix3, Point, X01Config, MatchEvent } from '@treblewise/core';
+import type { GameConfig, Hit, Matrix3, Point, MatchEvent } from '@treblewise/core';
 
 export interface StoredMatch {
   id: string;
   createdAt: number;
   updatedAt: number;
-  config: X01Config;
+  /** The game and how it is set up; a match stored before there were other games is X01. */
+  config: GameConfig;
   /** The append-only log. The match state is derived from it, never stored. */
   events: MatchEvent[];
   finished: boolean;

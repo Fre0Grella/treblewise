@@ -7,7 +7,7 @@
  * screens ask it.
  */
 
-import type { Hit, Point, X01Config } from '@treblewise/core';
+import type { GameConfig, Hit, Point } from '@treblewise/core';
 import { defineStore } from 'pinia';
 
 import { hookUpCaller } from '../caller/hookup.js';
@@ -71,7 +71,7 @@ export const useMatchesStore = defineStore('matches', () => {
 
   return {
     ...state,
-    start(config: X01Config) {
+    start(config: GameConfig) {
       usePlayersStore().played(config.players);
       matches.start(config);
     },

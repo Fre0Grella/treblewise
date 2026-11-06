@@ -5,7 +5,7 @@
  * without a microphone, a browser or a game.
  */
 
-import type { Hit, MatchSnapshot } from '@treblewise/core';
+import type { GameSnapshot, Hit, MatchSnapshot, ModeSnapshot } from '@treblewise/core';
 
 import { strings } from '../i18n/index.js';
 
@@ -29,23 +29,23 @@ export interface AnnounceOptions {
   names?: boolean;
 }
 
-function playerName(snapshot: MatchSnapshot, playerId: string): string {
+function playerName(snapshot: GameSnapshot, playerId: string): string {
   return snapshot.config.players.find((p) => p.id === playerId)?.name ?? playerId;
 }
 
-function completedVisits(snapshot: MatchSnapshot) {
+function completedVisits(snapshot: GameSnapshot) {
   return snapshot.legs.flatMap((leg) => leg.visits).filter((visit) => visit.complete);
 }
 
 /** The visit the move from `before` to `after` completed, if it completed one. */
-function visitCompleted(before: MatchSnapshot | null, after: MatchSnapshot) {
+function visitCompleted(before: GameSnapshot | null, after: GameSnapshot) {
   const done = completedVisits(after);
   const doneBefore = before === null ? 0 : completedVisits(before).length;
   return done.length > doneBefore ? done.at(-1) : undefined;
 }
 
 /** Whether the dart that moved the match from `before` to `after` bust its visit. */
-export function bustedBy(before: MatchSnapshot, after: MatchSnapshot): boolean {
+export function bustedBy(before: GameSnapshot, after: GameSnapshot): boolean {
   return visitCompleted(before, after)?.busted === true;
 }
 
@@ -88,6 +88,41 @@ export function announce(before: MatchSnapshot | null, after: MatchSnapshot, opt
     else if (names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(playerName(after, next.playerId)));
   }
 
+  return calls;
+}
+
+/** The games where a visit is worth points, called like an X01 visit. */
+const CALLS_POINTS = new Set(['shanghai', 'bobs27', 'halveIt', 'countUp']);
+
+/**
+ * What the caller says in the other games (issue #22), with the clips there
+ * are: the match and the leg won as in X01, a visit's points in the games
+ * played for points ("No score" for a Bob's 27 round without a double or a
+ * Halve-it round that halves), and then who is to throw. Alone at the board
+ * there is no "game shot": a drill just ends.
+ */
+export function announceMode(before: ModeSnapshot | null, after: ModeSnapshot, options: AnnounceOptions = {}): Call[] {
+  const t = strings();
+  const names = options.names ?? true;
+  const named = (call: Call) => (names ? call : withoutNames(call));
+  const alone = after.config.players.length === 1;
+
+  if (after.winnerId !== null && (before === null || before.winnerId === null)) {
+    return alone ? [] : [named(t.caller.matchShot(playerName(after, after.winnerId)))];
+  }
+
+  const visit = visitCompleted(before, after);
+  if (!visit) return [];
+  if (visit.won && !alone) return [named(t.caller.gameShot(visit.legIndex + 1, playerName(after, visit.playerId)))];
+
+  const calls: Call[] = [];
+  if (CALLS_POINTS.has(after.config.mode)) {
+    const total = visit.darts.reduce((sum, dart) => sum + dart.scored, 0);
+    if (visit.busted) calls.push([{ pause: BUST_BEAT_MS }, t.caller.bust]);
+    else if (total <= 180) calls.push([t.caller.visit(total)]);
+  }
+  const next = after.current;
+  if (next !== null && names && next.playerId !== visit.playerId) calls.push(t.caller.toThrow(playerName(after, next.playerId)));
   return calls;
 }
 

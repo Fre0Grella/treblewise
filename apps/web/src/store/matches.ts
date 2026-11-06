@@ -10,16 +10,17 @@
  */
 
 import {
-  reduceMatch,
+  isX01Snapshot,
+  reduceGame,
   type DartSource,
+  type GameConfig,
+  type GameSnapshot,
   type Hit,
   type MatchEvent,
-  type MatchSnapshot,
   type Point,
-  type X01Config,
 } from '@treblewise/core';
 
-import { announce, bustedBy } from '../caller/announce.js';
+import { announce, announceMode, bustedBy } from '../caller/announce.js';
 import type { Call } from '../caller/call.js';
 import { strings } from '../i18n/index.js';
 import { deleteMatch, listMatches, putMatch, type StoredMatch } from '../storage/db.js';
@@ -29,7 +30,7 @@ import type { Slice } from './slice.js';
 export interface MatchesState {
   /** The match in play, if any, and what its log folds to. */
   match: StoredMatch | null;
-  snapshot: MatchSnapshot | null;
+  snapshot: GameSnapshot | null;
   /** The stored matches, most recently played first. */
   history: StoredMatch[];
 }
@@ -46,7 +47,7 @@ export interface ThrowOptions {
 /** The match after a dart, a correction or an undo, and what to announce for it, in order. */
 export interface Appended {
   match: StoredMatch;
-  snapshot: MatchSnapshot;
+  snapshot: GameSnapshot;
   calls: Call[];
   /** This dart bust its visit: the game plays the bust (caller/sounds.ts). */
   busted?: boolean;
@@ -59,7 +60,7 @@ export interface MatchesOptions {
 
 export interface MatchesActions {
   /** Starts a match and saves it. */
-  start(config: X01Config): void;
+  start(config: GameConfig): void;
   /** Puts a stored match back in play; false when there is no such match. */
   resume(id: string): boolean;
   /** Deletes a stored match, the one in play included. */
@@ -87,7 +88,7 @@ export async function loadMatches(): Promise<MatchesState> {
   return {
     history,
     match: unfinished ?? null,
-    snapshot: unfinished ? reduceMatch(unfinished.config, unfinished.events) : null,
+    snapshot: unfinished ? reduceGame(unfinished.config, unfinished.events) : null,
   };
 }
 
@@ -95,12 +96,13 @@ export function createMatches(state: Slice<MatchesState>, options: MatchesOption
   const names = options.names ?? (() => true);
   /** Applies a new event list: folds it and saves it. Nothing to announce yet. */
   const commit = (current: StoredMatch, events: MatchEvent[]): Appended => {
-    const snapshot = reduceMatch(current.config, events);
+    const snapshot = reduceGame(current.config, events);
     const match: StoredMatch = {
       ...current,
       events,
       updatedAt: Date.now(),
-      finished: snapshot.winnerId !== null || snapshot.endedEarly,
+      // Won, ended early, or (a drill) drawn: nothing more can be thrown.
+      finished: snapshot.current === null,
     };
     state.set({ match, snapshot });
     void putMatch(match);
@@ -121,14 +123,14 @@ export function createMatches(state: Slice<MatchesState>, options: MatchesOption
         events: [],
         finished: false,
       };
-      state.set({ match, snapshot: reduceMatch(config, []) });
+      state.set({ match, snapshot: reduceGame(config, []) });
       void putMatch(match);
     },
 
     resume(id) {
       const match = state.get().history.find((m) => m.id === id);
       if (!match) return false;
-      state.set({ match, snapshot: reduceMatch(match.config, match.events) });
+      state.set({ match, snapshot: reduceGame(match.config, match.events) });
       return true;
     },
 
@@ -159,7 +161,14 @@ export function createMatches(state: Slice<MatchesState>, options: MatchesOption
       const busted = bustedBy(snapshot, next.snapshot);
       // A dart that busts is heard as the bust, not as its score.
       const called: Call[] = options.call && !busted ? [[strings().caller.hit(hit)]] : [];
-      const calls = announce(snapshot, next.snapshot, { names: names() });
+      const before = snapshot;
+      const after = next.snapshot;
+      const calls =
+        isX01Snapshot(before) && isX01Snapshot(after)
+          ? announce(before, after, { names: names() })
+          : !isX01Snapshot(before) && !isX01Snapshot(after)
+            ? announceMode(before, after, { names: names() })
+            : [];
       return { ...next, calls: [...called, ...calls], busted };
     },
 
