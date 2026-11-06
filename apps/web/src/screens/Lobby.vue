@@ -25,6 +25,7 @@ import LobbyArt, { type LobbyArtKind } from '../components/art/LobbyArt.vue';
 import InstallEntry from '../components/InstallEntry.vue';
 import { shownBattery } from '../components/batteryLevel.js';
 import ScreenShell from '../components/ui/ScreenShell.vue';
+import { gameName } from '../game/modeView.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore, useMatchesStore, useSettingsStore } from '../store/stores.js';
@@ -71,11 +72,11 @@ const standing = computed(() => {
     players: snapshot.config.players.map((player) => ({
       id: player.id,
       name: player.name,
-      left: snapshot.current!.playerId === player.id ? snapshot.current!.remaining : (leg?.remaining[player.id] ?? snapshot.config.startScore),
+      left: snapshot.current!.playerId === player.id ? snapshot.current!.remaining : (leg?.remaining[player.id] ?? snapshot.current!.remaining),
       throwing: snapshot.current!.playerId === player.id,
     })),
     legs: snapshot.config.players.map((player) => snapshot.legsWon[player.id] ?? 0).join('–'),
-    startScore: snapshot.config.startScore,
+    game: gameName(snapshot.config),
   };
 });
 const battery = computed(() => shownBattery(lobby.phone));
@@ -197,7 +198,7 @@ const keep = (index: number) => (element: unknown) => {
             <span class="lobby-standing-name">{{ player.name }}</span>
             <span :class="['num', 'lobby-standing-left', { 'lobby-standing-throwing': player.throwing }]">{{ player.left }}</span>
           </span>
-          <span class="lobby-standing-meta">{{ standing.startScore }} · {{ t.game.legs }} {{ standing.legs }}</span>
+          <span class="lobby-standing-meta">{{ standing.game }} · {{ t.game.legs }} {{ standing.legs }}</span>
         </div>
       </div>
 

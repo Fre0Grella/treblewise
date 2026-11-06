@@ -28,6 +28,7 @@ const props = defineProps<{
   rows: readonly HeadToHeadRow[];
   /** Between the two names: "Leg 3", "Match". */
   caption: string;
+  /** The visits by score; none in a game that is not X01. */
   bands: readonly ScoreBand[];
   /** Who was ahead, for two players. */
   lead: { points: readonly LeadPoint[]; won: boolean } | null;
@@ -63,7 +64,7 @@ const cellBar = (n: number, k: number) => ({ width: n ? `${6 + (n / peak.value) 
 
       <div class="result-side">
         <HeadToHead :players="players" :rows="rows" :caption="caption">
-          <template v-if="!pair" #rows>
+          <template v-if="!pair && bands.length > 0" #rows>
             <tr class="result-bands-head">
               <th :colspan="players.length + 1">{{ t.game.visitsByScore }}</th>
             </tr>
@@ -78,7 +79,7 @@ const cellBar = (n: number, k: number) => ({ width: n ? `${6 + (n / peak.value) 
             </tr>
           </template>
         </HeadToHead>
-        <template v-if="pair">
+        <template v-if="pair && bands.length > 0">
           <span class="result-bands-title">{{ t.game.visitsByScore }}</span>
           <ul class="result-bands">
             <li v-for="(band, k) in bands" :key="band.label">

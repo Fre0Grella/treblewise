@@ -810,7 +810,8 @@ input:focus-visible {
 .game-top {
   flex: none;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* The title gives way (an ellipsis) before the tools do, on a phone. */
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
   align-items: center;
   gap: var(--space-3);
   min-height: 64px;
@@ -1170,6 +1171,183 @@ input:focus-visible {
 
 .player-card-compact .player-card-average-value {
   font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+}
+
+/* ---- a player in the other games (issue #22) ---- */
+
+/* The X01 card's shape; the big number is a target or a score, and what it
+   is goes in the dark box beside it. */
+.mode-card-player {
+  flex: 0 1 auto;
+}
+
+.mode-card-value {
+  font-size: clamp(4rem, 7vw, 7rem);
+}
+
+.player-card-compact .mode-card-value {
+  font-size: clamp(2.8rem, 4vw, 3.8rem);
+}
+
+.mode-card-what {
+  gap: 6px;
+  min-width: 150px;
+  text-align: right;
+}
+
+.mode-card-caption {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.mode-card-lives {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 140px;
+}
+
+.mode-life {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-round);
+  border: 2px solid var(--line);
+}
+
+.mode-life-on {
+  border-color: transparent;
+  background: var(--board-red);
+}
+
+.tag.mode-card-badge {
+  background: var(--board-red);
+  color: var(--beige-50);
+}
+
+.player-card-on .mode-card-badge {
+  background: var(--board-red);
+  color: var(--beige-50);
+}
+
+.mode-card-progress {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.player-card-on .mode-card-progress {
+  background: rgb(21 19 15 / 18%);
+}
+
+.mode-card-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--live);
+  transition: width 300ms;
+}
+
+.player-card-on .mode-card-progress-fill {
+  background: var(--accent-ink);
+}
+
+/* Out of the game: faded, still in its place. */
+.mode-card-out {
+  opacity: 0.45;
+}
+
+/* ---- the cricket board ---- */
+
+.cricket {
+  display: grid;
+  grid-template-columns: 64px repeat(var(--cricket-players), minmax(0, 1fr));
+  border-radius: 14px;
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+
+.cricket-row {
+  display: contents;
+}
+
+.cricket-row > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--bg-hover);
+}
+
+.cricket-head > * {
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  padding: var(--space-3) var(--space-2);
+}
+
+.cricket-player {
+  min-width: 0;
+}
+
+.cricket-name {
+  max-width: 100%;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cricket-points {
+  font-size: clamp(2.2rem, 3.4vw, 3.2rem);
+  line-height: 1;
+}
+
+.cricket-starts {
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.cricket-number {
+  font-size: var(--text-xl);
+  color: var(--text);
+  background: var(--bg-sunken);
+}
+
+.cricket-on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  --card-dim: rgb(21 19 15 / 62%);
+}
+
+.cricket-on .cricket-starts {
+  color: var(--accent-ink);
+}
+
+.cricket-mark {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.4vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cricket-closed .cricket-mark {
+  color: var(--live);
+}
+
+.cricket-on.cricket-closed .cricket-mark {
+  color: var(--green-500);
+}
+
+/* Closed by everyone: out of play. */
+.cricket-dead > * {
+  opacity: 0.4;
+}
+
+.cricket-dead .cricket-number {
+  text-decoration: line-through;
 }
 
 /* ---- the visit ---- */
@@ -3507,7 +3685,8 @@ input:focus-visible {
 /* One row on a wide screen, so the line reads as one road; a column on a phone. */
 @media (min-width: 640px) {
   .landing-roadmap ol {
-    grid-template-columns: repeat(4, 1fr);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
   }
 }
 
@@ -4384,6 +4563,73 @@ input:focus-visible {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-7);
   }
+}
+
+/* The game (issue #22): a tile each, the games then the drills; the chosen
+   one raised, as in a segmented bar. */
+.mode-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.mode-pick-group {
+  margin-top: var(--space-2);
+}
+
+.mode-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+
+.mode-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  min-height: 72px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--text);
+  text-align: left;
+  font-weight: 500;
+}
+
+.mode-tile:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.mode-tile-name {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mode-tile-blurb {
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--text-faint);
+}
+
+.mode-tile-on,
+.mode-tile-on:hover:not(:disabled) {
+  background: var(--action);
+  color: var(--action-ink);
+}
+
+.mode-tile-on .mode-tile-blurb {
+  color: rgb(21 19 15 / 70%);
+}
+
+/* A switch among the settings: the same height and hairline as a setting row. */
+.setting-switch {
+  min-height: 64px;
 }
 
 /* A section's heading with a short note at the other end. */

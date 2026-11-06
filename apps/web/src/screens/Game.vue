@@ -11,7 +11,7 @@
   report is open.
 -->
 <script setup lang="ts">
-import { formatHit, matchStats, type Dart, type Hit, type Point, type Visit } from '@treblewise/core';
+import { formatHit, isX01Snapshot, matchStats, type Dart, type Hit, type Point, type Visit } from '@treblewise/core';
 import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -74,7 +74,8 @@ onScopeDispose(
   }),
 );
 
-const snapshot = computed(() => matches.snapshot);
+// X01: the other games have their own screen (ModeGame.vue).
+const snapshot = computed(() => (matches.snapshot && isX01Snapshot(matches.snapshot) ? matches.snapshot : null));
 const current = computed(() => snapshot.value?.current ?? null);
 // Won, or ended early with or without a winner (issue #18).
 const finished = computed(() => snapshot.value != null && (snapshot.value.winnerId !== null || snapshot.value.endedEarly));

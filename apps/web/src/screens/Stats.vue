@@ -17,6 +17,7 @@ import {
   expectedScoreMap,
   formatHit,
   hit as makeHit,
+  isX01,
   legStats,
   positionedDarts,
   reduceMatch,
@@ -65,7 +66,9 @@ const chosenPlayer = ref<string | null>(null);
 const range = ref<Range>('all');
 const rangeOptions = (['session', 'month', 'all'] as Range[]).map((value) => ({ value, label: t.stats.ranges[value] }));
 
-const snapshots = computed(() => matches.history.map((match) => reduceMatch(match.config, match.events)));
+/** The X01 matches: the statistics are averages, checkouts and where the darts land in X01. */
+const x01Matches = computed(() => matches.history.flatMap((match) => (isX01(match.config) ? [{ match, config: match.config }] : [])));
+const snapshots = computed(() => x01Matches.value.map(({ match, config }) => reduceMatch(config, match.events)));
 
 const people = computed(() => {
   const seen = new Map<string, { id: string; name: string; darts: number }>();
@@ -103,8 +106,8 @@ const inRange = computed(() => snapshots.value.filter((snapshot) => lastDartAt(s
 
 /** The chosen player's legs in the period, oldest first: one point each on the chart. */
 const legPoints = computed<LegPoint[]>(() =>
-  matches.history
-    .flatMap((match, index) =>
+  x01Matches.value
+    .flatMap(({ match }, index) =>
       legStats(snapshots.value[index]!, active.value).map((leg) => ({
         matchId: match.id,
         at: leg.at,

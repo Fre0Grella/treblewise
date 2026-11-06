@@ -11,7 +11,7 @@
  * written beside it too, so the colour is never the only sign.
  */
 
-import { careerStats, reduceMatch, type PlayerConfig } from '@treblewise/core';
+import { careerStats, isX01, reduceMatch, type PlayerConfig } from '@treblewise/core';
 
 import type { StoredMatch } from '../storage/types.js';
 
@@ -31,7 +31,10 @@ export function usualAverages(
   history: readonly StoredMatch[],
   playing: string | null,
 ): Record<string, number | null> {
-  const finished = history.filter((match) => match.finished && match.id !== playing).map((match) => reduceMatch(match.config, match.events));
+  // X01 only: an average means nothing in cricket or a drill.
+  const finished = history.flatMap((match) =>
+    match.finished && match.id !== playing && isX01(match.config) ? [reduceMatch(match.config, match.events)] : [],
+  );
   return Object.fromEntries(
     players.map((player) => {
       if (player.temporary) return [player.id, null];

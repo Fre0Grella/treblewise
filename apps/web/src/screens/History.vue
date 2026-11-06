@@ -6,13 +6,14 @@
   beside it (issue #20); on a phone the list and the match take turns.
 -->
 <script setup lang="ts">
-import { matchStats, reduceMatch, type MatchSnapshot } from '@treblewise/core';
+import { TRAINING_MODES, isX01Snapshot, matchStats, reduceGame, type GameSnapshot } from '@treblewise/core';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import HeadToHead, { type HeadToHeadRow } from '../components/HeadToHead.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
 import Segmented from '../components/ui/Segmented.vue';
+import { gameName, modeRows } from '../game/modeView.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import type { StoredMatch } from '../storage/db.js';
@@ -48,11 +49,17 @@ function dayLabel(time: number): string {
 }
 
 const timeOf = (time: number) => new Date(time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-const gameOf = (match: StoredMatch) => `${match.config.startScore} · ${match.config.players.map((p) => p.name).join(' v ')}`;
-const scoreOf = (snapshot: MatchSnapshot) =>
-  snapshot.config.players
-    .map((player) => (snapshot.config.setsToWin > 1 ? snapshot.setsWon[player.id] : snapshot.legsWon[player.id]) ?? 0)
-    .join('–');
+const gameOf = (match: StoredMatch) => `${gameName(match.config)} · ${match.config.players.map((p) => p.name).join(' v ')}`;
+/** Sets or legs won; in a game played once for points (a drill), the points. */
+function scoreOf(snapshot: GameSnapshot): string {
+  const players = snapshot.config.players;
+  if (isX01Snapshot(snapshot)) {
+    return players.map((player) => (snapshot.config.setsToWin > 1 ? snapshot.setsWon[player.id] : snapshot.legsWon[player.id]) ?? 0).join('–');
+  }
+  if (!TRAINING_MODES.includes(snapshot.config.mode)) return players.map((player) => snapshot.legsWon[player.id] ?? 0).join('–');
+  const leg = snapshot.legs.at(-1);
+  return players.map((player) => leg?.remaining[player.id] ?? 0).join('–');
+}
 
 /** The list, grouped by day. */
 const groups = computed(() => {
@@ -63,7 +70,7 @@ const groups = computed(() => {
     const label = dayLabel(match.createdAt);
     let group = out.find((candidate) => candidate.label === label);
     if (!group) out.push((group = { label, rows: [] }));
-    group.rows.push({ match, score: scoreOf(reduceMatch(match.config, match.events)) });
+    group.rows.push({ match, score: scoreOf(reduceGame(match.config, match.events)) });
   }
   return out;
 });
@@ -73,8 +80,7 @@ const open = computed(() => {
   if (!id.value) return null;
   const match = matches.history.find((candidate) => candidate.id === id.value);
   if (!match) return null;
-  const snapshot = reduceMatch(match.config, match.events);
-  const stats = matchStats(snapshot);
+  const snapshot = reduceGame(match.config, match.events);
   const players = snapshot.config.players;
   const winner = players.find((player) => player.id === snapshot.winnerId);
   const score = scoreOf(snapshot);
@@ -84,7 +90,11 @@ const open = computed(() => {
   };
   const one = (value: number | null) => (value === null ? '–' : value.toFixed(1));
   const whole = (value: number | null) => (value === null || value === 0 ? '–' : String(value));
-  const rows: HeadToHeadRow[] = [
+  let rows: HeadToHeadRow[] = [];
+  if (!isX01Snapshot(snapshot)) rows = modeRows(snapshot, snapshot.legs);
+  else {
+    const stats = matchStats(snapshot);
+    rows = [
     { label: t.headToHead.average, higherIsBetter: true, ...each((p) => (stats[p]!.dartsThrown ? stats[p]!.average : null), one) },
     { label: t.headToHead.first9, higherIsBetter: true, ...each((p) => (stats[p]!.dartsThrown ? stats[p]!.first9Average : null), one) },
     {
@@ -97,7 +107,8 @@ const open = computed(() => {
     },
     { label: t.headToHead.highestVisit, higherIsBetter: true, ...each((p) => stats[p]!.bestVisit, whole) },
     { label: t.headToHead.highestCheckout, higherIsBetter: true, ...each((p) => stats[p]!.highestCheckout, whole) },
-  ];
+    ];
+  }
   return {
     match,
     players,
@@ -106,7 +117,7 @@ const open = computed(() => {
         ? fill(t.history.won, { name: winner.name, score })
         : fill(t.history.noWinner, { score })
       : `${players.map((player) => player.name).join(' v ')} · ${score}`,
-    meta: `${match.config.startScore} · ${dayLabel(match.createdAt)}, ${timeOf(match.createdAt)}${match.finished ? '' : ` · ${t.history.inProgress}`}`,
+    meta: `${gameName(match.config)} · ${dayLabel(match.createdAt)}, ${timeOf(match.createdAt)}${match.finished ? '' : ` · ${t.history.inProgress}`}`,
     legs: snapshot.legs.map((leg, index) => {
       const legWinner = players.find((player) => player.id === leg.winnerId);
       return {
