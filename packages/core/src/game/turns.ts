@@ -14,6 +14,7 @@
  */
 
 import type { Hit, Point } from '../board/geometry.js';
+import { assignThrowers, sides, type Lineup } from './teams.js';
 import {
   DARTS_PER_VISIT,
   type CurrentState,
@@ -22,16 +23,11 @@ import {
   type DartSource,
   type Leg,
   type MatchEvent,
-  type PlayerConfig,
   type Visit,
 } from './x01.js';
 
-/** What every game but X01 is set up with. */
-export interface TurnConfig {
-  /** Throwing order. */
-  players: PlayerConfig[];
-  /** Index into `players` of whoever throws first in the match; it rotates each leg. */
-  startingPlayerIndex?: number;
+/** What every game but X01 is set up with: who plays, and how many legs. Whoever throws first rotates each leg. */
+export interface TurnConfig extends Lineup {
   /** Legs needed to win the match; 1 for a single game. */
   legsToWin: number;
 }
@@ -118,14 +114,14 @@ export function reduceTurns<C extends TurnConfig, S>(
   events: readonly MatchEvent[],
   rules: TurnRules<C, S>,
 ): TurnSnapshot<C, S> {
-  if (config.players.length === 0) throw new Error('a game needs at least one player');
+  if (sides(config).length === 0) throw new Error('a game needs at least one player');
 
   const corrections = new Map<string, DartCorrectedEvent>();
   for (const event of events) {
     if (event.type === 'dart.corrected') corrections.set(event.target, event);
   }
 
-  const ids = config.players.map((player) => player.id);
+  const ids = sides(config).map((side) => side.id);
   const legs: TurnLeg<S>[] = [];
   const legsWon = Object.fromEntries(ids.map((id) => [id, 0])) as Record<string, number>;
   const legsToWin = Math.max(1, config.legsToWin);
@@ -168,6 +164,7 @@ export function reduceTurns<C extends TurnConfig, S>(
     const score = rules.score(leg.state, playerId);
     const visit: Visit = {
       playerId,
+      throwerId: playerId,
       setIndex: 0,
       legIndex: leg.legIndex,
       darts: [],
@@ -263,16 +260,10 @@ export function reduceTurns<C extends TurnConfig, S>(
 
   if (endedEarly) winnerId = leader(ids, legsWon);
   const over = winnerId !== null || drawn || endedEarly;
+  const current = over ? null : describeCurrent();
+  assignThrowers(config, legs, current);
 
-  return {
-    config,
-    legs,
-    legsWon,
-    winnerId,
-    endedEarly,
-    drawn,
-    current: over ? null : describeCurrent(),
-  };
+  return { config, legs, legsWon, winnerId, endedEarly, drawn, current };
 
   function describeCurrent(): TurnCurrent {
     if (!visit.complete) return currentOf(leg, visit.playerId, visit.darts.length);
@@ -291,6 +282,7 @@ export function reduceTurns<C extends TurnConfig, S>(
       setIndex: 0,
       legIndex: of.legIndex,
       playerId,
+      throwerId: playerId,
       dartInVisit,
       remaining: rules.score(of.state, playerId),
       checkout: null,

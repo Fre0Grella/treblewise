@@ -14,6 +14,7 @@
  *  - the first-nine average covers the first three visits of each leg.
  */
 
+import { sideOf, sides } from '../game/teams.js';
 import type { MatchSnapshot, Visit } from '../game/x01.js';
 
 export interface PlayerStats {
@@ -69,28 +70,28 @@ export function visitTotal(visit: Visit): number {
   return visit.darts.reduce((sum, dart) => sum + dart.scored, 0);
 }
 
-export function matchStats(snapshot: MatchSnapshot): Record<string, PlayerStats> {
-  const stats: Record<string, PlayerStats> = Object.fromEntries(
-    snapshot.config.players.map((p) => [p.id, emptyStats(p.id)]),
-  );
-
-  const first9 = Object.fromEntries(
-    snapshot.config.players.map((p) => [p.id, { points: 0, darts: 0 }]),
-  ) as Record<string, { points: number; darts: number }>;
-
-  const legDarts = Object.fromEntries(snapshot.config.players.map((p) => [p.id, 0])) as Record<
-    string,
-    number
-  >;
+/**
+ * Each one's numbers in a match: each person's by default (who threw the
+ * visit), or each side's, a team as one (`by: 'side'`), as the match screen
+ * compares them. Without teams the two are the same.
+ */
+export function matchStats(snapshot: MatchSnapshot, by: 'person' | 'side' = 'person'): Record<string, PlayerStats> {
+  const bySide = by === 'side';
+  const who = bySide ? sides(snapshot.config) : snapshot.config.players;
+  const keyOf = (visit: Visit) => (bySide ? visit.playerId : visit.throwerId);
+  const stats: Record<string, PlayerStats> = Object.fromEntries(who.map((p) => [p.id, emptyStats(p.id)]));
+  const first9 = Object.fromEntries(who.map((p) => [p.id, { points: 0, darts: 0 }])) as Record<string, { points: number; darts: number }>;
+  const legDarts = Object.fromEntries(who.map((p) => [p.id, 0])) as Record<string, number>;
 
   for (const leg of snapshot.legs) {
     const visitIndex: Record<string, number> = {};
 
     for (const visit of leg.visits) {
-      const s = stats[visit.playerId];
+      const key = keyOf(visit);
+      const s = stats[key];
       if (!s) continue;
 
-      const index = (visitIndex[visit.playerId] = (visitIndex[visit.playerId] ?? -1) + 1);
+      const index = (visitIndex[key] = (visitIndex[key] ?? -1) + 1);
       const total = visitTotal(visit);
 
       s.visits += 1;
@@ -103,7 +104,7 @@ export function matchStats(snapshot: MatchSnapshot): Record<string, PlayerStats>
       if (visit.busted) s.busts += 1;
 
       if (index < 3) {
-        const f = first9[visit.playerId]!;
+        const f = first9[key]!;
         f.points += total;
         f.darts += visit.darts.length;
       }
@@ -117,14 +118,17 @@ export function matchStats(snapshot: MatchSnapshot): Record<string, PlayerStats>
       }
     }
 
-    // Darts used in a leg, counted only for the player who won it: "darts per
-    // leg" is a finishing statistic, and a leg you lost has no length.
-    if (leg.winnerId) {
-      const s = stats[leg.winnerId];
+    // Darts used in a leg, counted only for whoever won it: "darts per leg"
+    // is a finishing statistic, and a leg you lost has no length. In a team,
+    // the leg is the person's who checked out; its length is the team's.
+    const winningVisit = leg.winnerId ? leg.visits.find((visit) => visit.won) : undefined;
+    if (leg.winnerId && winningVisit) {
+      const key = keyOf(winningVisit);
+      const s = stats[key];
       if (s) {
         s.legsWon += 1;
         const darts = leg.dartsThrown[leg.winnerId] ?? 0;
-        legDarts[leg.winnerId] = (legDarts[leg.winnerId] ?? 0) + darts;
+        legDarts[key] = (legDarts[key] ?? 0) + darts;
         if (s.bestLegDarts === null || darts < s.bestLegDarts) s.bestLegDarts = darts;
       }
     }
@@ -159,11 +163,11 @@ export interface LegStat {
   won: boolean;
 }
 
-/** Every leg a player threw in, in the order played; legs they threw no dart in are left out. */
+/** Every leg a player threw in, in the order played; legs they threw no dart in are left out. Won means their side won it. */
 export function legStats(snapshot: MatchSnapshot, playerId: string): LegStat[] {
   const legs: LegStat[] = [];
   for (const leg of snapshot.legs) {
-    const darts = leg.visits.filter((visit) => visit.playerId === playerId).flatMap((visit) => visit.darts);
+    const darts = leg.visits.filter((visit) => visit.throwerId === playerId).flatMap((visit) => visit.darts);
     if (darts.length === 0) continue;
     const points = darts.reduce((sum, dart) => sum + dart.scored, 0);
     const checkoutAttempts = darts.filter((dart) => dart.atFinish).length;
@@ -178,7 +182,7 @@ export function legStats(snapshot: MatchSnapshot, playerId: string): LegStat[] {
       checkoutAttempts,
       checkoutHits,
       checkoutPercent: checkoutAttempts === 0 ? null : (checkoutHits / checkoutAttempts) * 100,
-      won: leg.winnerId === playerId,
+      won: leg.winnerId === sideOf(snapshot.config, playerId),
     });
   }
   return legs;

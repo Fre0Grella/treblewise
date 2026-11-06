@@ -16,6 +16,7 @@
 import type { Hit, Point } from '../board/geometry.js';
 import { canCheckout, checkoutRoute, isFinishableWithOneDart } from './checkout.js';
 import { minimumFinish, satisfiesRule, type InOutRule } from './rules.js';
+import { assignThrowers, sides, type Lineup } from './teams.js';
 
 /** A visit is three darts, fewer when a bust or a checkout ends it. */
 export const DARTS_PER_VISIT = 3;
@@ -33,7 +34,7 @@ export interface PlayerConfig {
   temporary?: boolean;
 }
 
-export interface X01Config {
+export interface X01Config extends Lineup {
   /** The game (game/modes.ts). Absent on every match stored before there were other games. */
   mode?: 'x01';
   /** 301, 501, 701, … */
@@ -44,10 +45,6 @@ export interface X01Config {
   legsPerSet: number;
   /** Sets needed to win the match. 1 means a single set of legs. */
   setsToWin: number;
-  /** Throwing order. */
-  players: PlayerConfig[];
-  /** Index into `players` of whoever throws first in the match. */
-  startingPlayerIndex?: number;
 }
 
 export interface DartThrownEvent {
@@ -117,7 +114,10 @@ export interface Dart {
 }
 
 export interface Visit {
+  /** The side whose visit it is: the player, or their team (game/teams.ts). */
   playerId: string;
+  /** The person who threw it: the player, or the team member whose turn it was. */
+  throwerId: string;
   setIndex: number;
   legIndex: number;
   darts: Dart[];
@@ -146,7 +146,10 @@ export interface Leg {
 export interface CurrentState {
   setIndex: number;
   legIndex: number;
+  /** The side to throw. */
   playerId: string;
+  /** The person at the oche for it. */
+  throwerId: string;
   /** Darts already thrown in this visit: 0, 1 or 2. */
   dartInVisit: number;
   remaining: number;
@@ -181,7 +184,8 @@ function effectiveReading(
  */
 function startingPlayerFor(config: X01Config, legNumber: number): string {
   const start = config.startingPlayerIndex ?? 0;
-  return config.players[(start + legNumber) % config.players.length]!.id;
+  const order = sides(config);
+  return order[(start + legNumber) % order.length]!.id;
 }
 
 /**
@@ -191,14 +195,14 @@ function startingPlayerFor(config: X01Config, legNumber: number): string {
  * dart they correct, and the last correction for a dart wins.
  */
 export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): MatchSnapshot {
-  if (config.players.length === 0) throw new Error('a match needs at least one player');
+  if (sides(config).length === 0) throw new Error('a match needs at least one player');
 
   const corrections = new Map<string, DartCorrectedEvent>();
   for (const event of events) {
     if (event.type === 'dart.corrected') corrections.set(event.target, event);
   }
 
-  const ids = config.players.map((p) => p.id);
+  const ids = sides(config).map((p) => p.id);
   const counters = () => Object.fromEntries(ids.map((id) => [id, 0])) as Record<string, number>;
 
   const legs: Leg[] = [];
@@ -232,6 +236,7 @@ export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): M
   const createVisit = (playerId: string): Visit => {
     const visit: Visit = {
       playerId,
+      throwerId: playerId,
       setIndex: leg.setIndex,
       legIndex: leg.legIndex,
       darts: [],
@@ -350,16 +355,10 @@ export function reduceMatch(config: X01Config, events: readonly MatchEvent[]): M
   }
 
   if (endedEarly) winnerId = leader(ids, setsWon, legsWon);
+  const current = winnerId !== null || endedEarly ? null : describeCurrent(config, leg, visit, legNumber, setIndex, setPending, nextPlayer);
+  assignThrowers(config, legs, current);
 
-  return {
-    config,
-    legs,
-    legsWon,
-    setsWon,
-    winnerId,
-    endedEarly,
-    current: winnerId !== null || endedEarly ? null : describeCurrent(config, leg, visit, legNumber, setIndex, setPending, nextPlayer),
-  };
+  return { config, legs, legsWon, setsWon, winnerId, endedEarly, current };
 }
 
 /** Who leads a match ended early: more sets, then more legs in the set; null when level. */
@@ -399,6 +398,7 @@ function describeCurrent(
       setIndex: leg.setIndex,
       legIndex: leg.legIndex,
       playerId: visit.playerId,
+      throwerId: visit.playerId,
       dartInVisit: visit.darts.length,
       remaining,
       checkout: routeFor(leg, visit.playerId, remaining, 3 - visit.darts.length, config.outRule),
@@ -412,6 +412,7 @@ function describeCurrent(
       setIndex: setPending ? setIndex + 1 : setIndex,
       legIndex: setPending ? 0 : leg.legIndex + 1,
       playerId: startingPlayerFor(config, legNumber + 1),
+      throwerId: startingPlayerFor(config, legNumber + 1),
       dartInVisit: 0,
       remaining: config.startScore,
       checkout:
@@ -425,6 +426,7 @@ function describeCurrent(
     setIndex: leg.setIndex,
     legIndex: leg.legIndex,
     playerId,
+    throwerId: playerId,
     dartInVisit: 0,
     remaining,
     checkout: routeFor(leg, playerId, remaining, 3, config.outRule),
