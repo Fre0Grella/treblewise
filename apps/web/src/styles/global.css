@@ -2544,6 +2544,56 @@ input:focus-visible {
   padding: var(--space-4);
 }
 
+/* ---------- a game's rules (components/ModeRules.vue) ---------- */
+
+.mode-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg-raised);
+  line-height: 1.5;
+}
+
+.mode-rules-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mode-rules-head h2 {
+  margin: 0;
+}
+
+.mode-rules-goal {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.mode-rules-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--text-dim);
+}
+
+.mode-rules-list li::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.mode-rules-done {
+  align-self: flex-end;
+}
+
 /* ---------- a leg or a match won (components/ResultCard.vue) ---------- */
 
 .result {
@@ -4584,14 +4634,20 @@ input:focus-visible {
   gap: var(--space-2);
 }
 
+.mode-tile-wrap {
+  position: relative;
+  display: flex;
+}
+
 .mode-tile {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
   gap: 2px;
   min-height: 72px;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) 36px var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--bg-sunken);
   color: var(--text);
@@ -4617,8 +4673,8 @@ input:focus-visible {
   color: var(--text-faint);
 }
 
-.mode-tile-on,
-.mode-tile-on:hover:not(:disabled) {
+.mode-tile-on .mode-tile,
+.mode-tile-on .mode-tile:hover:not(:disabled) {
   background: var(--action);
   color: var(--action-ink);
 }
@@ -4627,9 +4683,157 @@ input:focus-visible {
   color: rgb(21 19 15 / 70%);
 }
 
+/* What the game is, a tap away without choosing it. */
+.mode-info {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-round);
+  background: none;
+  color: var(--text-faint);
+}
+
+.mode-info:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.mode-tile-on .mode-info {
+  color: rgb(21 19 15 / 62%);
+}
+
+.mode-tile-on .mode-info:hover:not(:disabled) {
+  background: rgb(21 19 15 / 12%);
+  color: var(--action-ink);
+}
+
 /* A switch among the settings: the same height and hairline as a setting row. */
 .setting-switch {
   min-height: 64px;
+}
+
+/* The two columns, then the chosen game's settings across the whole width
+   under them (issue #22): a cell each, the name over the control, so a game
+   with six settings still fits the window without scrolling. */
+.setup-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.setting-grid {
+  display: grid;
+}
+
+@media (min-width: 900px) {
+  .setting-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-4);
+  }
+
+  .setting-grid > .setting {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+  }
+}
+
+/* The settings and, beside them, what is about to be played with Start:
+   a block instead of a bar along the foot, which gave the settings the
+   bar's height back. On a phone it comes after the settings. */
+.setup-settings-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.setup-settings-body {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.setup-recap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent);
+  background: var(--bg-raised);
+}
+
+.setup-recap .setup-summary {
+  flex: 1;
+  gap: var(--space-2);
+}
+
+.setup-recap .setup-summary-game {
+  font-size: clamp(2rem, 2.6vw, 2.6rem);
+  line-height: 1;
+}
+
+.setup-recap .setup-summary-who {
+  font-size: var(--text-base);
+}
+
+.setup-recap-details {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.setup-recap .setup-start {
+  margin-top: var(--space-2);
+}
+
+.setup-start {
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .setup-settings-body {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 300px);
+  }
+
+  .setup-recap {
+    position: sticky;
+    bottom: var(--space-4);
+    align-self: stretch;
+  }
+}
+
+/* Three settings a row beside the recap, the bars a little tighter to fit. */
+@media (min-width: 1200px) {
+  .setting-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .setting-grid .segmented {
+    flex-wrap: nowrap;
+  }
+
+  .setting-grid .segmented > button {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+}
+
+/* A big lineup (five players or more): a second column, filled top to bottom. */
+@media (min-width: 640px) {
+  .lineup.lineup-wrapped {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* A section's heading with a short note at the other end. */

@@ -117,10 +117,6 @@ export const en = {
     cancel: 'Cancel',
     guest: 'Guest',
     guestTag: ' · guest',
-    profileHelp:
-      'A profile keeps its statistics between matches. Pick the same one each time and the averages, checkouts and heatmaps build up.',
-    guestHelp:
-      'A guest plays this match and is then forgotten: no profile, no statistics, and nothing added to this list.',
     manageProfiles: 'Manage profiles',
     doneManaging: 'Done',
     deleteProfile: 'Delete',
@@ -138,6 +134,8 @@ export const en = {
     singleSet: 'A single set',
     firstToSets: 'First to {n} sets',
     start: 'Start match',
+    /** Over the recap beside the settings. */
+    recap: 'Ready to throw',
     rules: {
       straight: 'Straight',
       double: 'Double',
@@ -1046,7 +1044,88 @@ export const en = {
       countUp: 'As many points as you can in so many rounds.',
     },
     legsToWin: 'Legs to win',
-    oneGame: 'One game: most points wins',
+    settingsTitle: '{name} settings',
+    /** How each game is played: the info button on its tile, and "How to play" in the game's menu. */
+    howToPlay: 'How to play {name}',
+    rulesClose: 'Got it',
+    rulesCloseIcon: 'Close the rules',
+    rulesSettings: 'The settings change some of this; each one says what it does.',
+    rules: {
+      x01: {
+        goal: 'Everyone starts on the same score, 501 say, and the first to bring it down to exactly zero wins the leg.',
+        how: [
+          'Three darts a visit; what they score comes off what you have left.',
+          'Most games finish on a double: the dart that reaches zero has to be a double (the bullseye counts as one). Some start on one too.',
+          'Going below zero, or to 1 when you must finish on a double, is a bust: the visit scores nothing and you stay where you were.',
+          'When you are on a finish, the cards show a way out, dart by dart.',
+          'Win enough legs to take the set, and enough sets to take the match.',
+        ],
+      },
+      cricket: {
+        goal: 'Close the 15, 16, 17, 18, 19, 20 and the bull before the others, and do not be behind on points when you do.',
+        how: [
+          'A single is one mark on its number, a double two, a treble three. The 25 is one mark on the bull, the bullseye two.',
+          'Three marks close a number for you. Anything off the 15 to 20 and the bull does nothing.',
+          'Marks past the third score the number (25 for the bull) as long as somebody else has not closed it yet.',
+          'Close everything while level or ahead on points and you win the leg at once. Behind, keep scoring until you are not.',
+          'Cut-throat turns it round: your extra marks score for everyone who still has the number open, and the fewest points wins.',
+        ],
+      },
+      aroundTheClock: {
+        goal: 'Hit every number in order, 1 to 20 (and the bull, if it is played). The first to get all the way round wins.',
+        how: [
+          'Throw at your number until you hit it, then move on to the next; your darts can carry on round in the same visit.',
+          'Which bed counts is up to the settings: any part of the number, or only its singles, doubles or trebles.',
+          'With "skip ahead", a double counts as two hits and a treble as three, so a treble on 1 takes you to 4.',
+          'Everyone has their own target; the card and the board show yours.',
+        ],
+      },
+      shanghai: {
+        goal: 'Score the most points over the rounds, each round thrown at its own number.',
+        how: [
+          'Round 1 is thrown at the 1, round 2 at the 2, and so on. Only darts in the round’s number score, at their value: a treble 5 in round 5 is 15.',
+          'A Shanghai is the single, the double and the treble of the round’s number in one visit. It can win the game on the spot.',
+          'After the last round the most points wins. Level at the top, everyone throws another round at the bull until somebody leads.',
+        ],
+      },
+      killer: {
+        goal: 'Be the last player with a life left.',
+        how: [
+          'Everyone gets a number, drawn at random or thrown for with one dart (the other hand, if you like).',
+          'Hit your own number (its double, in the classic game) to become a killer.',
+          'A killer takes a life off whoever owns each number they hit. With "any bed", a single takes one, a double two, a treble three.',
+          'Careful: a killer who hits their own number loses lives too, unless the setting is off.',
+          'A player with no lives left is out, and their turn is skipped.',
+        ],
+      },
+      bobs27: {
+        goal: 'A doubles drill: go round the doubles from D1 to D20 and finish with as many points as you can.',
+        how: [
+          'You start on 27. Each round is three darts at one double: D1, then D2, and so on.',
+          'Every dart in the double adds its value: D7 is 14.',
+          'A round with no double in it takes that double’s value off instead.',
+          'At zero or below the game is over for you, unless "play on" is set.',
+          'A score above 27 at the end is a good night on the doubles.',
+        ],
+      },
+      halveIt: {
+        goal: 'Score on every target, round after round. Miss one completely and your score is halved.',
+        how: [
+          'Each round has a target: a number, any double, any treble, or the bull. The card shows it.',
+          'Darts on the target score their value; anything else scores nothing.',
+          'A round without a single dart on the target halves your score, rounded down.',
+          'Most points after the last target wins.',
+        ],
+      },
+      countUp: {
+        goal: 'Score as many points as you can in a set number of rounds.',
+        how: [
+          'Every dart scores what it hits, just as in X01, and there is nothing to bust.',
+          'After the last round the highest total wins; alone, try to beat your best.',
+          'A good drill for keeping the treble 20 grouped, visit after visit.',
+        ],
+      },
+    },
     cricket: {
       scoring: 'Scoring',
       scorings: { standard: 'Standard', cutThroat: 'Cut-throat', noScore: 'No score' },

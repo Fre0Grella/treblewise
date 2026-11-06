@@ -194,7 +194,7 @@ describe('picking the game (issue #22)', () => {
     expect(screen.queryByRole('radiogroup', { name: /start score/i })).toBeNull();
     await fireEvent.click(screen.getByRole('radio', { name: 'Cut-throat' }));
     await press(/more: legs to win/i);
-    expect(screen.getByText(/cricket · cut-throat · first to 2 legs/i)).toBeDefined();
+    expect(screen.getByText(/^cut-throat · first to 2 legs$/i)).toBeDefined();
 
     await press(/start match/i);
     expect(useMatchesStore().snapshot!.config).toMatchObject({ mode: 'cricket', scoring: 'cutThroat', legsToWin: 2 });
@@ -217,4 +217,23 @@ describe('picking the game (issue #22)', () => {
     expect(config).toMatchObject({ mode: 'killer', numbers: 'drawn' });
     expect(Object.values((config as { assigned: Record<string, number> }).assigned)).toHaveLength(1);
   });
+});
+
+describe('the rules of each game', () => {
+  it('opens from the info button on a tile, without picking the game', async () => {
+    await renderAt('/setup');
+    await fireEvent.click(screen.getByRole('button', { name: /how to play killer/i }));
+    const rules = screen.getByRole('dialog', { name: /how to play killer/i });
+    expect(within(rules).getByText(/last player with a life/i)).toBeDefined();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: /how to play/i })).toBeNull();
+    expect(screen.getByRole('radio', { name: /^x01/i }).getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+it('keeps the setup behind the rules', async () => {
+  await renderAt('/setup');
+  await fireEvent.click(screen.getByRole('button', { name: /how to play cricket/i }));
+  expect(document.querySelector('.setup-grid')).not.toBeNull();
 });

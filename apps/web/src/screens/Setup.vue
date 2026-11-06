@@ -31,6 +31,7 @@ import {
 import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 
+import ModeRules from '../components/ModeRules.vue';
 import WhoStarts from '../components/order/WhoStarts.vue';
 import Icon from '../components/ui/Icon.vue';
 import ScreenShell from '../components/ui/ScreenShell.vue';
@@ -47,6 +48,8 @@ const START_SCORES = [301, 401, 501, 701, 1001];
 const MATCH_MODES: GameMode[] = ['x01', 'cricket', 'aroundTheClock', 'shanghai', 'killer'];
 const RULES: InOutRule[] = ['straight', 'double', 'treble', 'master'];
 const MAX_PLAYERS = 8;
+/** Past this many, the lineup wraps into a second column, so eight players do not push the settings off the window. */
+const LINEUP_COLUMN = 4;
 
 const t = useStrings();
 const router = useRouter();
@@ -83,6 +86,8 @@ const setsToWin = ref(1);
 
 /** The game, and each game's own settings (issue #22). */
 const mode = ref<GameMode>('x01');
+/** The game whose rules are open, from the info button on its tile. */
+const rulesOf = ref<GameMode | null>(null);
 const modeLegs = ref(1);
 const cricketScoring = ref<CricketScoring>('standard');
 const clockRing = ref<ClockRing>('any');
@@ -238,6 +243,11 @@ function removeGuest(id: string) {
 
 /** The bottom bar: what is about to be played, and by whom. */
 const summary = computed(() => gameSummary(configFor([])));
+/** The recap block puts the game's name big, so its line of settings goes without it. */
+const recapDetails = computed(() => {
+  const name = `${m.names[mode.value]} · `;
+  return summary.value.startsWith(name) ? summary.value.slice(name.length) : summary.value;
+});
 const training = computed(() => TRAINING_MODES.includes(mode.value));
 /** In throwing order, once that is decided. */
 const who = computed(() => {
@@ -261,290 +271,324 @@ const who = computed(() => {
 
     <WhoStarts v-if="ordering" v-model:order="order" :players="lineup" />
 
-    <div v-else class="setup-grid">
-      <!-- Who plays, in throwing order. -->
-      <section class="panel" :aria-label="t.setup.players">
-        <div class="section-head">
-          <h2>{{ t.setup.players }}</h2>
-          <span class="section-note">{{ t.setup.playersNote }}</span>
-        </div>
+    <div v-else class="setup-layout">
+      <div class="setup-grid">
+        <!-- Who plays, in throwing order. -->
+        <section class="panel" :aria-label="t.setup.players">
+          <div class="section-head">
+            <h2>{{ t.setup.players }}</h2>
+            <span class="section-note">{{ t.setup.playersNote }}</span>
+          </div>
 
-        <p v-if="lineup.length === 0" class="empty-note">{{ t.setup.noPlayers }}</p>
-        <ol v-else class="lineup">
-          <li v-for="player in lineup" :key="player.id" class="row">
-            <span class="lineup-name">{{ player.name }}</span>
-            <span v-if="player.temporary" class="tag">{{ t.setup.guest }}</span>
-            <button
-              type="button"
-              class="btn-quiet btn-icon"
-              :aria-label="`${t.setup.removePlayer} ${player.name}`"
-              @click="dropFromLineup(player.id)"
-            >
-              <Icon name="close" :size="18" />
-            </button>
-          </li>
-        </ol>
-
-        <div class="bench">
-          <button
-            v-for="profile in pickableProfiles"
-            :key="profile.id"
-            type="button"
-            class="btn-sm"
-            :aria-label="`${t.setup.addPlayer} ${profile.name}`"
-            @click="addToLineup({ id: profile.id, name: profile.name })"
+          <p v-if="lineup.length === 0" class="empty-note">{{ t.setup.noPlayers }}</p>
+          <ol
+            v-else
+            :class="['lineup', { 'lineup-wrapped': lineup.length > LINEUP_COLUMN }]"
+            :style="lineup.length > LINEUP_COLUMN ? { gridTemplateRows: `repeat(${Math.ceil(lineup.length / 2)}, auto)` } : undefined"
           >
-            <Icon name="plus" :size="16" />{{ profile.name }}
-          </button>
-          <button
-            v-for="guest in pickableGuests"
-            :key="guest.id"
-            type="button"
-            class="btn-sm"
-            :aria-label="`${t.setup.addPlayer} ${guest.name}`"
-            @click="addToLineup(guest)"
-          >
-            <Icon name="plus" :size="16" />{{ guest.name }} <span class="tag">{{ t.setup.guest }}</span>
-          </button>
-          <button type="button" class="btn-quiet btn-sm" @click="adding = 'profile'">{{ t.setup.newProfile }}</button>
-          <button type="button" class="btn-quiet btn-sm" @click="adding = 'guest'">{{ t.setup.addGuest }}</button>
-        </div>
-
-        <div v-if="adding" class="field-row">
-          <input
-            v-model="draftName"
-            v-focus
-            :aria-label="adding === 'profile' ? t.setup.newProfile : t.setup.addGuest"
-            :placeholder="adding === 'profile' ? t.setup.namePlaceholder : t.setup.guest"
-            @keydown.enter="submitDraft"
-          />
-          <button type="button" class="btn-primary" @click="submitDraft">
-            {{ adding === 'profile' ? t.setup.createProfile : t.setup.addForSession }}
-          </button>
-          <button type="button" class="btn-quiet" @click="cancelDraft">{{ t.setup.cancel }}</button>
-        </div>
-
-        <p class="hint">{{ adding === 'guest' ? t.setup.guestHelp : t.setup.profileHelp }}</p>
-
-        <template v-if="players.profiles.length > 0 || players.sessionGuests.length > 0">
-          <button type="button" class="btn-quiet btn-sm manage-toggle" @click="managing = !managing">
-            {{ managing ? t.setup.doneManaging : t.setup.manageProfiles }}
-          </button>
-
-          <template v-if="managing">
-            <ul class="player-list">
-              <li v-for="profile in players.profiles" :key="profile.id">
-                <input
-                  :aria-label="`${t.setup.playerName} ${profile.name}`"
-                  :value="drafts[profile.id] ?? profile.name"
-                  @input="drafts = { ...drafts, [profile.id]: ($event.target as HTMLInputElement).value }"
-                  @blur="commitDraft(profile.id)"
-                  @keydown.enter="($event.target as HTMLInputElement).blur()"
-                />
-                <button type="button" class="btn-danger" @click="removeProfile(profile.id)">
-                  {{ t.setup.deleteProfile }}
-                </button>
-              </li>
-              <li v-for="guest in players.sessionGuests" :key="guest.id">
-                <span class="lineup-name">
-                  {{ guest.name }}
-                  <span class="tag">{{ t.setup.guest }}</span>
-                </span>
-                <button type="button" class="btn-danger" @click="removeGuest(guest.id)">
-                  {{ t.setup.deleteProfile }}
-                </button>
-              </li>
-            </ul>
-            <p class="hint">{{ t.setup.manageHelp }}</p>
-          </template>
-        </template>
-      </section>
-
-      <!-- The game, picked first; then its settings, a row each, the control on the right. -->
-      <section class="panel" :aria-label="t.setup.game">
-        <h2>{{ t.setup.game }}</h2>
-        <div class="mode-pick" role="radiogroup" :aria-label="m.pick">
-          <template v-for="group in tileGroups" :key="group.label">
-            <span class="label mode-pick-group">{{ group.label }}</span>
-            <div class="mode-tiles">
+            <li v-for="player in lineup" :key="player.id" class="row">
+              <span class="lineup-name">{{ player.name }}</span>
+              <span v-if="player.temporary" class="tag">{{ t.setup.guest }}</span>
               <button
-                v-for="tile in group.tiles"
-                :key="tile.value"
                 type="button"
-                role="radio"
-                :aria-checked="mode === tile.value"
-                :class="['mode-tile', { 'mode-tile-on': mode === tile.value }]"
-                @click="mode = tile.value"
+                class="btn-quiet btn-icon"
+                :aria-label="`${t.setup.removePlayer} ${player.name}`"
+                @click="dropFromLineup(player.id)"
               >
-                <span class="mode-tile-name">{{ tile.name }}</span>
-                <span class="mode-tile-blurb">{{ tile.blurb }}</span>
+                <Icon name="close" :size="18" />
               </button>
-            </div>
-          </template>
-        </div>
+            </li>
+          </ol>
 
-        <div v-if="mode === 'x01'">
-          <div class="setting">
-            <span class="setting-label">{{ t.setup.startScore }}</span>
-            <Segmented v-model="startScore" :options="scoreOptions" :label="t.setup.startScore" />
+          <div class="bench">
+            <button
+              v-for="profile in pickableProfiles"
+              :key="profile.id"
+              type="button"
+              class="btn-sm"
+              :aria-label="`${t.setup.addPlayer} ${profile.name}`"
+              @click="addToLineup({ id: profile.id, name: profile.name })"
+            >
+              <Icon name="plus" :size="16" />{{ profile.name }}
+            </button>
+            <button
+              v-for="guest in pickableGuests"
+              :key="guest.id"
+              type="button"
+              class="btn-sm"
+              :aria-label="`${t.setup.addPlayer} ${guest.name}`"
+              @click="addToLineup(guest)"
+            >
+              <Icon name="plus" :size="16" />{{ guest.name }} <span class="tag">{{ t.setup.guest }}</span>
+            </button>
+            <button type="button" class="btn-quiet btn-sm" @click="adding = 'profile'">{{ t.setup.newProfile }}</button>
+            <button type="button" class="btn-quiet btn-sm" @click="adding = 'guest'">{{ t.setup.addGuest }}</button>
           </div>
-          <div class="setting">
-            <span class="setting-label">
-              {{ t.setup.legsPerSet }}
-              <span class="setting-note">{{ fill(t.setup.firstTo, { n: legsPerSet }) }}</span>
-            </span>
-            <Stepper v-model="legsPerSet" :label="t.setup.legsPerSet" :min="1" :max="21" />
-          </div>
-          <div class="setting">
-            <span class="setting-label">
-              {{ t.setup.setsToWin }}
-              <span class="setting-note">{{ setsToWin === 1 ? t.setup.singleSet : fill(t.setup.firstToSets, { n: setsToWin }) }}</span>
-            </span>
-            <Stepper v-model="setsToWin" :label="t.setup.setsToWin" :min="1" :max="13" />
-          </div>
-          <div class="setting">
-            <span class="setting-label">
-              {{ t.setup.inRule }}
-              <span class="setting-note">{{ t.setup.ruleNotes[inRule] }}</span>
-            </span>
-            <Segmented v-model="inRule" :options="ruleOptions" :label="t.setup.inRule" />
-          </div>
-          <div class="setting">
-            <span class="setting-label">
-              {{ t.setup.outRule }}
-              <span class="setting-note">{{ t.setup.ruleNotes[outRule] }}</span>
-            </span>
-            <Segmented v-model="outRule" :options="ruleOptions" :label="t.setup.outRule" />
-          </div>
-        </div>
 
-        <div v-else>
-          <template v-if="mode === 'cricket'">
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.cricket.scoring }}
-                <span class="setting-note">{{ m.cricket.scoringNotes[cricketScoring] }}</span>
-              </span>
-              <Segmented v-model="cricketScoring" :options="scoringOptions" :label="m.cricket.scoring" />
-            </div>
-          </template>
-
-          <template v-if="mode === 'aroundTheClock'">
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.clock.ring }}
-                <span class="setting-note">{{ m.clock.ringNotes[clockRing] }}</span>
-              </span>
-              <Segmented v-model="clockRing" :options="clockRingOptions" :label="m.clock.ring" />
-            </div>
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.clock.order }}
-                <span class="setting-note">{{ m.clock.orderNotes[clockOrder] }}</span>
-              </span>
-              <Segmented v-model="clockOrder" :options="clockOrderOptions" :label="m.clock.order" />
-            </div>
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.clock.hitsPerTarget }}
-                <span class="setting-note">{{ m.clock.hitsNote }}</span>
-              </span>
-              <Segmented v-model="clockHits" :options="hitsOptions" :label="m.clock.hitsPerTarget" />
-            </div>
-            <Switch v-model="clockBull" class="setting-switch" :label="m.clock.bull" :note="m.clock.bullNote" />
-            <Switch
-              v-model="clockMultiples"
-              class="setting-switch"
-              :label="m.clock.multiples"
-              :note="m.clock.multiplesNote"
-              :disabled="clockRing !== 'any'"
+          <div v-if="adding" class="field-row">
+            <input
+              v-model="draftName"
+              v-focus
+              :aria-label="adding === 'profile' ? t.setup.newProfile : t.setup.addGuest"
+              :placeholder="adding === 'profile' ? t.setup.namePlaceholder : t.setup.guest"
+              @keydown.enter="submitDraft"
             />
-          </template>
-
-          <template v-if="mode === 'shanghai'">
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.shanghai.rounds }}
-                <span class="setting-note">{{ fill(m.shanghai.roundsNote, { n: shanghaiRounds }) }}</span>
-              </span>
-              <Stepper v-model="shanghaiRounds" :label="m.shanghai.rounds" :min="1" :max="20" />
-            </div>
-            <Switch v-model="shanghaiWins" class="setting-switch" :label="m.shanghai.shanghaiWins" :note="m.shanghai.shanghaiNote" />
-          </template>
-
-          <template v-if="mode === 'killer'">
-            <div class="setting">
-              <span class="setting-label">{{ m.killer.lives }}</span>
-              <Stepper v-model="killerLives" :label="m.killer.lives" :min="1" :max="9" />
-            </div>
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.killer.ring }}
-                <span class="setting-note">{{ m.killer.ringNotes[killerRing] }}</span>
-              </span>
-              <Segmented v-model="killerRing" :options="killerRingOptions" :label="m.killer.ring" />
-            </div>
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.killer.hitsToKill }}
-                <span class="setting-note">{{ m.killer.hitsNote }}</span>
-              </span>
-              <Stepper v-model="killerHits" :label="m.killer.hitsToKill" :min="1" :max="5" />
-            </div>
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.killer.numbers }}
-                <span class="setting-note">{{ m.killer.numberNotes[killerNumbers] }}</span>
-              </span>
-              <Segmented v-model="killerNumbers" :options="numbersOptions" :label="m.killer.numbers" />
-            </div>
-            <Switch v-model="killerSelfHit" class="setting-switch" :label="m.killer.selfHit" :note="m.killer.selfHitNote" />
-          </template>
-
-          <template v-if="mode === 'bobs27'">
-            <Switch v-model="bobsBull" class="setting-switch" :label="m.bobs27.bull" :note="m.bobs27.bullNote" />
-            <Switch v-model="bobsPlayOn" class="setting-switch" :label="m.bobs27.playOn" :note="m.bobs27.playOnNote" />
-          </template>
-
-          <template v-if="mode === 'halveIt'">
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.halveIt.targets }}
-                <span class="setting-note">{{ halveTargetsShort(halvePreset) }}</span>
-              </span>
-              <Segmented v-model="halvePreset" :options="presetOptions" :label="m.halveIt.targets" />
-            </div>
-          </template>
-
-          <template v-if="mode === 'countUp'">
-            <div class="setting">
-              <span class="setting-label">
-                {{ m.countUp.rounds }}
-                <span class="setting-note">{{ fill(m.countUp.roundsNote, { n: countUpRounds * 3 }) }}</span>
-              </span>
-              <Segmented v-model="countUpRounds" :options="countUpOptions" :label="m.countUp.rounds" />
-            </div>
-          </template>
-
-          <div v-if="!training" class="setting">
-            <span class="setting-label">
-              {{ m.legsToWin }}
-              <span class="setting-note">{{ fill(t.setup.firstTo, { n: modeLegs }) }}</span>
-            </span>
-            <Stepper v-model="modeLegs" :label="m.legsToWin" :min="1" :max="21" />
+            <button type="button" class="btn-primary" @click="submitDraft">
+              {{ adding === 'profile' ? t.setup.createProfile : t.setup.addForSession }}
+            </button>
+            <button type="button" class="btn-quiet" @click="cancelDraft">{{ t.setup.cancel }}</button>
           </div>
-          <p v-else class="hint">{{ m.oneGame }}</p>
+
+
+          <template v-if="players.profiles.length > 0 || players.sessionGuests.length > 0">
+            <button type="button" class="btn-quiet btn-sm manage-toggle" @click="managing = !managing">
+              {{ managing ? t.setup.doneManaging : t.setup.manageProfiles }}
+            </button>
+
+            <template v-if="managing">
+              <ul class="player-list">
+                <li v-for="profile in players.profiles" :key="profile.id">
+                  <input
+                    :aria-label="`${t.setup.playerName} ${profile.name}`"
+                    :value="drafts[profile.id] ?? profile.name"
+                    @input="drafts = { ...drafts, [profile.id]: ($event.target as HTMLInputElement).value }"
+                    @blur="commitDraft(profile.id)"
+                    @keydown.enter="($event.target as HTMLInputElement).blur()"
+                  />
+                  <button type="button" class="btn-danger" @click="removeProfile(profile.id)">
+                    {{ t.setup.deleteProfile }}
+                  </button>
+                </li>
+                <li v-for="guest in players.sessionGuests" :key="guest.id">
+                  <span class="lineup-name">
+                    {{ guest.name }}
+                    <span class="tag">{{ t.setup.guest }}</span>
+                  </span>
+                  <button type="button" class="btn-danger" @click="removeGuest(guest.id)">
+                    {{ t.setup.deleteProfile }}
+                  </button>
+                </li>
+              </ul>
+              <p class="hint">{{ t.setup.manageHelp }}</p>
+            </template>
+          </template>
+        </section>
+
+        <!-- The game, picked first; then its settings, a row each, the control on the right. -->
+        <section class="panel" :aria-label="t.setup.game">
+          <h2>{{ t.setup.game }}</h2>
+          <div class="mode-pick" role="radiogroup" :aria-label="m.pick">
+            <template v-for="group in tileGroups" :key="group.label">
+              <span class="label mode-pick-group">{{ group.label }}</span>
+              <div class="mode-tiles">
+                <div v-for="tile in group.tiles" :key="tile.value" :class="['mode-tile-wrap', { 'mode-tile-on': mode === tile.value }]">
+                  <button
+                    type="button"
+                    role="radio"
+                    :aria-checked="mode === tile.value"
+                    class="mode-tile"
+                    @click="mode = tile.value"
+                  >
+                    <span class="mode-tile-name">{{ tile.name }}</span>
+                    <span class="mode-tile-blurb">{{ tile.blurb }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mode-info"
+                    :aria-label="fill(m.howToPlay, { name: tile.name })"
+                    :title="fill(m.howToPlay, { name: tile.name })"
+                    @click="rulesOf = tile.value"
+                  >
+                    <Icon name="info" :size="18" />
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+      </div>
+
+      <!-- The chosen game's settings, across the whole width under the two columns. -->
+      <section class="panel setup-settings" :aria-label="fill(m.settingsTitle, { name: m.names[mode] })">
+        <div class="setup-settings-body">
+          <div class="setup-settings-main">
+            <h2>{{ fill(m.settingsTitle, { name: m.names[mode] }) }}</h2>
+            <div v-if="mode === 'x01'" class="setting-grid">
+              <div class="setting">
+                <span class="setting-label">{{ t.setup.startScore }}</span>
+                <Segmented v-model="startScore" :options="scoreOptions" :label="t.setup.startScore" />
+              </div>
+              <div class="setting">
+                <span class="setting-label">
+                  {{ t.setup.legsPerSet }}
+                  <span class="setting-note">{{ fill(t.setup.firstTo, { n: legsPerSet }) }}</span>
+                </span>
+                <Stepper v-model="legsPerSet" :label="t.setup.legsPerSet" :min="1" :max="21" />
+              </div>
+              <div class="setting">
+                <span class="setting-label">
+                  {{ t.setup.setsToWin }}
+                  <span class="setting-note">{{ setsToWin === 1 ? t.setup.singleSet : fill(t.setup.firstToSets, { n: setsToWin }) }}</span>
+                </span>
+                <Stepper v-model="setsToWin" :label="t.setup.setsToWin" :min="1" :max="13" />
+              </div>
+              <div class="setting">
+                <span class="setting-label">
+                  {{ t.setup.inRule }}
+                  <span class="setting-note">{{ t.setup.ruleNotes[inRule] }}</span>
+                </span>
+                <Segmented v-model="inRule" :options="ruleOptions" :label="t.setup.inRule" />
+              </div>
+              <div class="setting">
+                <span class="setting-label">
+                  {{ t.setup.outRule }}
+                  <span class="setting-note">{{ t.setup.ruleNotes[outRule] }}</span>
+                </span>
+                <Segmented v-model="outRule" :options="ruleOptions" :label="t.setup.outRule" />
+              </div>
+            </div>
+
+            <div v-else class="setting-grid">
+              <template v-if="mode === 'cricket'">
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.cricket.scoring }}
+                    <span class="setting-note">{{ m.cricket.scoringNotes[cricketScoring] }}</span>
+                  </span>
+                  <Segmented v-model="cricketScoring" :options="scoringOptions" :label="m.cricket.scoring" />
+                </div>
+              </template>
+
+              <template v-if="mode === 'aroundTheClock'">
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.clock.ring }}
+                    <span class="setting-note">{{ m.clock.ringNotes[clockRing] }}</span>
+                  </span>
+                  <Segmented v-model="clockRing" :options="clockRingOptions" :label="m.clock.ring" />
+                </div>
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.clock.order }}
+                    <span class="setting-note">{{ m.clock.orderNotes[clockOrder] }}</span>
+                  </span>
+                  <Segmented v-model="clockOrder" :options="clockOrderOptions" :label="m.clock.order" />
+                </div>
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.clock.hitsPerTarget }}
+                    <span class="setting-note">{{ m.clock.hitsNote }}</span>
+                  </span>
+                  <Segmented v-model="clockHits" :options="hitsOptions" :label="m.clock.hitsPerTarget" />
+                </div>
+                <Switch v-model="clockBull" class="setting-switch" :label="m.clock.bull" :note="m.clock.bullNote" />
+                <Switch
+                  v-model="clockMultiples"
+                  class="setting-switch"
+                  :label="m.clock.multiples"
+                  :note="m.clock.multiplesNote"
+                  :disabled="clockRing !== 'any'"
+                />
+              </template>
+
+              <template v-if="mode === 'shanghai'">
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.shanghai.rounds }}
+                    <span class="setting-note">{{ fill(m.shanghai.roundsNote, { n: shanghaiRounds }) }}</span>
+                  </span>
+                  <Stepper v-model="shanghaiRounds" :label="m.shanghai.rounds" :min="1" :max="20" />
+                </div>
+                <Switch v-model="shanghaiWins" class="setting-switch" :label="m.shanghai.shanghaiWins" :note="m.shanghai.shanghaiNote" />
+              </template>
+
+              <template v-if="mode === 'killer'">
+                <div class="setting">
+                  <span class="setting-label">{{ m.killer.lives }}</span>
+                  <Stepper v-model="killerLives" :label="m.killer.lives" :min="1" :max="9" />
+                </div>
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.killer.ring }}
+                    <span class="setting-note">{{ m.killer.ringNotes[killerRing] }}</span>
+                  </span>
+                  <Segmented v-model="killerRing" :options="killerRingOptions" :label="m.killer.ring" />
+                </div>
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.killer.hitsToKill }}
+                    <span class="setting-note">{{ m.killer.hitsNote }}</span>
+                  </span>
+                  <Stepper v-model="killerHits" :label="m.killer.hitsToKill" :min="1" :max="5" />
+                </div>
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.killer.numbers }}
+                    <span class="setting-note">{{ m.killer.numberNotes[killerNumbers] }}</span>
+                  </span>
+                  <Segmented v-model="killerNumbers" :options="numbersOptions" :label="m.killer.numbers" />
+                </div>
+                <Switch v-model="killerSelfHit" class="setting-switch" :label="m.killer.selfHit" :note="m.killer.selfHitNote" />
+              </template>
+
+              <template v-if="mode === 'bobs27'">
+                <Switch v-model="bobsBull" class="setting-switch" :label="m.bobs27.bull" :note="m.bobs27.bullNote" />
+                <Switch v-model="bobsPlayOn" class="setting-switch" :label="m.bobs27.playOn" :note="m.bobs27.playOnNote" />
+              </template>
+
+              <template v-if="mode === 'halveIt'">
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.halveIt.targets }}
+                    <span class="setting-note">{{ halveTargetsShort(halvePreset) }}</span>
+                  </span>
+                  <Segmented v-model="halvePreset" :options="presetOptions" :label="m.halveIt.targets" />
+                </div>
+              </template>
+
+              <template v-if="mode === 'countUp'">
+                <div class="setting">
+                  <span class="setting-label">
+                    {{ m.countUp.rounds }}
+                    <span class="setting-note">{{ fill(m.countUp.roundsNote, { n: countUpRounds * 3 }) }}</span>
+                  </span>
+                  <Segmented v-model="countUpRounds" :options="countUpOptions" :label="m.countUp.rounds" />
+                </div>
+              </template>
+
+              <div v-if="!training" class="setting">
+                <span class="setting-label">
+                  {{ m.legsToWin }}
+                  <span class="setting-note">{{ fill(t.setup.firstTo, { n: modeLegs }) }}</span>
+                </span>
+                <Stepper v-model="modeLegs" :label="m.legsToWin" :min="1" :max="21" />
+              </div>
+            </div>
+          </div>
+
+          <!-- What is about to be played, and the one thing this screen is for. -->
+          <div class="setup-recap">
+            <span class="label">{{ t.setup.recap }}</span>
+            <span class="setup-summary">
+              <span class="setup-summary-game">{{ m.names[mode] }}</span>
+              <span class="setup-recap-details">{{ recapDetails }}</span>
+              <span class="setup-summary-who">{{ who }}</span>
+            </span>
+            <button type="button" class="btn-primary btn-xl setup-start" @click="start">{{ t.setup.start }}</button>
+          </div>
         </div>
       </section>
     </div>
 
-    <!-- What is about to be played, and the one thing this screen is for. -->
-    <template #actions>
+    <ModeRules v-if="rulesOf" :mode="rulesOf" @close="rulesOf = null" />
+
+    <!-- Deciding who throws first: the recap and Start at the foot, as a bar. -->
+    <template v-if="ordering" #actions>
       <span class="setup-summary">
         <span class="setup-summary-game">{{ summary }}</span>
         <span class="setup-summary-who">{{ who }}</span>
       </span>
-      <button type="button" class="btn-primary btn-lg" :disabled="ordering && !order" @click="start">{{ t.setup.start }}</button>
+      <button type="button" class="btn-primary btn-lg" :disabled="!order" @click="start">{{ t.setup.start }}</button>
     </template>
   </ScreenShell>
 </template>

@@ -24,6 +24,7 @@ import Dartboard, { type BoardDart } from '../components/Dartboard.vue';
 import GameCamera from '../components/GameCamera.vue';
 import type { HeadToHeadRow } from '../components/HeadToHead.vue';
 import Keypad from '../components/Keypad.vue';
+import ModeRules from '../components/ModeRules.vue';
 import PlayerCard, { type VisitBar } from '../components/PlayerCard.vue';
 import ResultCard, { type ScoreBand } from '../components/ResultCard.vue';
 import VisitSheet, { type SheetVisit } from '../components/VisitSheet.vue';
@@ -49,6 +50,12 @@ const correcting = ref<string | null>(null);
 const reportOn = shallowRef<GrabbedFrame | null>(null);
 /** The top bar's open popover. */
 const menu = ref<'sound' | 'more' | null>(null);
+/** The game's rules, open from the menu. */
+const rulesOn = ref(false);
+const openRules = () => {
+  menu.value = null;
+  rulesOn.value = true;
+};
 /** The visits column, or a two-column screen without it. */
 const sheetOn = ref(true);
 
@@ -581,10 +588,13 @@ const toLobby = () => go(lobby.session ? PATHS.lobby : PATHS.start);
       <span class="label">{{ t.report.camera }}</span>
       <div id="game-menu-camera" />
       <span class="popover-rule" />
+      <button type="button" class="popover-item" @click="openRules">{{ fill(t.modes.howToPlay, { name: t.modes.names['x01'] }) }}</button>
       <button type="button" class="popover-item" @click="go(PATHS.stats)">{{ t.stats.title }}</button>
       <button v-if="lobby.session" type="button" class="popover-item" @click="go(PATHS.lobby)">{{ t.lobby.back }}</button>
       <button type="button" class="popover-item" @click="go(PATHS.setup)">{{ t.game.newMatch }}</button>
     </div>
+
+    <ModeRules v-if="rulesOn" :mode="'x01'" @close="rulesOn = false" />
 
     <GameCamera
       v-if="matches.match"

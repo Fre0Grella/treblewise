@@ -63,4 +63,13 @@ describe('the screen of the other games', () => {
     await fireEvent.click(within(result).getByRole('button', { name: /rematch/i }));
     expect(useMatchesStore().snapshot!.current).toMatchObject({ playerId: 'ann', round: 1 });
   });
+
+  it('has the rules in the menu', async () => {
+    await renderAt('/game', () => start({ mode: 'shanghai', rounds: 7, shanghaiWins: true, legsToWin: 1, players: [ann] }));
+    await press(/^menu$/i);
+    await press(/how to play shanghai/i);
+    const rules = screen.getByRole('dialog', { name: /how to play shanghai/i });
+    await fireEvent.click(within(rules).getByRole('button', { name: 'Got it' }));
+    expect(screen.queryByRole('dialog', { name: /how to play/i })).toBeNull();
+  });
 });

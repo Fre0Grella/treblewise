@@ -28,7 +28,8 @@ export type IconName =
   | 'expand'
   | 'shrink'
   | 'signal'
-  | 'camera';
+  | 'camera'
+  | 'info';
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 20 });
 
@@ -56,6 +57,7 @@ const PATHS: Record<IconName, string> = {
   expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
   signal: 'M4 20v-3M9 20v-7M14 20v-11M19 20V4',
+  info: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 11v6M12 7.5h.01',
   camera: 'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3zM12 17a4 4 0 1 0 0-8a4 4 0 0 0 0 8z',
 };
 </script>
