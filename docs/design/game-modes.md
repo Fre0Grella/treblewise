@@ -111,7 +111,7 @@ Approved from mockups on 2026-11-06.
   - A Teams switch from three players up, shown as 2–4 team columns.
   - A move button sends a player to the next team; "+ Team" adds one, and "Shuffle teams" deals everyone at random.
   - Players who haven't been placed are dealt onto the smallest team (`game/teamDraft.ts`).
-  - Who throws first is decided between the teams.
+  - Who throws first is decided between the players, even in teams: one dart each at the bull, the wheel landing on one player, or every player ordered by hand. The teams follow (`orderTeams`): a team goes as early as its best-placed member, and its members go in their places' order. So the closest at the bull leads their team, and that team throws first.
 - **Playing:**
   - Each team's card, or its column on the cricket board, lists its members, with the one at the oche marked (`TeamMembers.vue`).
   - The heading says "Anna (Team 2) to throw".

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { draftTeams, moveToNext, newDraft, resize, shuffleTeams } from '@/game/teamDraft.js';
+import { startingWith } from '@/game/throwOrder.js';
+import { draftTeams, moveToNext, newDraft, orderTeams, resize, shuffleTeams } from '@/game/teamDraft.js';
 
 const people = ['Marco', 'Giulia', 'Dave', 'Anna', 'Luca'].map((name) => ({ id: name.toLowerCase(), name }));
 const name = (n: number) => `Team ${n}`;
@@ -39,3 +40,25 @@ describe('making teams', () => {
     expect(resize({ count: 3, placed: { marco: 2, dave: 0 } }, -1, 5).placed).toEqual({ dave: 0 });
   });
 });
+
+describe('who throws first, in teams', () => {
+  const four = people.slice(0, 4);
+  const teams = draftTeams(four, newDraft(), name); // Marco & Dave v Giulia & Anna
+
+  it('puts the team of the closest at the bull first, and the members in their order at the bull', () => {
+    // Closest first: Anna, Marco, Giulia, Dave.
+    const atTheBull = ['anna', 'marco', 'giulia', 'dave'].map((id) => ({ id }));
+    expect(ids(orderTeams(teams, atTheBull))).toEqual([
+      ['anna', 'giulia'],
+      ['marco', 'dave'],
+    ]);
+  });
+
+  it('starts the team of whoever the wheel stops on, with them leading it', () => {
+    expect(ids(orderTeams(teams, startingWith(four, 'dave')))).toEqual([
+      ['dave', 'marco'],
+      ['anna', 'giulia'],
+    ]);
+  });
+});
+

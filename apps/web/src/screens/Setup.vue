@@ -42,7 +42,7 @@ import Switch from '../components/ui/Switch.vue';
 import { vFocus } from '../components/ui/focus.js';
 import { gameSummary, halveTargetsShort } from '../game/modeView.js';
 import { lineupLabel } from '../game/sides.js';
-import { MAX_TEAMS, draftTeams, moveToNext, newDraft, resize, shuffleTeams, type TeamDraft } from '../game/teamDraft.js';
+import { MAX_TEAMS, draftTeams, moveToNext, newDraft, orderTeams, resize, shuffleTeams, type TeamDraft } from '../game/teamDraft.js';
 import { fill, useStrings } from '../i18n/index.js';
 import { PATHS } from '../router/paths.js';
 import { useLobbyStore, useMatchesStore, usePlayersStore } from '../store/stores.js';
@@ -143,10 +143,13 @@ const nextTeamName = (k: number) => teamList.value[(k + 1) % teamList.value.leng
 const moveOn = (id: string) => (teamDraft.value = moveToNext(teamDraft.value, teamList.value, id));
 const shuffle = () => (teamDraft.value = shuffleTeams(teamDraft.value, lineup.value));
 const resizeTeams = (by: 1 | -1) => (teamDraft.value = resize(teamDraft.value, by, lineup.value.length));
-/** Who takes turns, as it stands: the teams, or the players. */
-const turnTakers = computed<PlayerConfig[]>(() =>
-  playingTeams.value ? teamList.value.map((team) => ({ id: team.id, name: team.name })) : lineup.value,
-);
+/**
+ * The players in the order decided so far. Who throws first is decided
+ * between the players even in teams, so the teams follow from it
+ * (orderTeams): the first player's team throws first, with them leading it.
+ */
+const decided = computed(() => (ordering.value && order.value ? order.value : lineup.value));
+const decidedTeams = computed(() => (playingTeams.value ? orderTeams(teamList.value, decided.value) : undefined));
 
 const inLineup = (id: string) => lineup.value.some((player) => player.id === id);
 const pickableProfiles = computed(() => players.profiles.filter((profile) => !inLineup(profile.id)));
@@ -191,24 +194,23 @@ function commitDraft(id: string) {
 
 function start() {
   if (!teamsReady.value) return;
-  if (!ordering.value && turnTakers.value.length > 1) {
+  if (!ordering.value && lineup.value.length > 1) {
     order.value = null;
     ordering.value = true;
     return;
   }
-  begin(ordering.value && order.value ? order.value : turnTakers.value);
+  begin(decided.value, decidedTeams.value);
 }
 
-/** Starts the game, the sides (players or teams) taking turns in `inOrder`. */
-function begin(inOrder: PlayerConfig[]) {
+/** Starts the game, the players taking turns in `inOrder`, or the `teams` they make up. */
+function begin(inOrder: readonly PlayerConfig[], teams?: TeamConfig[]) {
   // Playing alone without making a profile first is allowed: it is a guest.
   const named = (list: readonly PlayerConfig[]) =>
     list.map((player) => {
       const profile = players.profiles.find((candidate) => candidate.id === player.id);
       return profile ? { ...player, name: profile.name } : player;
     });
-  const teams = playingTeams.value ? inOrder.map((side) => teamList.value.find((team) => team.id === side.id)!) : undefined;
-  const playing = named(teams ? lineup.value : inOrder);
+  const playing = named(inOrder);
   matches.start(configFor(playing.length > 0 ? playing : [{ id: 'guest-solo', name: t.setup.guest, temporary: true }], teams));
   void router.push(PATHS.game);
 }
@@ -282,12 +284,8 @@ const training = computed(() => TRAINING_MODES.includes(mode.value));
 /** In throwing order, once that is decided. */
 const who = computed(() => {
   if (lineup.value.length === 0) return t.setup.nobodyYet;
-  if (playingTeams.value) {
-    const teams = ordering.value && order.value ? order.value.map((side) => teamList.value.find((team) => team.id === side.id)!) : teamList.value;
-    return lineupLabel({ players: lineup.value, teams });
-  }
-  const shown = ordering.value && order.value ? order.value : lineup.value;
-  return shown.map((player) => player.name).join(' v ');
+  if (decidedTeams.value) return lineupLabel({ players: lineup.value, teams: decidedTeams.value });
+  return decided.value.map((player) => player.name).join(' v ');
 });
 
 </script>
@@ -304,7 +302,7 @@ const who = computed(() => {
       <button type="button" @click="router.push(PATHS.stats)">{{ t.stats.title }}</button>
     </template>
 
-    <WhoStarts v-if="ordering" v-model:order="order" :players="turnTakers" />
+    <WhoStarts v-if="ordering" v-model:order="order" :players="lineup" />
 
     <div v-else class="setup-layout">
       <div class="setup-grid">

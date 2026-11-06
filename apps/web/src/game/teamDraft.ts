@@ -58,6 +58,22 @@ export function shuffleTeams(draft: TeamDraft, lineup: readonly PlayerConfig[], 
   return { ...draft, placed: Object.fromEntries(ids.map((id, k) => [id, k % count])) };
 }
 
+/**
+ * The teams in the order who throws first decided, which is decided between
+ * the players (the bull, the wheel, or by hand): a team throws as early as
+ * its best-placed member, and within it the members go in their places' order.
+ * The closest at the bull leads their team, and their team throws first.
+ */
+export function orderTeams(teams: readonly TeamConfig[], order: readonly { id: string }[]): TeamConfig[] {
+  const place = (id: string) => {
+    const at = order.findIndex((player) => player.id === id);
+    return at < 0 ? order.length : at;
+  };
+  const byPlace = (a: string, b: string) => place(a) - place(b);
+  const best = (team: TeamConfig) => Math.min(...team.members.map(place));
+  return teams.map((team) => ({ ...team, members: [...team.members].sort(byPlace) })).sort((a, b) => best(a) - best(b));
+}
+
 /** One team more or fewer, between two and four, and never more than the players. */
 export function resize(draft: TeamDraft, by: 1 | -1, players: number): TeamDraft {
   const count = Math.max(MIN_TEAMS, Math.min(MAX_TEAMS, players, draft.count + by));

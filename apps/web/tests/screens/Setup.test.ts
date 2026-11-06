@@ -263,18 +263,22 @@ describe('playing in teams', () => {
     await press(/move giulia to team 1/i);
     expect(screen.getByText('Marco & Giulia v Dave & Anna')).toBeDefined();
 
+    // Who throws first is decided between the players: Anna first puts her
+    // team first, with her leading it.
     await press(/start match/i);
     await press(/set the order/i);
-    await press(/move team 2 up/i);
+    for (let i = 0; i < 3; i += 1) await press(/move anna up/i);
+    expect(screen.getByText('Anna & Dave v Marco & Giulia')).toBeDefined();
     await press(/start match/i);
 
     const config = useMatchesStore().snapshot!.config;
+    const idOf = (name: string) => config.players.find((p) => p.name === name)!.id;
     expect(config.teams!.map((team) => team.members)).toEqual([
-      ['dave', 'anna'].map((name) => config.players.find((p) => p.name.toLowerCase() === name)!.id),
-      ['marco', 'giulia'].map((name) => config.players.find((p) => p.name.toLowerCase() === name)!.id),
+      [idOf('Anna'), idOf('Dave')],
+      [idOf('Marco'), idOf('Giulia')],
     ]);
     expect(config.players).toHaveLength(4);
-    expect(useMatchesStore().snapshot!.current).toMatchObject({ playerId: 'team-2' });
+    expect(useMatchesStore().snapshot!.current).toMatchObject({ playerId: 'team-2', throwerId: idOf('Anna') });
     // Stored as it is: plain objects, not Vue proxies.
     const stored = await listMatches(Number.MAX_SAFE_INTEGER);
     expect(stored[0]!.config.teams).toHaveLength(2);
